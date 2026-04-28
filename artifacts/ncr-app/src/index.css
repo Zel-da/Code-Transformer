@@ -50,66 +50,39 @@
 }
 
 :root {
-  /* Industrial Light Theme (Fallback, but dark mode is default) */
-  --background: 0 0% 100%;
-  --foreground: 240 10% 3.9%;
-  --border: 240 5.9% 90%;
+  --background: 220 20% 97%;
+  --foreground: 224 20% 20%;
+  --border: 220 15% 88%;
+  --input: 220 15% 88%;
+  --ring: 245 60% 60%;
+
   --card: 0 0% 100%;
-  --card-foreground: 240 10% 3.9%;
-  --card-border: 240 5.9% 90%;
+  --card-foreground: 224 20% 20%;
+  --card-border: 220 15% 90%;
+
   --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
-  --popover-border: 240 5.9% 90%;
-  --primary: 240 5.9% 10%;
-  --primary-foreground: 0 0% 98%;
-  --secondary: 240 4.8% 95.9%;
-  --secondary-foreground: 240 5.9% 10%;
-  --muted: 240 4.8% 95.9%;
-  --muted-foreground: 240 3.8% 46.1%;
-  --accent: 240 4.8% 95.9%;
-  --accent-foreground: 240 5.9% 10%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 0 0% 98%;
-  --input: 240 5.9% 90%;
-  --ring: 240 5.9% 10%;
-  
-  --app-font-sans: 'Inter', sans-serif;
+  --popover-foreground: 224 20% 20%;
+  --popover-border: 220 15% 88%;
+
+  --primary: 245 60% 58%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 220 20% 94%;
+  --secondary-foreground: 224 20% 30%;
+
+  --muted: 220 20% 94%;
+  --muted-foreground: 220 10% 52%;
+
+  --accent: 245 50% 95%;
+  --accent-foreground: 245 60% 45%;
+
+  --destructive: 0 72% 58%;
+  --destructive-foreground: 0 0% 100%;
+
+  --app-font-sans: 'Inter', system-ui, sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: 'JetBrains Mono', monospace;
-  --radius: 0rem; /* Sharp, rigid corners */
-}
-
-.dark {
-  /* Control Room Dark Theme */
-  --background: 240 10% 4%; /* Near black */
-  --foreground: 0 0% 98%; /* Pure white text */
-  --border: 240 10% 15%; /* Hard gray borders */
-  
-  --card: 240 10% 6%; /* Slightly lighter panels */
-  --card-foreground: 0 0% 98%;
-  --card-border: 240 10% 20%;
-  
-  --popover: 240 10% 6%;
-  --popover-foreground: 0 0% 98%;
-  --popover-border: 240 10% 20%;
-  
-  --primary: 191 97% 50%; /* Cyan - High tech accent */
-  --primary-foreground: 240 10% 4%; /* Black text on cyan */
-  
-  --secondary: 240 10% 12%; /* Dark gray for secondary actions */
-  --secondary-foreground: 0 0% 98%;
-  
-  --muted: 240 10% 12%;
-  --muted-foreground: 240 5% 65%; /* Readable mid-gray */
-  
-  --accent: 191 97% 50%;
-  --accent-foreground: 240 10% 4%;
-  
-  --destructive: 0 91% 60%; /* Aggressive red */
-  --destructive-foreground: 0 0% 98%;
-  
-  --input: 240 10% 15%;
-  --ring: 191 97% 50%; /* Cyan focus ring */
+  --radius: 0.75rem;
 }
 
 @layer base {
@@ -118,23 +91,16 @@
   }
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    /* Optional: Subtle grid overlay for control room vibe */
-    background-image: 
-      linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
-    background-size: 40px 40px;
-    background-position: center top;
   }
-  
-  /* Hardcore scrollbar styling */
+
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 6px;
+    height: 6px;
   }
   ::-webkit-scrollbar-track {
-    @apply bg-background border-l border-border;
+    @apply bg-transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/30 border border-transparent bg-clip-padding hover:bg-muted-foreground/50;
+    @apply bg-border rounded-full hover:bg-muted-foreground/40;
   }
 }

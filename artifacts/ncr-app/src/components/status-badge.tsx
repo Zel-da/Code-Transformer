@@ -3,45 +3,44 @@ import { Badge } from "@/components/ui/badge";
 type SyncStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
 
 export function StatusBadge({ status }: { status: SyncStatus | string }) {
-  let badgeColor = "bg-muted text-muted-foreground border-border";
-  let glowColor = "shadow-none";
+  let classes = "bg-gray-100 text-gray-500 border-gray-200";
+  let dot = "bg-gray-400";
 
   switch (status) {
     case "PENDING":
-      badgeColor = "bg-[#f59e0b]/10 text-[#fbbf24] border-[#f59e0b]";
-      glowColor = "shadow-[0_0_8px_rgba(245,158,11,0.2)]";
+      classes = "bg-amber-50 text-amber-600 border-amber-200";
+      dot = "bg-amber-400";
       break;
     case "PROCESSING":
-      badgeColor = "bg-[#0ea5e9]/10 text-[#38bdf8] border-[#0ea5e9]";
-      glowColor = "shadow-[0_0_8px_rgba(14,165,233,0.2)]";
+      classes = "bg-blue-50 text-blue-600 border-blue-200";
+      dot = "bg-blue-400";
       break;
     case "COMPLETED":
-      badgeColor = "bg-[#10b981]/10 text-[#34d399] border-[#10b981]";
-      glowColor = "shadow-[0_0_8px_rgba(16,185,129,0.2)]";
+      classes = "bg-emerald-50 text-emerald-600 border-emerald-200";
+      dot = "bg-emerald-400";
       break;
     case "FAILED":
-      badgeColor = "bg-[#ef4444]/10 text-[#f87171] border-[#ef4444]";
-      glowColor = "shadow-[0_0_8px_rgba(239,68,68,0.2)]";
+      classes = "bg-red-50 text-red-500 border-red-200";
+      dot = "bg-red-400";
       break;
   }
 
+  const statusLabel: Record<string, string> = {
+    PENDING: "대기",
+    PROCESSING: "처리 중",
+    COMPLETED: "완료",
+    FAILED: "실패",
+  };
+
   return (
-    <Badge 
-      variant="outline" 
-      className={`font-mono uppercase text-[10px] tracking-wider font-bold px-2.5 py-0.5 whitespace-nowrap rounded-none border-[1.5px] ${badgeColor} ${glowColor}`}
+    <Badge
+      variant="outline"
+      className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full whitespace-nowrap border ${classes} gap-1.5`}
     >
-      {/* Visual pulse indicator for active/pending states */}
-      {(status === "PENDING" || status === "PROCESSING") && (
-        <span className="mr-1.5 flex h-1.5 w-1.5 relative items-center justify-center">
-          <span className={`animate-ping absolute inline-flex h-full w-full rounded-none opacity-75 ${
-            status === 'PENDING' ? 'bg-[#fbbf24]' : 'bg-[#38bdf8]'
-          }`}></span>
-          <span className={`relative inline-flex rounded-none h-1 w-1 ${
-            status === 'PENDING' ? 'bg-[#fbbf24]' : 'bg-[#38bdf8]'
-          }`}></span>
-        </span>
-      )}
-      {status}
+      <span className={`w-1.5 h-1.5 rounded-full inline-block shrink-0 ${dot} ${
+        (status === "PENDING" || status === "PROCESSING") ? "animate-pulse" : ""
+      }`}></span>
+      {statusLabel[status] ?? status}
     </Badge>
   );
 }
