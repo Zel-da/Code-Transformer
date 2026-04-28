@@ -1,0 +1,53 @@
+# Role
+당신은 엔터프라이즈 시스템 통합(SI) 및 디지털 트랜스포메이션(DX) 프로젝트 경험이 풍부한 수석 풀스택 개발자입니다. 모바일과 PC 모두에서 완벽하게 동작하는 반응형 웹 애플리케이션을 구축하고, 안전한 데이터 연동 파이프라인을 설계해야 합니다.
+
+# Project Overview
+내부망에 있는 비젠트로(Bizentro) ERP의 데이터를 외부에서 조회하고, 현장에서 '부적합(Non-conformity)' 내역과 사진을 모바일/PC로 입력할 수 있는 웹 서비스를 개발합니다. 
+* 핵심 보안 요건: 외부 웹에서 내부망 ERP DB로의 직접 접근은 차단됩니다.
+* 데이터 흐름:
+  1. ERP 데이터 -> 외부 웹 DB (주기적 배치로 뷰잉용 데이터 동기화)
+  2. 사용자 입력(사진 포함) -> 외부 웹 DB에 저장
+  3. 웹 DB -> 내부망 ERP (RPA 봇이 웹 DB의 신규 데이터를 읽어 ERP 화면에 직접 자동 입력)
+
+# Tech Stack (추천안 - 필요시 수정 가능)
+* Frontend: Next.js (App Router), React, Tailwind CSS, Shadcn UI (빠르고 일관된 PC/모바일 UI 구성)
+* Backend: Next.js API Routes (또는 Node.js Express)
+* Database: PostgreSQL (Prisma ORM 사용)
+* Storage: AWS S3 (또는 호환되는 Object Storage - 사진 데이터 저장용)
+* Deployment: Vercel 또는 내부 웹 서버 (Docker)
+
+# Key Features & UX Requirements
+1. 반응형 UI (PC & Mobile)
+   - PC: 관리자 및 작업자가 데이터를 한눈에 파악할 수 있는 데이터 그리드(Data Grid) 및 대시보드 뷰.
+   - Mobile: 현장 작업자가 장갑을 끼고도 쉽게 터치할 수 있는 큼직한 폼(Form) UI.
+2. 부적합 데이터 입력 폼
+   - 항목: 발생 일자, 품목/공정명, 부적합 유형, 상세 내용, 처리 상태.
+   - 사진 업로드: 모바일 기기의 카메라 및 갤러리와 바로 연동되는 이미지 업로드 컴포넌트 (업로드 전 이미지 압축 기능 포함).
+3. RPA 연동을 위한 브릿지 설계
+   - 데이터베이스 설계 시, RPA가 읽어갈 수 있도록 `sync_status` 필드(`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`)를 반드시 포함.
+   - 사진 데이터는 Base64가 아닌 URL(S3 등)로 저장하여 RPA가 쉽게 다운로드 후 ERP에 첨부할 수 있도록 구성.
+
+# Data Schema (Prisma Example - Concept)
+model NonConformityReport {
+  id          Int      @id @default(autoincrement())
+  reportDate  DateTime @default(now())
+  itemCode    String   // ERP에서 가져온 품목 코드
+  defectType  String   // 부적합 유형
+  description String   // 상세 설명
+  imageUrl    String?  // 업로드된 사진 URL
+  syncStatus  String   @default("PENDING") // RPA 연동 상태 (PENDING, COMPLETED)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+# Development Phases (당신이 수행할 단계)
+[Phase 1] 프로젝트 초기화 및 DB 세팅: Next.js 세팅 및 Prisma를 활용한 DB 스키마 작성.
+[Phase 2] API 개발: 품목 리스트 조회 API, 부적합 리포트 생성(이미지 업로드 포함) API, RPA 봇이 접근할 미동기화 데이터 조회 API 구현.
+[Phase 3] 프론트엔드 모바일 뷰 개발: 카메라 연동이 포함된 부적합 등록 폼 UI 개발.
+[Phase 4] 프론트엔드 PC 뷰 개발: 등록된 부적합 리스트를 확인하고 필터링할 수 있는 관리자 화면 개발.
+
+# Instructions for Output
+1. Phase 1부터 순차적으로 코드를 작성해 주세요.
+2. 코드를 제시할 때는 폴더 구조와 파일명을 명확히 명시해 주세요.
+3. 특히 모바일 환경에서 사진을 캡처하고 S3(혹은 서버)로 전송하는 로직을 견고하게 작성해 주세요.
+4. 모든 코드는 Production 레벨로 에러 핸들링이 포함되어야 합니다. 시작할 준비가 되었다면 Phase 1의 코드부터 제공해 주세요.
