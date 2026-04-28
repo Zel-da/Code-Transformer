@@ -50,86 +50,66 @@
 }
 
 :root {
-  --button-outline: rgba(0,0,0, .10);
-  --badge-outline: rgba(0,0,0, .05);
-  --opaque-button-border-intensity: -8;
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
-
-  /* Industrial Light Theme */
-  --background: 210 40% 98%; /* slate-50 */
-  --foreground: 222 47% 11%; /* slate-900 */
-  --border: 214 32% 91%; /* slate-200 */
-  
+  /* Industrial Light Theme (Fallback, but dark mode is default) */
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --border: 240 5.9% 90%;
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --card-border: 214 32% 91%;
-  
+  --card-foreground: 240 10% 3.9%;
+  --card-border: 240 5.9% 90%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --popover-border: 214 32% 91%;
-  
-  --primary: 222 47% 11%; /* slate-900 */
-  --primary-foreground: 210 40% 98%;
-  
-  --secondary: 210 40% 96%; /* slate-100 */
-  --secondary-foreground: 222 47% 11%;
-  
-  --muted: 210 40% 96%;
-  --muted-foreground: 215.4 16.3% 46.9%; /* slate-500 */
-  
-  --accent: 210 40% 96%;
-  --accent-foreground: 222 47% 11%;
-  
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 210 40% 98%;
-  
-  --input: 214 32% 91%;
-  --ring: 222 47% 11%;
+  --popover-foreground: 240 10% 3.9%;
+  --popover-border: 240 5.9% 90%;
+  --primary: 240 5.9% 10%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 5.9% 10%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --input: 240 5.9% 90%;
+  --ring: 240 5.9% 10%;
   
   --app-font-sans: 'Inter', sans-serif;
   --app-font-serif: Georgia, serif;
-  --app-font-mono: 'JetBrains Mono', Menlo, monospace;
-  --radius: 0.25rem; /* tight industrial corners */
+  --app-font-mono: 'JetBrains Mono', monospace;
+  --radius: 0rem; /* Sharp, rigid corners */
 }
 
 .dark {
-  --button-outline: rgba(255,255,255, .10);
-  --badge-outline: rgba(255,255,255, .05);
-  --opaque-button-border-intensity: 9;
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
-
-  /* Industrial Dark Theme */
-  --background: 222 47% 11%; /* slate-900 */
-  --foreground: 210 40% 98%; /* slate-50 */
-  --border: 215 28% 17%; /* slate-800 */
+  /* Control Room Dark Theme */
+  --background: 240 10% 4%; /* Near black */
+  --foreground: 0 0% 98%; /* Pure white text */
+  --border: 240 10% 15%; /* Hard gray borders */
   
-  --card: 222 47% 11%;
-  --card-foreground: 210 40% 98%;
-  --card-border: 215 28% 17%;
+  --card: 240 10% 6%; /* Slightly lighter panels */
+  --card-foreground: 0 0% 98%;
+  --card-border: 240 10% 20%;
   
-  --popover: 222 47% 11%;
-  --popover-foreground: 210 40% 98%;
-  --popover-border: 215 28% 17%;
+  --popover: 240 10% 6%;
+  --popover-foreground: 0 0% 98%;
+  --popover-border: 240 10% 20%;
   
-  --primary: 210 40% 98%;
-  --primary-foreground: 222 47% 11%;
+  --primary: 191 97% 50%; /* Cyan - High tech accent */
+  --primary-foreground: 240 10% 4%; /* Black text on cyan */
   
-  --secondary: 217 24% 27%; /* slate-700 */
-  --secondary-foreground: 210 40% 98%;
+  --secondary: 240 10% 12%; /* Dark gray for secondary actions */
+  --secondary-foreground: 0 0% 98%;
   
-  --muted: 217 24% 27%;
-  --muted-foreground: 215 20.2% 65.1%; /* slate-400 */
+  --muted: 240 10% 12%;
+  --muted-foreground: 240 5% 65%; /* Readable mid-gray */
   
-  --accent: 217 24% 27%;
-  --accent-foreground: 210 40% 98%;
+  --accent: 191 97% 50%;
+  --accent-foreground: 240 10% 4%;
   
-  --destructive: 0 62% 30%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive: 0 91% 60%; /* Aggressive red */
+  --destructive-foreground: 0 0% 98%;
   
-  --input: 215 28% 17%;
-  --ring: 210 40% 98%;
+  --input: 240 10% 15%;
+  --ring: 191 97% 50%; /* Cyan focus ring */
 }
 
 @layer base {
@@ -138,5 +118,23 @@
   }
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    /* Optional: Subtle grid overlay for control room vibe */
+    background-image: 
+      linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+    background-position: center top;
+  }
+  
+  /* Hardcore scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-background border-l border-border;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 border border-transparent bg-clip-padding hover:bg-muted-foreground/50;
   }
 }
