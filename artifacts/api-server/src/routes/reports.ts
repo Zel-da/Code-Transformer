@@ -26,12 +26,7 @@ router.get("/reports", async (req, res): Promise<void> => {
     conditions.push(eq(nonConformityReportsTable.defectType, defectType));
   }
   if (syncStatus) {
-    conditions.push(
-      eq(
-        nonConformityReportsTable.syncStatus,
-        syncStatus as "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED",
-      ),
-    );
+    conditions.push(eq(nonConformityReportsTable.syncStatus, syncStatus));
   }
   if (dateFrom) {
     conditions.push(gte(nonConformityReportsTable.reportDate, dateFrom));
