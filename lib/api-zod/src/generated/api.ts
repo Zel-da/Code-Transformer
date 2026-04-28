@@ -37,8 +37,8 @@ export const listReportsQueryPageSizeDefault = 20;
 export const ListReportsQueryParams = zod.object({
   defectType: zod.coerce.string().optional(),
   syncStatus: zod.coerce.string().optional(),
-  dateFrom: zod.date().optional(),
-  dateTo: zod.date().optional(),
+  dateFrom: zod.coerce.date().optional(),
+  dateTo: zod.coerce.date().optional(),
   page: zod.coerce.number().default(listReportsQueryPageDefault),
   pageSize: zod.coerce.number().default(listReportsQueryPageSizeDefault),
 });

@@ -1,5 +1,5 @@
 import { Layout } from "@/components/layout";
-import { useGetReportStats, useListReports, getListReportsQueryKey, useUpdateReportSyncStatus, useGetReport } from "@workspace/api-client-react";
+import { useGetReportStats, useListReports, getListReportsQueryKey, useGetReport } from "@workspace/api-client-react";
 import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
 import { useState, useMemo } from "react";
@@ -15,11 +15,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { AlertCircle, FileText, CheckCircle2, Clock, RefreshCw, XCircle } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { FileText, CheckCircle2, Clock, XCircle } from "lucide-react";
 
 const DEFECT_TYPES = ["치수불량", "외관불량", "기능불량", "재료불량", "포장불량", "기타"];
 const SYNC_STATUSES = ["PENDING", "PROCESSING", "COMPLETED", "FAILED"];
@@ -80,23 +79,35 @@ function ReportDetail({ reportId }: { reportId: number }) {
   );
 }
 
+interface QueryParams {
+  page: number;
+  pageSize: number;
+  defectType?: string;
+  syncStatus?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
 export default function AdminDashboard() {
   const isMobile = useIsMobile();
-  const queryClient = useQueryClient();
-  
+
   const [defectType, setDefectType] = useState<string>("all");
   const [syncStatus, setSyncStatus] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
   const [page, setPage] = useState(1);
   const [selectedReportId, setSelectedReportId] = useState<number | null>(null);
 
   const { data: stats } = useGetReportStats();
-  
-  const queryParams = useMemo(() => {
-    const p: any = { page, pageSize: 20 };
+
+  const queryParams = useMemo<QueryParams>(() => {
+    const p: QueryParams = { page, pageSize: 20 };
     if (defectType !== "all") p.defectType = defectType;
     if (syncStatus !== "all") p.syncStatus = syncStatus;
+    if (dateFrom) p.dateFrom = new Date(dateFrom).toISOString();
+    if (dateTo) p.dateTo = new Date(dateTo + "T23:59:59").toISOString();
     return p;
-  }, [defectType, syncStatus, page]);
+  }, [defectType, syncStatus, dateFrom, dateTo, page]);
 
   const { data: reportsData, isLoading: isLoadingReports } = useListReports(queryParams, {
     query: {
@@ -105,7 +116,15 @@ export default function AdminDashboard() {
     }
   });
 
-  const reports = reportsData?.data || [];
+  const reports = reportsData?.data ?? [];
+
+  const handleReset = () => {
+    setDefectType("all");
+    setSyncStatus("all");
+    setDateFrom("");
+    setDateTo("");
+    setPage(1);
+  };
 
   return (
     <Layout>
@@ -122,9 +141,9 @@ export default function AdminDashboard() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.total || 0}</div>
+              <div className="text-2xl font-bold">{stats?.total ?? 0}</div>
               <p className="text-xs text-muted-foreground">
-                {stats?.recentCount || 0} in last 7 days
+                {stats?.recentCount ?? 0} in last 7 days
               </p>
             </CardContent>
           </Card>
@@ -135,7 +154,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {stats?.bySyncStatus.find(s => s.label === 'PENDING')?.count || 0}
+                {stats?.bySyncStatus.find(s => s.label === 'PENDING')?.count ?? 0}
               </div>
             </CardContent>
           </Card>
@@ -146,7 +165,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {stats?.bySyncStatus.find(s => s.label === 'FAILED')?.count || 0}
+                {stats?.bySyncStatus.find(s => s.label === 'FAILED')?.count ?? 0}
               </div>
             </CardContent>
           </Card>
@@ -157,7 +176,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {stats?.bySyncStatus.find(s => s.label === 'COMPLETED')?.count || 0}
+                {stats?.bySyncStatus.find(s => s.label === 'COMPLETED')?.count ?? 0}
               </div>
             </CardContent>
           </Card>
@@ -168,7 +187,7 @@ export default function AdminDashboard() {
           <CardHeader className="pb-3">
             <CardTitle>Filters</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-3">
+          <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             <div className="space-y-2">
               <Label>Defect Type</Label>
               <Select value={defectType} onValueChange={(val) => { setDefectType(val); setPage(1); }}>
@@ -197,8 +216,24 @@ export default function AdminDashboard() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Date From</Label>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Date To</Label>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+              />
+            </div>
             <div className="space-y-2 flex items-end">
-              <Button variant="outline" onClick={() => { setDefectType("all"); setSyncStatus("all"); setPage(1); }} className="w-full">
+              <Button variant="outline" onClick={handleReset} className="w-full">
                 Reset Filters
               </Button>
             </div>
@@ -221,8 +256,8 @@ export default function AdminDashboard() {
             ) : isMobile ? (
               <div className="space-y-4">
                 {reports.map((report) => (
-                  <div 
-                    key={report.id} 
+                  <div
+                    key={report.id}
                     className="border rounded-lg p-4 space-y-3 bg-card shadow-sm cursor-pointer active:bg-muted/50 transition-colors"
                     onClick={() => setSelectedReportId(report.id)}
                   >
@@ -269,30 +304,30 @@ export default function AdminDashboard() {
                 </Table>
               </div>
             )}
-            
+
             {/* Pagination Controls */}
             {reportsData && reportsData.total > reportsData.pageSize && (
-               <div className="flex items-center justify-end space-x-2 py-4">
-                 <Button
-                   variant="outline"
-                   size="sm"
-                   onClick={() => setPage(p => Math.max(1, p - 1))}
-                   disabled={page === 1}
-                 >
-                   Previous
-                 </Button>
-                 <span className="text-sm text-muted-foreground">
-                   Page {page} of {Math.ceil(reportsData.total / reportsData.pageSize)}
-                 </span>
-                 <Button
-                   variant="outline"
-                   size="sm"
-                   onClick={() => setPage(p => p + 1)}
-                   disabled={page >= Math.ceil(reportsData.total / reportsData.pageSize)}
-                 >
-                   Next
-                 </Button>
-               </div>
+              <div className="flex items-center justify-end space-x-2 py-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {page} of {Math.ceil(reportsData.total / reportsData.pageSize)}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={page >= Math.ceil(reportsData.total / reportsData.pageSize)}
+                >
+                  Next
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
