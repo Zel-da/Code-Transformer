@@ -10,6 +10,14 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: items
+    description: ERP item code operations
+  - name: reports
+    description: Non-conformity report operations
+  - name: rpa
+    description: RPA bridge endpoints
+  - name: storage
+    description: Object storage upload and serving endpoints
 paths:
   /healthz:
     get:
@@ -24,6 +32,274 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /items:
+    get:
+      operationId: listItems
+      tags: [items]
+      summary: List ERP item codes
+      description: Returns all available ERP item codes for use in report forms
+      responses:
+        "200":
+          description: List of item codes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+
+  /reports:
+    get:
+      operationId: listReports
+      tags: [reports]
+      summary: List non-conformity reports
+      description: Returns a filtered, paginated list of non-conformity reports
+      parameters:
+        - name: defectType
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: syncStatus
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Paginated list of reports
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportListResponse"
+    post:
+      operationId: createReport
+      tags: [reports]
+      summary: Create a non-conformity report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReportBody"
+      responses:
+        "201":
+          description: Report created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /reports/stats:
+    get:
+      operationId: getReportStats
+      tags: [reports]
+      summary: Get report statistics
+      description: Returns aggregate counts grouped by defect type and sync status for dashboard
+      responses:
+        "200":
+          description: Report statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportStats"
+
+  /reports/pending:
+    get:
+      operationId: listPendingReports
+      tags: [rpa]
+      summary: List PENDING reports for RPA bot
+      description: Returns all reports with PENDING sync status for the RPA bot to process
+      responses:
+        "200":
+          description: List of pending reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Report"
+
+  /reports/{id}:
+    get:
+      operationId: getReport
+      tags: [reports]
+      summary: Get a single report
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Report found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "404":
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /reports/{id}/sync-status:
+    patch:
+      operationId: updateReportSyncStatus
+      tags: [rpa]
+      summary: Update sync status of a report
+      description: Used by the RPA bot to update the sync status after processing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSyncStatusBody"
+      responses:
+        "200":
+          description: Sync status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "400":
+          description: Invalid status value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /storage/uploads/request-url:
+    post:
+      tags: [storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned URL for file upload
+      description: |
+        Returns a presigned GCS URL for direct upload. The client sends JSON
+        metadata here, then uploads the file directly to the returned URL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadUrlRequest'
+      responses:
+        '200':
+          description: Presigned upload URL generated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadUrlResponse'
+        '400':
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Failed to generate upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /storage/public-objects/{filePath}:
+    get:
+      tags: [storage]
+      operationId: getPublicObject
+      summary: Serve a public asset from PUBLIC_OBJECT_SEARCH_PATHS
+      parameters:
+        - name: filePath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Object content streamed with correct Content-Type.
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /storage/objects/{objectPath}:
+    get:
+      tags: [storage]
+      operationId: getStorageObject
+      summary: Serve an object entity from PRIVATE_OBJECT_DIR
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Object content streamed with correct Content-Type.
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Object not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +310,174 @@ components:
       required:
         - status
 
+    Item:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+      required:
+        - id
+        - code
+        - name
+        - category
+
+    Report:
+      type: object
+      properties:
+        id:
+          type: integer
+        reportDate:
+          type: string
+          format: date-time
+        itemCode:
+          type: string
+        processName:
+          type: string
+        defectType:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+        syncStatus:
+          type: string
+          enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - reportDate
+        - itemCode
+        - processName
+        - defectType
+        - description
+        - imageUrl
+        - syncStatus
+        - createdAt
+        - updatedAt
+
+    ReportListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Report"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - pageSize
+
+    CreateReportBody:
+      type: object
+      properties:
+        reportDate:
+          type: string
+          format: date-time
+        itemCode:
+          type: string
+        processName:
+          type: string
+        defectType:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+      required:
+        - itemCode
+        - processName
+        - defectType
+        - description
+
+    UpdateSyncStatusBody:
+      type: object
+      properties:
+        syncStatus:
+          type: string
+          enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+      required:
+        - syncStatus
+
+    ReportStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        byDefectType:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatCount"
+        bySyncStatus:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatCount"
+        recentCount:
+          type: integer
+          description: Number of reports in the last 7 days
+      required:
+        - total
+        - byDefectType
+        - bySyncStatus
+        - recentCount
+
+    StatCount:
+      type: object
+      properties:
+        label:
+          type: string
+        count:
+          type: integer
+      required:
+        - label
+        - count
+
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        size:
+          type: integer
+          minimum: 1
+        contentType:
+          type: string
+          minLength: 1
+
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+        objectPath:
+          type: string
+        metadata:
+          $ref: '#/components/schemas/UploadUrlRequest'
+
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string

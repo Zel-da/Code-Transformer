@@ -5,18 +5,33 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  CreateReportBody,
+  ErrorEnvelope,
+  HealthStatus,
+  Item,
+  ListReportsParams,
+  Report,
+  ReportListResponse,
+  ReportStats,
+  UpdateSyncStatusBody,
+  UploadUrlRequest,
+  UploadUrlResponse,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -92,6 +107,844 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns all available ERP item codes for use in report forms
+ * @summary List ERP item codes
+ */
+export const getListItemsUrl = () => {
+  return `/api/items`;
+};
+
+export const listItems = async (options?: RequestInit): Promise<Item[]> => {
+  return customFetch<Item[]>(getListItemsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListItemsQueryKey = () => {
+  return [`/api/items`] as const;
+};
+
+export const getListItemsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listItems>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listItems>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListItemsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listItems>>> = ({
+    signal,
+  }) => listItems({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listItems>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListItemsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listItems>>
+>;
+export type ListItemsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List ERP item codes
+ */
+
+export function useListItems<
+  TData = Awaited<ReturnType<typeof listItems>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listItems>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListItemsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns a filtered, paginated list of non-conformity reports
+ * @summary List non-conformity reports
+ */
+export const getListReportsUrl = (params?: ListReportsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/reports?${stringifiedParams}`
+    : `/api/reports`;
+};
+
+export const listReports = async (
+  params?: ListReportsParams,
+  options?: RequestInit,
+): Promise<ReportListResponse> => {
+  return customFetch<ReportListResponse>(getListReportsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListReportsQueryKey = (params?: ListReportsParams) => {
+  return [`/api/reports`, ...(params ? [params] : [])] as const;
+};
+
+export const getListReportsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listReports>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListReportsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listReports>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListReportsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listReports>>> = ({
+    signal,
+  }) => listReports(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listReports>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListReportsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listReports>>
+>;
+export type ListReportsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List non-conformity reports
+ */
+
+export function useListReports<
+  TData = Awaited<ReturnType<typeof listReports>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListReportsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listReports>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListReportsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a non-conformity report
+ */
+export const getCreateReportUrl = () => {
+  return `/api/reports`;
+};
+
+export const createReport = async (
+  createReportBody: CreateReportBody,
+  options?: RequestInit,
+): Promise<Report> => {
+  return customFetch<Report>(getCreateReportUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createReportBody),
+  });
+};
+
+export const getCreateReportMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createReport>>,
+    TError,
+    { data: BodyType<CreateReportBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createReport>>,
+  TError,
+  { data: BodyType<CreateReportBody> },
+  TContext
+> => {
+  const mutationKey = ["createReport"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createReport>>,
+    { data: BodyType<CreateReportBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createReport(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateReportMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createReport>>
+>;
+export type CreateReportMutationBody = BodyType<CreateReportBody>;
+export type CreateReportMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Create a non-conformity report
+ */
+export const useCreateReport = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createReport>>,
+    TError,
+    { data: BodyType<CreateReportBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createReport>>,
+  TError,
+  { data: BodyType<CreateReportBody> },
+  TContext
+> => {
+  return useMutation(getCreateReportMutationOptions(options));
+};
+
+/**
+ * Returns aggregate counts grouped by defect type and sync status for dashboard
+ * @summary Get report statistics
+ */
+export const getGetReportStatsUrl = () => {
+  return `/api/reports/stats`;
+};
+
+export const getReportStats = async (
+  options?: RequestInit,
+): Promise<ReportStats> => {
+  return customFetch<ReportStats>(getGetReportStatsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetReportStatsQueryKey = () => {
+  return [`/api/reports/stats`] as const;
+};
+
+export const getGetReportStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getReportStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getReportStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetReportStatsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getReportStats>>> = ({
+    signal,
+  }) => getReportStats({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getReportStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetReportStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getReportStats>>
+>;
+export type GetReportStatsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get report statistics
+ */
+
+export function useGetReportStats<
+  TData = Awaited<ReturnType<typeof getReportStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getReportStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetReportStatsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns all reports with PENDING sync status for the RPA bot to process
+ * @summary List PENDING reports for RPA bot
+ */
+export const getListPendingReportsUrl = () => {
+  return `/api/reports/pending`;
+};
+
+export const listPendingReports = async (
+  options?: RequestInit,
+): Promise<Report[]> => {
+  return customFetch<Report[]>(getListPendingReportsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPendingReportsQueryKey = () => {
+  return [`/api/reports/pending`] as const;
+};
+
+export const getListPendingReportsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPendingReports>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPendingReports>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPendingReportsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPendingReports>>
+  > = ({ signal }) => listPendingReports({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPendingReports>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPendingReportsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPendingReports>>
+>;
+export type ListPendingReportsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List PENDING reports for RPA bot
+ */
+
+export function useListPendingReports<
+  TData = Awaited<ReturnType<typeof listPendingReports>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPendingReports>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPendingReportsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a single report
+ */
+export const getGetReportUrl = (id: number) => {
+  return `/api/reports/${id}`;
+};
+
+export const getReport = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Report> => {
+  return customFetch<Report>(getGetReportUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetReportQueryKey = (id: number) => {
+  return [`/api/reports/${id}`] as const;
+};
+
+export const getGetReportQueryOptions = <
+  TData = Awaited<ReturnType<typeof getReport>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetReportQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getReport>>> = ({
+    signal,
+  }) => getReport(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getReport>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type GetReportQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getReport>>
+>;
+export type GetReportQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Get a single report
+ */
+
+export function useGetReport<
+  TData = Awaited<ReturnType<typeof getReport>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetReportQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Used by the RPA bot to update the sync status after processing
+ * @summary Update sync status of a report
+ */
+export const getUpdateReportSyncStatusUrl = (id: number) => {
+  return `/api/reports/${id}/sync-status`;
+};
+
+export const updateReportSyncStatus = async (
+  id: number,
+  updateSyncStatusBody: UpdateSyncStatusBody,
+  options?: RequestInit,
+): Promise<Report> => {
+  return customFetch<Report>(getUpdateReportSyncStatusUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateSyncStatusBody),
+  });
+};
+
+export const getUpdateReportSyncStatusMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateReportSyncStatus>>,
+    TError,
+    { id: number; data: BodyType<UpdateSyncStatusBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateReportSyncStatus>>,
+  TError,
+  { id: number; data: BodyType<UpdateSyncStatusBody> },
+  TContext
+> => {
+  const mutationKey = ["updateReportSyncStatus"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateReportSyncStatus>>,
+    { id: number; data: BodyType<UpdateSyncStatusBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateReportSyncStatus(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateReportSyncStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateReportSyncStatus>>
+>;
+export type UpdateReportSyncStatusMutationBody = BodyType<UpdateSyncStatusBody>;
+export type UpdateReportSyncStatusMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Update sync status of a report
+ */
+export const useUpdateReportSyncStatus = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateReportSyncStatus>>,
+    TError,
+    { id: number; data: BodyType<UpdateSyncStatusBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateReportSyncStatus>>,
+  TError,
+  { id: number; data: BodyType<UpdateSyncStatusBody> },
+  TContext
+> => {
+  return useMutation(getUpdateReportSyncStatusMutationOptions(options));
+};
+
+/**
+ * Returns a presigned GCS URL for direct upload. The client sends JSON
+metadata here, then uploads the file directly to the returned URL.
+
+ * @summary Request a presigned URL for file upload
+ */
+export const getRequestUploadUrlUrl = () => {
+  return `/api/storage/uploads/request-url`;
+};
+
+export const requestUploadUrl = async (
+  uploadUrlRequest: UploadUrlRequest,
+  options?: RequestInit,
+): Promise<UploadUrlResponse> => {
+  return customFetch<UploadUrlResponse>(getRequestUploadUrlUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(uploadUrlRequest),
+  });
+};
+
+export const getRequestUploadUrlMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    TError,
+    { data: BodyType<UploadUrlRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestUploadUrl>>,
+  TError,
+  { data: BodyType<UploadUrlRequest> },
+  TContext
+> => {
+  const mutationKey = ["requestUploadUrl"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    { data: BodyType<UploadUrlRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return requestUploadUrl(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestUploadUrlMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestUploadUrl>>
+>;
+export type RequestUploadUrlMutationBody = BodyType<UploadUrlRequest>;
+export type RequestUploadUrlMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+export const useRequestUploadUrl = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestUploadUrl>>,
+    TError,
+    { data: BodyType<UploadUrlRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestUploadUrl>>,
+  TError,
+  { data: BodyType<UploadUrlRequest> },
+  TContext
+> => {
+  return useMutation(getRequestUploadUrlMutationOptions(options));
+};
+
+/**
+ * @summary Serve a public asset from PUBLIC_OBJECT_SEARCH_PATHS
+ */
+export const getGetPublicObjectUrl = (filePath: string) => {
+  return `/api/storage/public-objects/${filePath}`;
+};
+
+export const getPublicObject = async (
+  filePath: string,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getGetPublicObjectUrl(filePath), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPublicObjectQueryKey = (filePath: string) => {
+  return [`/api/storage/public-objects/${filePath}`] as const;
+};
+
+export const getGetPublicObjectQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPublicObject>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  filePath: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicObject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPublicObjectQueryKey(filePath);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicObject>>> = ({
+    signal,
+  }) => getPublicObject(filePath, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!filePath,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicObject>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPublicObjectQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPublicObject>>
+>;
+export type GetPublicObjectQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Serve a public asset from PUBLIC_OBJECT_SEARCH_PATHS
+ */
+
+export function useGetPublicObject<
+  TData = Awaited<ReturnType<typeof getPublicObject>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  filePath: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicObject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPublicObjectQueryOptions(filePath, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Serve an object entity from PRIVATE_OBJECT_DIR
+ */
+export const getGetStorageObjectUrl = (objectPath: string) => {
+  return `/api/storage/objects/${objectPath}`;
+};
+
+export const getStorageObject = async (
+  objectPath: string,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getGetStorageObjectUrl(objectPath), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetStorageObjectQueryKey = (objectPath: string) => {
+  return [`/api/storage/objects/${objectPath}`] as const;
+};
+
+export const getGetStorageObjectQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStorageObject>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  objectPath: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStorageObject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetStorageObjectQueryKey(objectPath);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getStorageObject>>
+  > = ({ signal }) =>
+    getStorageObject(objectPath, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!objectPath,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStorageObject>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStorageObjectQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStorageObject>>
+>;
+export type GetStorageObjectQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Serve an object entity from PRIVATE_OBJECT_DIR
+ */
+
+export function useGetStorageObject<
+  TData = Awaited<ReturnType<typeof getStorageObject>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  objectPath: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStorageObject>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStorageObjectQueryOptions(objectPath, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

@@ -14,3 +14,188 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Returns all available ERP item codes for use in report forms
+ * @summary List ERP item codes
+ */
+export const ListItemsResponseItem = zod.object({
+  id: zod.number(),
+  code: zod.string(),
+  name: zod.string(),
+  category: zod.string(),
+});
+export const ListItemsResponse = zod.array(ListItemsResponseItem);
+
+/**
+ * Returns a filtered, paginated list of non-conformity reports
+ * @summary List non-conformity reports
+ */
+export const listReportsQueryPageDefault = 1;
+export const listReportsQueryPageSizeDefault = 20;
+
+export const ListReportsQueryParams = zod.object({
+  defectType: zod.coerce.string().optional(),
+  syncStatus: zod.coerce.string().optional(),
+  dateFrom: zod.date().optional(),
+  dateTo: zod.date().optional(),
+  page: zod.coerce.number().default(listReportsQueryPageDefault),
+  pageSize: zod.coerce.number().default(listReportsQueryPageSizeDefault),
+});
+
+export const ListReportsResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.number(),
+      reportDate: zod.coerce.date(),
+      itemCode: zod.string(),
+      processName: zod.string(),
+      defectType: zod.string(),
+      description: zod.string(),
+      imageUrl: zod.string().nullable(),
+      syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  pageSize: zod.number(),
+});
+
+/**
+ * @summary Create a non-conformity report
+ */
+export const CreateReportBody = zod.object({
+  reportDate: zod.coerce.date().optional(),
+  itemCode: zod.string(),
+  processName: zod.string(),
+  defectType: zod.string(),
+  description: zod.string(),
+  imageUrl: zod.string().nullish(),
+});
+
+/**
+ * Returns aggregate counts grouped by defect type and sync status for dashboard
+ * @summary Get report statistics
+ */
+export const GetReportStatsResponse = zod.object({
+  total: zod.number(),
+  byDefectType: zod.array(
+    zod.object({
+      label: zod.string(),
+      count: zod.number(),
+    }),
+  ),
+  bySyncStatus: zod.array(
+    zod.object({
+      label: zod.string(),
+      count: zod.number(),
+    }),
+  ),
+  recentCount: zod.number().describe("Number of reports in the last 7 days"),
+});
+
+/**
+ * Returns all reports with PENDING sync status for the RPA bot to process
+ * @summary List PENDING reports for RPA bot
+ */
+export const ListPendingReportsResponseItem = zod.object({
+  id: zod.number(),
+  reportDate: zod.coerce.date(),
+  itemCode: zod.string(),
+  processName: zod.string(),
+  defectType: zod.string(),
+  description: zod.string(),
+  imageUrl: zod.string().nullable(),
+  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListPendingReportsResponse = zod.array(
+  ListPendingReportsResponseItem,
+);
+
+/**
+ * @summary Get a single report
+ */
+export const GetReportParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetReportResponse = zod.object({
+  id: zod.number(),
+  reportDate: zod.coerce.date(),
+  itemCode: zod.string(),
+  processName: zod.string(),
+  defectType: zod.string(),
+  description: zod.string(),
+  imageUrl: zod.string().nullable(),
+  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * Used by the RPA bot to update the sync status after processing
+ * @summary Update sync status of a report
+ */
+export const UpdateReportSyncStatusParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateReportSyncStatusBody = zod.object({
+  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+});
+
+export const UpdateReportSyncStatusResponse = zod.object({
+  id: zod.number(),
+  reportDate: zod.coerce.date(),
+  itemCode: zod.string(),
+  processName: zod.string(),
+  defectType: zod.string(),
+  description: zod.string(),
+  imageUrl: zod.string().nullable(),
+  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * Returns a presigned GCS URL for direct upload. The client sends JSON
+metadata here, then uploads the file directly to the returned URL.
+
+ * @summary Request a presigned URL for file upload
+ */
+
+export const RequestUploadUrlBody = zod.object({
+  name: zod.string().min(1),
+  size: zod.number().min(1),
+  contentType: zod.string().min(1),
+});
+
+export const RequestUploadUrlResponse = zod.object({
+  uploadURL: zod.string().url(),
+  objectPath: zod.string(),
+  metadata: zod
+    .object({
+      name: zod.string().min(1),
+      size: zod.number().min(1),
+      contentType: zod.string().min(1),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Serve a public asset from PUBLIC_OBJECT_SEARCH_PATHS
+ */
+export const GetPublicObjectParams = zod.object({
+  filePath: zod.coerce.string(),
+});
+
+/**
+ * @summary Serve an object entity from PRIVATE_OBJECT_DIR
+ */
+export const GetStorageObjectParams = zod.object({
+  objectPath: zod.coerce.string(),
+});

@@ -8,3 +8,106 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface Item {
+  id: number;
+  code: string;
+  name: string;
+  category: string;
+}
+
+export type ReportSyncStatus =
+  (typeof ReportSyncStatus)[keyof typeof ReportSyncStatus];
+
+export const ReportSyncStatus = {
+  PENDING: "PENDING",
+  PROCESSING: "PROCESSING",
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
+} as const;
+
+export interface Report {
+  id: number;
+  reportDate: string;
+  itemCode: string;
+  processName: string;
+  defectType: string;
+  description: string;
+  /** @nullable */
+  imageUrl: string | null;
+  syncStatus: ReportSyncStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReportListResponse {
+  data: Report[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface CreateReportBody {
+  reportDate?: string;
+  itemCode: string;
+  processName: string;
+  defectType: string;
+  description: string;
+  /** @nullable */
+  imageUrl?: string | null;
+}
+
+export type UpdateSyncStatusBodySyncStatus =
+  (typeof UpdateSyncStatusBodySyncStatus)[keyof typeof UpdateSyncStatusBodySyncStatus];
+
+export const UpdateSyncStatusBodySyncStatus = {
+  PENDING: "PENDING",
+  PROCESSING: "PROCESSING",
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
+} as const;
+
+export interface UpdateSyncStatusBody {
+  syncStatus: UpdateSyncStatusBodySyncStatus;
+}
+
+export interface StatCount {
+  label: string;
+  count: number;
+}
+
+export interface ReportStats {
+  total: number;
+  byDefectType: StatCount[];
+  bySyncStatus: StatCount[];
+  /** Number of reports in the last 7 days */
+  recentCount: number;
+}
+
+export interface UploadUrlRequest {
+  /** @minLength 1 */
+  name: string;
+  /** @minimum 1 */
+  size: number;
+  /** @minLength 1 */
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+  metadata?: UploadUrlRequest;
+}
+
+export interface ErrorEnvelope {
+  error: string;
+}
+
+export type ListReportsParams = {
+  defectType?: string;
+  syncStatus?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  pageSize?: number;
+};
