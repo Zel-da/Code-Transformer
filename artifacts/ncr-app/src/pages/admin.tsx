@@ -57,7 +57,7 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
         </div>
         <div className="bg-muted/50 rounded-xl p-3">
           <p className="text-[11px] text-muted-foreground mb-1">접수 일시</p>
-          <p className="font-medium text-sm">{format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}</p>
+          <p className="font-medium text-sm text-foreground">{format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}</p>
         </div>
       </div>
 
