@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import AdminDashboard from "@/pages/admin";
 import SubmitReport from "@/pages/submit";
+import ManagePage from "@/pages/manage";
 
 const queryClient = new QueryClient();
 
@@ -14,6 +15,7 @@ function Router() {
       <Route path="/" component={AdminDashboard} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/submit" component={SubmitReport} />
+      <Route path="/manage" component={ManagePage} />
       <Route component={NotFound} />
     </Switch>
   );

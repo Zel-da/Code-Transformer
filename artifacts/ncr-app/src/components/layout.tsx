@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, FileWarning, ClipboardList } from "lucide-react";
+import { LayoutDashboard, FileWarning, ClipboardList, Settings2 } from "lucide-react";
 
 export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
@@ -39,6 +39,15 @@ export function Layout({ children }: { children: ReactNode }) {
                 보고서 등록
               </span>
             </Link>
+            <Link href="/manage">
+              <span className={`px-3 py-1.5 rounded-md cursor-pointer text-sm font-medium transition-colors ${
+                location === "/manage"
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}>
+                관리자 패널
+              </span>
+            </Link>
           </nav>
 
           <div className="flex flex-1 items-center justify-end">
@@ -71,6 +80,15 @@ export function Layout({ children }: { children: ReactNode }) {
             }`}>
               <FileWarning className="h-5 w-5" strokeWidth={location === "/submit" ? 2.5 : 1.8} />
               <span className="text-[10px] font-medium">보고서 등록</span>
+            </span>
+          </Link>
+          <div className="w-px bg-border my-3"></div>
+          <Link href="/manage" className="flex-1">
+            <span className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${
+              location === "/manage" ? "text-primary" : "text-muted-foreground"
+            }`}>
+              <Settings2 className="h-5 w-5" strokeWidth={location === "/manage" ? 2.5 : 1.8} />
+              <span className="text-[10px] font-medium">관리자</span>
             </span>
           </Link>
         </nav>

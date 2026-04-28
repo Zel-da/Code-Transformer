@@ -25,9 +25,11 @@ import type {
   Report,
   ReportListResponse,
   ReportStats,
+  UpdateReportBody,
   UpdateSyncStatusBody,
   UploadUrlRequest,
   UploadUrlResponse,
+  RpaRunResult,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -952,3 +954,220 @@ export function useGetStorageObject<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Update a non-conformity report
+ */
+export const getUpdateReportUrl = (id: number) => `/api/reports/${id}`;
+
+export const updateReport = async (
+  id: number,
+  updateReportBody: UpdateReportBody,
+  options?: RequestInit,
+): Promise<Report> => {
+  return customFetch<Report>(getUpdateReportUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateReportBody),
+  });
+};
+
+export const getUpdateReportMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateReport>>,
+    TError,
+    { id: number; data: BodyType<UpdateReportBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateReport>>,
+  TError,
+  { id: number; data: BodyType<UpdateReportBody> },
+  TContext
+> => {
+  const mutationKey = ["updateReport"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateReport>>,
+    { id: number; data: BodyType<UpdateReportBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+    return updateReport(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateReportMutationResult = NonNullable<Awaited<ReturnType<typeof updateReport>>>;
+export type UpdateReportMutationBody = BodyType<UpdateReportBody>;
+export type UpdateReportMutationError = ErrorType<ErrorEnvelope>;
+
+export const useUpdateReport = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateReport>>,
+    TError,
+    { id: number; data: BodyType<UpdateReportBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateReport>>,
+  TError,
+  { id: number; data: BodyType<UpdateReportBody> },
+  TContext
+> => {
+  return useMutation(getUpdateReportMutationOptions(options));
+};
+
+/**
+ * @summary Delete a non-conformity report
+ */
+export const getDeleteReportUrl = (id: number) => `/api/reports/${id}`;
+
+export const deleteReport = async (id: number, options?: RequestInit): Promise<void> => {
+  return customFetch<void>(getDeleteReportUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteReportMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteReport>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteReport>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteReport"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteReport>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+    return deleteReport(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteReportMutationResult = NonNullable<Awaited<ReturnType<typeof deleteReport>>>;
+export type DeleteReportMutationError = ErrorType<ErrorEnvelope>;
+
+export const useDeleteReport = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteReport>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteReport>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteReportMutationOptions(options));
+};
+
+/**
+ * @summary Trigger RPA processing on all PENDING reports
+ */
+export const getTriggerRpaUrl = () => `/api/rpa/trigger`;
+
+export const triggerRpa = async (options?: RequestInit): Promise<RpaRunResult> => {
+  return customFetch<RpaRunResult>(getTriggerRpaUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+  });
+};
+
+export const getTriggerRpaMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof triggerRpa>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof triggerRpa>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["triggerRpa"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof triggerRpa>>,
+    void
+  > = () => {
+    return triggerRpa(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TriggerRpaMutationResult = NonNullable<Awaited<ReturnType<typeof triggerRpa>>>;
+export type TriggerRpaMutationError = ErrorType<ErrorEnvelope>;
+
+export const useTriggerRpa = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof triggerRpa>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof triggerRpa>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getTriggerRpaMutationOptions(options));
+};

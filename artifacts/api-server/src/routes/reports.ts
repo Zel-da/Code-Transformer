@@ -7,6 +7,9 @@ import {
   GetReportParams,
   UpdateReportSyncStatusParams,
   UpdateReportSyncStatusBody,
+  UpdateReportBody,
+  UpdateReportParams,
+  DeleteReportParams,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -184,6 +187,64 @@ router.patch("/reports/:id/sync-status", async (req, res): Promise<void> => {
     "Report sync status updated",
   );
   res.json(report);
+});
+
+router.put("/reports/:id", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const params = UpdateReportParams.safeParse({ id: raw });
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const body = UpdateReportBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const updates: Record<string, unknown> = {};
+  if (body.data.itemCode !== undefined) updates.itemCode = body.data.itemCode;
+  if (body.data.processName !== undefined) updates.processName = body.data.processName;
+  if (body.data.defectType !== undefined) updates.defectType = body.data.defectType;
+  if (body.data.description !== undefined) updates.description = body.data.description;
+  if (body.data.syncStatus !== undefined) updates.syncStatus = body.data.syncStatus;
+
+  const [report] = await db
+    .update(nonConformityReportsTable)
+    .set(updates)
+    .where(eq(nonConformityReportsTable.id, params.data.id))
+    .returning();
+
+  if (!report) {
+    res.status(404).json({ error: "Report not found" });
+    return;
+  }
+
+  req.log.info({ reportId: report.id }, "Report updated");
+  res.json(report);
+});
+
+router.delete("/reports/:id", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const params = DeleteReportParams.safeParse({ id: raw });
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [deleted] = await db
+    .delete(nonConformityReportsTable)
+    .where(eq(nonConformityReportsTable.id, params.data.id))
+    .returning();
+
+  if (!deleted) {
+    res.status(404).json({ error: "Report not found" });
+    return;
+  }
+
+  req.log.info({ reportId: params.data.id }, "Report deleted");
+  res.status(204).send();
 });
 
 export default router;

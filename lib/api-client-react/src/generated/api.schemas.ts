@@ -111,3 +111,18 @@ export type ListReportsParams = {
   page?: number;
   pageSize?: number;
 };
+
+export interface UpdateReportBody {
+  itemCode?: string;
+  processName?: string;
+  defectType?: string;
+  description?: string;
+  syncStatus?: ReportSyncStatus;
+}
+
+export interface RpaRunResult {
+  processed: number;
+  completed: number;
+  failed: number;
+  reports: Report[];
+}

@@ -187,6 +187,62 @@ export const RequestUploadUrlResponse = zod.object({
 });
 
 /**
+ * @summary Update a non-conformity report
+ */
+export const UpdateReportParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateReportBody = zod.object({
+  itemCode: zod.string().optional(),
+  processName: zod.string().optional(),
+  defectType: zod.string().optional(),
+  description: zod.string().optional(),
+  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]).optional(),
+});
+
+export const UpdateReportResponse = zod.object({
+  id: zod.number(),
+  reportDate: zod.coerce.date(),
+  itemCode: zod.string(),
+  processName: zod.string(),
+  defectType: zod.string(),
+  description: zod.string(),
+  imageUrl: zod.string().nullable(),
+  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a non-conformity report
+ */
+export const DeleteReportParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Trigger RPA processing on all PENDING reports
+ */
+export const TriggerRpaResponse = zod.object({
+  processed: zod.number(),
+  completed: zod.number(),
+  failed: zod.number(),
+  reports: zod.array(zod.object({
+    id: zod.number(),
+    reportDate: zod.coerce.date(),
+    itemCode: zod.string(),
+    processName: zod.string(),
+    defectType: zod.string(),
+    description: zod.string(),
+    imageUrl: zod.string().nullable(),
+    syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  })),
+});
+
+/**
  * @summary Serve a public asset from PUBLIC_OBJECT_SEARCH_PATHS
  */
 export const GetPublicObjectParams = zod.object({

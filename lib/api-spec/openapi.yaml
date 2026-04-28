@@ -152,6 +152,60 @@ paths:
                   $ref: "#/components/schemas/Report"
 
   /reports/{id}:
+    put:
+      operationId: updateReport
+      tags: [reports]
+      summary: Update a non-conformity report
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateReportBody"
+      responses:
+        "200":
+          description: Report updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      operationId: deleteReport
+      tags: [reports]
+      summary: Delete a non-conformity report
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Report deleted
+        "404":
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
     get:
       operationId: getReport
       tags: [reports]
@@ -213,6 +267,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+
+  /rpa/trigger:
+    post:
+      operationId: triggerRpa
+      tags: [rpa]
+      summary: Trigger RPA processing on all PENDING reports
+      description: Simulates RPA bot execution - processes all PENDING reports and marks them COMPLETED or FAILED
+      responses:
+        "200":
+          description: RPA run completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RpaRunResult"
 
   /storage/uploads/request-url:
     post:
@@ -406,6 +474,40 @@ components:
         - processName
         - defectType
         - description
+
+    UpdateReportBody:
+      type: object
+      properties:
+        itemCode:
+          type: string
+        processName:
+          type: string
+        defectType:
+          type: string
+        description:
+          type: string
+        syncStatus:
+          type: string
+          enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+
+    RpaRunResult:
+      type: object
+      properties:
+        processed:
+          type: integer
+        completed:
+          type: integer
+        failed:
+          type: integer
+        reports:
+          type: array
+          items:
+            $ref: "#/components/schemas/Report"
+      required:
+        - processed
+        - completed
+        - failed
+        - reports
 
     UpdateSyncStatusBody:
       type: object
