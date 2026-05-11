@@ -4,6 +4,7 @@ import {
   serial,
   timestamp,
   integer,
+  real,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -37,6 +38,14 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
     .$type<(typeof syncStatusEnum)[number]>()
     .notNull()
     .default("PENDING"),
+  registrantName: text("registrant_name"),
+  ncrType: text("ncr_type"),
+  factory: text("factory"),
+  shipmentUnit: text("shipment_unit"),
+  lostManHours: real("lost_man_hours"),
+  defectQty: integer("defect_qty"),
+  occurrenceDate: timestamp("occurrence_date", { withTimezone: true }),
+  issuingTeam: text("issuing_team"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()

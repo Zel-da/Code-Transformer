@@ -36,6 +36,22 @@ export interface Report {
   /** @nullable */
   imageUrl: string | null;
   syncStatus: ReportSyncStatus;
+  /** @nullable */
+  registrantName: string | null;
+  /** @nullable */
+  ncrType: string | null;
+  /** @nullable */
+  factory: string | null;
+  /** @nullable */
+  shipmentUnit: string | null;
+  /** @nullable */
+  lostManHours: number | null;
+  /** @nullable */
+  defectQty: number | null;
+  /** @nullable */
+  occurrenceDate: string | null;
+  /** @nullable */
+  issuingTeam: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -55,6 +71,14 @@ export interface CreateReportBody {
   description: string;
   /** @nullable */
   imageUrl?: string | null;
+  registrantName?: string | null;
+  ncrType?: string | null;
+  factory?: string | null;
+  shipmentUnit?: string | null;
+  lostManHours?: number | null;
+  defectQty?: number | null;
+  occurrenceDate?: string | null;
+  issuingTeam?: string | null;
 }
 
 export type UpdateSyncStatusBodySyncStatus =
@@ -118,6 +142,14 @@ export interface UpdateReportBody {
   defectType?: string;
   description?: string;
   syncStatus?: ReportSyncStatus;
+  registrantName?: string | null;
+  ncrType?: string | null;
+  factory?: string | null;
+  shipmentUnit?: string | null;
+  lostManHours?: number | null;
+  defectQty?: number | null;
+  occurrenceDate?: string | null;
+  issuingTeam?: string | null;
 }
 
 export interface RpaRunResult {

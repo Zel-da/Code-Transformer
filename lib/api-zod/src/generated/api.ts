@@ -43,21 +43,29 @@ export const ListReportsQueryParams = zod.object({
   pageSize: zod.coerce.number().default(listReportsQueryPageSizeDefault),
 });
 
+const ReportShape = {
+  id: zod.number(),
+  reportDate: zod.coerce.date(),
+  itemCode: zod.string(),
+  processName: zod.string(),
+  defectType: zod.string(),
+  description: zod.string(),
+  imageUrl: zod.string().nullable(),
+  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+  registrantName: zod.string().nullable(),
+  ncrType: zod.string().nullable(),
+  factory: zod.string().nullable(),
+  shipmentUnit: zod.string().nullable(),
+  lostManHours: zod.number().nullable(),
+  defectQty: zod.number().nullable(),
+  occurrenceDate: zod.coerce.date().nullable(),
+  issuingTeam: zod.string().nullable(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+};
+
 export const ListReportsResponse = zod.object({
-  data: zod.array(
-    zod.object({
-      id: zod.number(),
-      reportDate: zod.coerce.date(),
-      itemCode: zod.string(),
-      processName: zod.string(),
-      defectType: zod.string(),
-      description: zod.string(),
-      imageUrl: zod.string().nullable(),
-      syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
-      createdAt: zod.coerce.date(),
-      updatedAt: zod.coerce.date(),
-    }),
-  ),
+  data: zod.array(zod.object(ReportShape)),
   total: zod.number(),
   page: zod.number(),
   pageSize: zod.number(),
@@ -73,6 +81,14 @@ export const CreateReportBody = zod.object({
   defectType: zod.string(),
   description: zod.string(),
   imageUrl: zod.string().nullish(),
+  registrantName: zod.string().nullish(),
+  ncrType: zod.string().nullish(),
+  factory: zod.string().nullish(),
+  shipmentUnit: zod.string().nullish(),
+  lostManHours: zod.coerce.number().nullish(),
+  defectQty: zod.coerce.number().int().nullish(),
+  occurrenceDate: zod.coerce.date().nullish(),
+  issuingTeam: zod.string().nullish(),
 });
 
 /**
@@ -100,21 +116,8 @@ export const GetReportStatsResponse = zod.object({
  * Returns all reports with PENDING sync status for the RPA bot to process
  * @summary List PENDING reports for RPA bot
  */
-export const ListPendingReportsResponseItem = zod.object({
-  id: zod.number(),
-  reportDate: zod.coerce.date(),
-  itemCode: zod.string(),
-  processName: zod.string(),
-  defectType: zod.string(),
-  description: zod.string(),
-  imageUrl: zod.string().nullable(),
-  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
-  createdAt: zod.coerce.date(),
-  updatedAt: zod.coerce.date(),
-});
-export const ListPendingReportsResponse = zod.array(
-  ListPendingReportsResponseItem,
-);
+export const ListPendingReportsResponseItem = zod.object(ReportShape);
+export const ListPendingReportsResponse = zod.array(ListPendingReportsResponseItem);
 
 /**
  * @summary Get a single report
@@ -123,18 +126,7 @@ export const GetReportParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetReportResponse = zod.object({
-  id: zod.number(),
-  reportDate: zod.coerce.date(),
-  itemCode: zod.string(),
-  processName: zod.string(),
-  defectType: zod.string(),
-  description: zod.string(),
-  imageUrl: zod.string().nullable(),
-  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
-  createdAt: zod.coerce.date(),
-  updatedAt: zod.coerce.date(),
-});
+export const GetReportResponse = zod.object(ReportShape);
 
 /**
  * Used by the RPA bot to update the sync status after processing
@@ -148,18 +140,7 @@ export const UpdateReportSyncStatusBody = zod.object({
   syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
 });
 
-export const UpdateReportSyncStatusResponse = zod.object({
-  id: zod.number(),
-  reportDate: zod.coerce.date(),
-  itemCode: zod.string(),
-  processName: zod.string(),
-  defectType: zod.string(),
-  description: zod.string(),
-  imageUrl: zod.string().nullable(),
-  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
-  createdAt: zod.coerce.date(),
-  updatedAt: zod.coerce.date(),
-});
+export const UpdateReportSyncStatusResponse = zod.object(ReportShape);
 
 /**
  * Returns a presigned GCS URL for direct upload. The client sends JSON
@@ -199,20 +180,17 @@ export const UpdateReportBody = zod.object({
   defectType: zod.string().optional(),
   description: zod.string().optional(),
   syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]).optional(),
+  registrantName: zod.string().nullish(),
+  ncrType: zod.string().nullish(),
+  factory: zod.string().nullish(),
+  shipmentUnit: zod.string().nullish(),
+  lostManHours: zod.coerce.number().nullish(),
+  defectQty: zod.coerce.number().int().nullish(),
+  occurrenceDate: zod.coerce.date().nullish(),
+  issuingTeam: zod.string().nullish(),
 });
 
-export const UpdateReportResponse = zod.object({
-  id: zod.number(),
-  reportDate: zod.coerce.date(),
-  itemCode: zod.string(),
-  processName: zod.string(),
-  defectType: zod.string(),
-  description: zod.string(),
-  imageUrl: zod.string().nullable(),
-  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
-  createdAt: zod.coerce.date(),
-  updatedAt: zod.coerce.date(),
-});
+export const UpdateReportResponse = zod.object(ReportShape);
 
 /**
  * @summary Delete a non-conformity report
@@ -228,18 +206,7 @@ export const TriggerRpaResponse = zod.object({
   processed: zod.number(),
   completed: zod.number(),
   failed: zod.number(),
-  reports: zod.array(zod.object({
-    id: zod.number(),
-    reportDate: zod.coerce.date(),
-    itemCode: zod.string(),
-    processName: zod.string(),
-    defectType: zod.string(),
-    description: zod.string(),
-    imageUrl: zod.string().nullable(),
-    syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
-    createdAt: zod.coerce.date(),
-    updatedAt: zod.coerce.date(),
-  })),
+  reports: zod.array(zod.object(ReportShape)),
 });
 
 /**

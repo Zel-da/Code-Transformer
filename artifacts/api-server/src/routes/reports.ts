@@ -66,16 +66,25 @@ router.post("/reports", async (req, res): Promise<void> => {
     return;
   }
 
+  const d = parsed.data;
   const [report] = await db
     .insert(nonConformityReportsTable)
     .values({
-      reportDate: parsed.data.reportDate ?? new Date(),
-      itemCode: parsed.data.itemCode,
-      processName: parsed.data.processName,
-      defectType: parsed.data.defectType,
-      description: parsed.data.description,
-      imageUrl: parsed.data.imageUrl ?? null,
+      reportDate: d.reportDate ?? new Date(),
+      itemCode: d.itemCode,
+      processName: d.processName,
+      defectType: d.defectType,
+      description: d.description,
+      imageUrl: d.imageUrl ?? null,
       syncStatus: "PENDING",
+      registrantName: d.registrantName ?? null,
+      ncrType: d.ncrType ?? null,
+      factory: d.factory ?? null,
+      shipmentUnit: d.shipmentUnit ?? null,
+      lostManHours: d.lostManHours ?? null,
+      defectQty: d.defectQty ?? null,
+      occurrenceDate: d.occurrenceDate ?? null,
+      issuingTeam: d.issuingTeam ?? null,
     })
     .returning();
 
@@ -209,6 +218,14 @@ router.put("/reports/:id", async (req, res): Promise<void> => {
   if (body.data.defectType !== undefined) updates.defectType = body.data.defectType;
   if (body.data.description !== undefined) updates.description = body.data.description;
   if (body.data.syncStatus !== undefined) updates.syncStatus = body.data.syncStatus;
+  if (body.data.registrantName !== undefined) updates.registrantName = body.data.registrantName;
+  if (body.data.ncrType !== undefined) updates.ncrType = body.data.ncrType;
+  if (body.data.factory !== undefined) updates.factory = body.data.factory;
+  if (body.data.shipmentUnit !== undefined) updates.shipmentUnit = body.data.shipmentUnit;
+  if (body.data.lostManHours !== undefined) updates.lostManHours = body.data.lostManHours;
+  if (body.data.defectQty !== undefined) updates.defectQty = body.data.defectQty;
+  if (body.data.occurrenceDate !== undefined) updates.occurrenceDate = body.data.occurrenceDate;
+  if (body.data.issuingTeam !== undefined) updates.issuingTeam = body.data.issuingTeam;
 
   const [report] = await db
     .update(nonConformityReportsTable)
