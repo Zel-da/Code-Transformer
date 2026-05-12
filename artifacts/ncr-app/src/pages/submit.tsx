@@ -1,5 +1,5 @@
 import { Layout } from "@/components/layout";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -12,6 +12,7 @@ import {
   useCreateReport,
   getListReportsQueryKey,
   getGetReportStatsQueryKey,
+  getListProcessesQueryKey,
 } from "@workspace/api-client-react";
 import { compressImage } from "@/lib/image-compression";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ import {
   FileWarning,
   Paperclip,
   Building2,
+  Search,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -130,7 +132,19 @@ export default function SubmitReport() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const { data: items } = useListItems();
+  const [itemSearch, setItemSearch] = useState("");
+  const [itemDropdownOpen, setItemDropdownOpen] = useState(false);
+  const [debouncedItemSearch, setDebouncedItemSearch] = useState("");
+  const itemInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedItemSearch(itemSearch), 300);
+    return () => clearTimeout(timer);
+  }, [itemSearch]);
+
+  const { data: items = [], isFetching: itemsFetching } = useListItems(
+    debouncedItemSearch.length >= 1 ? { search: debouncedItemSearch, limit: 20 } : { limit: 20 },
+  );
   const { data: flawTypes = [] } = useListFlawTypes();
   const { data: departments = [] } = useListDepartments();
 
@@ -162,7 +176,7 @@ export default function SubmitReport() {
 
   const { data: processes = [] } = useListProcesses(
     selectedPlantCd ? { plantCd: selectedPlantCd } : undefined,
-    { query: { enabled: !!selectedPlantCd } },
+    { query: { enabled: !!selectedPlantCd, queryKey: getListProcessesQueryKey(selectedPlantCd ? { plantCd: selectedPlantCd } : undefined) } },
   );
 
   useEffect(() => {
@@ -485,30 +499,76 @@ export default function SubmitReport() {
                   )}
                 />
 
-                {/* 제품코드(모델명) */}
+                {/* 제품코드(모델명) — 검색 자동완성 */}
                 <FormField
                   control={form.control}
                   name="itemCode"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm font-medium">제품코드 (모델명)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="h-11 rounded-xl bg-background">
-                            <SelectValue placeholder="제품코드를 선택하세요" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="rounded-xl">
-                          {items?.map((item) => (
-                            <SelectItem key={item.code} value={item.code}>
-                              <span className="font-medium text-primary">{item.code}</span>
-                              <span className="text-muted-foreground ml-2 text-xs">
-                                {item.name}
+                      <FormControl>
+                        <div className="relative">
+                          <div className={`flex items-center h-11 rounded-xl border-2 bg-background px-3 gap-2 transition-colors ${itemDropdownOpen ? "border-primary" : "border-border"}`}>
+                            <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <input
+                              ref={itemInputRef}
+                              type="text"
+                              placeholder={field.value || "코드나 제품명으로 검색하세요"}
+                              value={itemSearch}
+                              onChange={e => {
+                                setItemSearch(e.target.value);
+                                setItemDropdownOpen(true);
+                                if (!e.target.value) field.onChange("");
+                              }}
+                              onFocus={() => setItemDropdownOpen(true)}
+                              onBlur={() => setTimeout(() => setItemDropdownOpen(false), 150)}
+                              className="flex-1 text-sm bg-transparent outline-none placeholder:text-muted-foreground"
+                            />
+                            {field.value && (
+                              <button
+                                type="button"
+                                onClick={() => { field.onChange(""); setItemSearch(""); itemInputRef.current?.focus(); }}
+                                className="text-muted-foreground hover:text-foreground"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            {itemsFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground flex-shrink-0" />}
+                          </div>
+                          {field.value && !itemDropdownOpen && (
+                            <div className="mt-1.5 px-1">
+                              <span className="text-xs text-primary font-medium">{field.value}</span>
+                              <span className="text-xs text-muted-foreground ml-1.5">
+                                {items.find(i => i.code === field.value)?.name ?? ""}
                               </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                            </div>
+                          )}
+                          {itemDropdownOpen && items.length > 0 && (
+                            <div className="absolute z-50 top-12 left-0 right-0 bg-white rounded-xl border border-border shadow-lg max-h-52 overflow-y-auto">
+                              {items.map(item => (
+                                <button
+                                  key={item.code}
+                                  type="button"
+                                  onMouseDown={() => {
+                                    field.onChange(item.code);
+                                    setItemSearch("");
+                                    setItemDropdownOpen(false);
+                                  }}
+                                  className={`w-full px-3 py-2.5 text-left hover:bg-muted/60 transition-colors border-b border-border/40 last:border-0 ${field.value === item.code ? "bg-primary/5" : ""}`}
+                                >
+                                  <span className="text-sm font-semibold text-primary block">{item.code}</span>
+                                  <span className="text-xs text-muted-foreground block truncate">{item.name}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {itemDropdownOpen && debouncedItemSearch.length >= 1 && items.length === 0 && !itemsFetching && (
+                            <div className="absolute z-50 top-12 left-0 right-0 bg-white rounded-xl border border-border shadow-lg px-4 py-4 text-center text-sm text-muted-foreground">
+                              검색 결과가 없습니다
+                            </div>
+                          )}
+                        </div>
+                      </FormControl>
                       <FormMessage className="text-xs" />
                     </FormItem>
                   )}

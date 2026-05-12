@@ -80,7 +80,7 @@ pnpm --filter @workspace/db run db:push
 ```
 
 ### Seed data
-10 item codes (ITM-001 through ITM-010) are pre-seeded in the database.
+Item codes are sourced from ERP CSV data (~1,000 real product codes). ITM-001…ITM-010 dummy codes were removed from the DB and never appear in masterSeedData.ts.
 
 ## Environment Variables / Secrets
 - `DATABASE_URL` — PostgreSQL connection string

@@ -128,35 +128,45 @@ export function useHealthCheck<
  * Returns all available ERP item codes for use in report forms
  * @summary List ERP item codes
  */
-export const getListItemsUrl = () => {
-  return `/api/items`;
+export const getListItemsUrl = (params?: { search?: string; limit?: number }) => {
+  const qs = new URLSearchParams();
+  if (params?.search) qs.set("search", params.search);
+  if (params?.limit) qs.set("limit", String(params.limit));
+  const q = qs.toString();
+  return `/api/items${q ? `?${q}` : ""}`;
 };
 
-export const listItems = async (options?: RequestInit): Promise<Item[]> => {
-  return customFetch<Item[]>(getListItemsUrl(), {
+export const listItems = async (
+  params?: { search?: string; limit?: number },
+  options?: RequestInit,
+): Promise<Item[]> => {
+  return customFetch<Item[]>(getListItemsUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListItemsQueryKey = () => {
-  return [`/api/items`] as const;
+export const getListItemsQueryKey = (params?: { search?: string; limit?: number }) => {
+  return [`/api/items`, ...(params ? [params] : [])] as const;
 };
 
 export const getListItemsQueryOptions = <
   TData = Awaited<ReturnType<typeof listItems>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<Awaited<ReturnType<typeof listItems>>, TError, TData>;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: { search?: string; limit?: number },
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listItems>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListItemsQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListItemsQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listItems>>> = ({
     signal,
-  }) => listItems({ signal, ...requestOptions });
+  }) => listItems(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listItems>>,
@@ -177,11 +187,14 @@ export type ListItemsQueryError = ErrorType<unknown>;
 export function useListItems<
   TData = Awaited<ReturnType<typeof listItems>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<Awaited<ReturnType<typeof listItems>>, TError, TData>;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListItemsQueryOptions(options);
+>(
+  params?: { search?: string; limit?: number },
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listItems>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListItemsQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
