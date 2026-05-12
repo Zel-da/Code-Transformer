@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useAuth } from "@/contexts/auth";
 import {
   useListItems,
   useListFlawTypes,
@@ -115,6 +116,7 @@ export default function SubmitReport() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
 
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -140,24 +142,26 @@ export default function SubmitReport() {
   const requestUploadUrl = useRequestUploadUrl();
   const createReport = useCreateReport();
 
+  const profileDefaults = () => ({
+    registrantName: user?.displayName ?? "",
+    factory: user?.factory ?? "",
+    processName: user?.processName ?? "",
+    issuingTeam: "",
+    deptCd: user?.deptCd ?? "",
+    ncrType: "",
+    itemCode: "",
+    shipmentUnit: "",
+    occurrenceDate: todayStr(),
+    defectType: "",
+    flawTypeCd: "",
+    defectQty: undefined as number | undefined,
+    lostManHours: undefined as number | undefined,
+    description: "",
+  });
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      registrantName: "",
-      factory: "",
-      processName: "",
-      issuingTeam: "",
-      deptCd: "",
-      ncrType: "",
-      itemCode: "",
-      shipmentUnit: "",
-      occurrenceDate: todayStr(),
-      defectType: "",
-      flawTypeCd: "",
-      defectQty: undefined,
-      lostManHours: undefined,
-      description: "",
-    },
+    defaultValues: profileDefaults(),
   });
 
   const selectedFactory = form.watch("factory");
@@ -247,22 +251,7 @@ export default function SubmitReport() {
       queryClient.invalidateQueries({ queryKey: getGetReportStatsQueryKey() });
 
       setIsSuccess(true);
-      form.reset({
-        registrantName: "",
-        factory: "",
-        processName: "",
-        issuingTeam: "",
-        deptCd: "",
-        ncrType: "",
-        itemCode: "",
-        shipmentUnit: "",
-        occurrenceDate: todayStr(),
-        defectType: "",
-        flawTypeCd: "",
-        defectQty: undefined,
-        lostManHours: undefined,
-        description: "",
-      });
+      form.reset(profileDefaults());
       setPhoto(null);
       setPhotoPreview(null);
     } catch {

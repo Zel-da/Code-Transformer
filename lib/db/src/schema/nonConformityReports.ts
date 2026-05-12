@@ -66,6 +66,23 @@ export const departmentsTable = pgTable("departments", {
 });
 export type Department = typeof departmentsTable.$inferSelect;
 
+export const usersTable = pgTable("users", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  displayName: text("display_name").notNull(),
+  role: text("role").$type<"admin" | "worker">().notNull().default("worker"),
+  deptCd: text("dept_cd"),
+  factory: text("factory"),
+  plantCd: text("plant_cd"),
+  processName: text("process_name"),
+  processCd: text("process_cd"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type User = typeof usersTable.$inferSelect;
+export type PublicUser = Omit<User, "passwordHash">;
+
 export const syncStatusEnum = ["PENDING", "PROCESSING", "COMPLETED", "FAILED"] as const;
 
 export const nonConformityReportsTable = pgTable("non_conformity_reports", {

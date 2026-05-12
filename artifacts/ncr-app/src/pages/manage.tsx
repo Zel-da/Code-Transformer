@@ -11,7 +11,7 @@ import {
 import type { Report, RpaRunResult } from "@workspace/api-client-react";
 import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth, type UserProfile } from "@/contexts/auth";
 import {
   Trash2,
   Pencil,
@@ -33,7 +34,37 @@ import {
   Zap,
   ChevronLeft,
   ChevronRight,
+  UserPlus,
+  Users,
+  Eye,
+  EyeOff,
 } from "lucide-react";
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const API = `${BASE}/api`;
+
+function authHeader(): HeadersInit {
+  const token = localStorage.getItem("ncr_auth_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, {
+    headers: { "Content-Type": "application/json", ...authHeader() },
+    ...init,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error ?? `HTTP ${res.status}`);
+  }
+  if (res.status === 204) return undefined as unknown as T;
+  return res.json();
+}
+
+const FACTORY_OPTIONS_USER = [
+  { label: "아산공장", value: "아산", plantCd: "SA00" },
+  { label: "화성공장", value: "화성", plantCd: "SH00" },
+];
 
 const SYNC_STATUSES = ["PENDING", "PROCESSING", "COMPLETED", "FAILED"] as const;
 const SYNC_STATUS_LABELS: Record<string, string> = {
@@ -84,9 +115,25 @@ const BTN_GHOST = `${BTN_BASE} bg-[#F2F4F6] text-[#4E5968] hover:bg-[#E5E8EB]`;
 const BTN_DANGER = `${BTN_BASE} bg-red-500 text-white hover:bg-red-600`;
 const INP = "h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus-visible:ring-0 focus-visible:outline-none placeholder:text-[#BEC5CC]";
 
+interface NewUserForm {
+  username: string;
+  password: string;
+  displayName: string;
+  role: "admin" | "worker";
+  factory: string;
+  deptCd: string;
+  processName: string;
+}
+
+const EMPTY_USER_FORM: NewUserForm = {
+  username: "", password: "", displayName: "", role: "worker",
+  factory: "", deptCd: "", processName: "",
+};
+
 export default function ManagePage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
 
   const [page, setPage] = useState(1);
   const [editingReport, setEditingReport] = useState<Report | null>(null);
@@ -96,6 +143,97 @@ export default function ManagePage() {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [rpaResult, setRpaResult] = useState<RpaRunResult | null>(null);
   const [rpaRunning, setRpaRunning] = useState(false);
+
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [showUserDialog, setShowUserDialog] = useState(false);
+  const [newUserForm, setNewUserForm] = useState<NewUserForm>(EMPTY_USER_FORM);
+  const [userSaving, setUserSaving] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
+  const [showPw, setShowPw] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+
+  const fetchUsers = useCallback(async () => {
+    setUsersLoading(true);
+    try {
+      const data = await apiJson<UserProfile[]>(`${API}/users`);
+      setUsers(data);
+    } catch {
+      toast({ title: "사용자 목록 불러오기 실패", variant: "destructive" });
+    } finally {
+      setUsersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  const handleCreateUser = async () => {
+    const pwRequired = !editingUser;
+    if (!newUserForm.username || (pwRequired && !newUserForm.password) || !newUserForm.displayName) {
+      toast({ title: "아이디, 이름은 필수입니다" + (pwRequired ? " (신규 계정은 비밀번호도 필수)" : ""), variant: "destructive" });
+      return;
+    }
+    setUserSaving(true);
+    try {
+      const plantCd = FACTORY_OPTIONS_USER.find(f => f.value === newUserForm.factory)?.plantCd ?? undefined;
+      if (editingUser) {
+        await apiJson(`${API}/users/${editingUser.id}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            displayName: newUserForm.displayName,
+            role: newUserForm.role,
+            factory: newUserForm.factory || null,
+            plantCd: plantCd ?? null,
+            deptCd: newUserForm.deptCd || null,
+            processName: newUserForm.processName || null,
+            ...(newUserForm.password ? { password: newUserForm.password } : {}),
+          }),
+        });
+        toast({ title: "사용자 정보가 수정되었습니다" });
+      } else {
+        await apiJson(`${API}/users`, {
+          method: "POST",
+          body: JSON.stringify({ ...newUserForm, plantCd }),
+        });
+        toast({ title: "계정이 생성되었습니다" });
+      }
+      setShowUserDialog(false);
+      setNewUserForm(EMPTY_USER_FORM);
+      setEditingUser(null);
+      fetchUsers();
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "저장 실패", variant: "destructive" });
+    } finally {
+      setUserSaving(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deletingUserId) return;
+    try {
+      await apiJson(`${API}/users/${deletingUserId}`, { method: "DELETE" });
+      toast({ title: "계정이 삭제되었습니다" });
+      setDeletingUserId(null);
+      fetchUsers();
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "삭제 실패", variant: "destructive" });
+    }
+  };
+
+  const openEditUser = (u: UserProfile) => {
+    setEditingUser(u);
+    setNewUserForm({
+      username: u.username,
+      password: "",
+      displayName: u.displayName,
+      role: u.role,
+      factory: u.factory ?? "",
+      deptCd: u.deptCd ?? "",
+      processName: u.processName ?? "",
+    });
+    setShowPw(false);
+    setShowUserDialog(true);
+  };
 
   const isMobile = useIsMobile();
   const { data: items } = useListItems();
@@ -223,6 +361,73 @@ export default function ManagePage() {
           <div>
             <h1 className="text-[20px] font-bold text-[#191F28]">관리자 패널</h1>
             <p className="text-[13px] text-[#8B95A1] mt-0.5">보고서 수정·삭제 및 RPA 동기화 실행</p>
+          </div>
+        </div>
+
+        {/* User Management Section */}
+        <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+          <div className="px-5 py-4 flex items-center gap-3">
+            <div className="p-1.5 bg-[#F2F4F6] rounded-lg">
+              <Users className="h-4 w-4 text-[#4E5968]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-semibold text-[14px] text-[#191F28]">사용자 계정 관리</h2>
+              {!isMobile && <p className="text-[12px] text-[#8B95A1]">직원 계정을 생성하고 프로필을 설정합니다</p>}
+            </div>
+            <button
+              onClick={() => { setEditingUser(null); setNewUserForm(EMPTY_USER_FORM); setShowPw(false); setShowUserDialog(true); }}
+              className={`${BTN_DARK} flex items-center gap-1.5 text-[13px] px-3 py-2`}
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              {isMobile ? "추가" : "계정 추가"}
+            </button>
+          </div>
+
+          <div className="border-t border-[#F2F4F6]">
+            {usersLoading ? (
+              <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">불러오는 중...</div>
+            ) : users.length === 0 ? (
+              <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">등록된 계정이 없습니다</div>
+            ) : (
+              <div className="divide-y divide-[#F2F4F6]">
+                {users.map((u) => (
+                  <div key={u.id} className="flex items-center gap-3 px-5 py-3">
+                    <div className="w-8 h-8 rounded-full bg-[#F2F4F6] flex items-center justify-center text-[12px] font-bold text-[#4E5968] shrink-0">
+                      {u.displayName.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[14px] font-semibold text-[#191F28]">{u.displayName}</span>
+                        <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${u.role === "admin" ? "bg-[#1A1A1A] text-white" : "bg-[#F2F4F6] text-[#4E5968]"}`}>
+                          {u.role === "admin" ? "관리자" : "작업자"}
+                        </span>
+                      </div>
+                      <div className="text-[12px] text-[#8B95A1] mt-0.5">
+                        @{u.username}
+                        {u.factory && <span className="ml-2">{u.factory}</span>}
+                        {u.processName && <span className="ml-1">· {u.processName}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => openEditUser(u)}
+                        className="p-1.5 rounded-lg hover:bg-[#F2F4F6] text-[#8B95A1] hover:text-[#191F28] transition-colors"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      {currentUser?.id !== u.id && (
+                        <button
+                          onClick={() => setDeletingUserId(u.id)}
+                          className="p-1.5 rounded-lg hover:bg-red-50 text-[#8B95A1] hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -618,7 +823,7 @@ export default function ManagePage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Delete Confirmation */}
+      {/* Delete Report Confirmation */}
       <AlertDialog open={deletingId !== null} onOpenChange={(open) => !open && setDeletingId(null)}>
         <AlertDialogContent className="rounded-2xl bg-white border border-[#F2F4F6]">
           <AlertDialogHeader>
@@ -630,6 +835,143 @@ export default function ManagePage() {
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl bg-[#F2F4F6] border-0 text-[#4E5968] hover:bg-[#E5E8EB]">취소</AlertDialogCancel>
             <AlertDialogAction className="rounded-xl bg-red-500 text-white hover:bg-red-600" onClick={handleDelete}>
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* User Create / Edit Dialog */}
+      <Dialog open={showUserDialog} onOpenChange={(open) => { if (!open) { setShowUserDialog(false); setEditingUser(null); setNewUserForm(EMPTY_USER_FORM); } }}>
+        <DialogContent className="rounded-2xl bg-white border border-[#F2F4F6] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[16px] font-bold text-[#191F28]">
+              {editingUser ? "계정 수정" : "계정 추가"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {/* 기본 정보 */}
+            <p className="text-[10px] font-bold text-[#8B95A1] uppercase tracking-widest">기본 정보</p>
+            <div className="space-y-1">
+              <Label className="text-[11px] font-semibold text-[#8B95A1]">아이디 *</Label>
+              <Input
+                className={INP}
+                value={newUserForm.username}
+                onChange={(e) => setNewUserForm((f) => ({ ...f, username: e.target.value }))}
+                placeholder="영문+숫자 조합"
+                disabled={!!editingUser}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] font-semibold text-[#8B95A1]">
+                비밀번호 {editingUser ? "(변경 시에만 입력)" : "*"}
+              </Label>
+              <div className="relative">
+                <Input
+                  className={`${INP} pr-9`}
+                  type={showPw ? "text" : "password"}
+                  value={newUserForm.password}
+                  onChange={(e) => setNewUserForm((f) => ({ ...f, password: e.target.value }))}
+                  placeholder={editingUser ? "비워두면 기존 유지" : "비밀번호 입력"}
+                />
+                <button
+                  type="button"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8B95A1] hover:text-[#4E5968]"
+                  onClick={() => setShowPw((v) => !v)}
+                >
+                  {showPw ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] font-semibold text-[#8B95A1]">이름 *</Label>
+              <Input
+                className={INP}
+                value={newUserForm.displayName}
+                onChange={(e) => setNewUserForm((f) => ({ ...f, displayName: e.target.value }))}
+                placeholder="실명 입력"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] font-semibold text-[#8B95A1]">권한</Label>
+              <Select value={newUserForm.role} onValueChange={(v) => setNewUserForm((f) => ({ ...f, role: v as "admin" | "worker" }))}>
+                <SelectTrigger className="h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus:ring-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="worker">작업자</SelectItem>
+                  <SelectItem value="admin">관리자</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 프로필 정보 */}
+            <p className="text-[10px] font-bold text-[#8B95A1] uppercase tracking-widest pt-1">프로필 (선택)</p>
+            <div className="space-y-1">
+              <Label className="text-[11px] font-semibold text-[#8B95A1]">공장</Label>
+              <Select value={newUserForm.factory} onValueChange={(v) => setNewUserForm((f) => ({ ...f, factory: v }))}>
+                <SelectTrigger className="h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus:ring-0">
+                  <SelectValue placeholder="공장 선택" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  {FACTORY_OPTIONS_USER.map((f) => (
+                    <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-[11px] font-semibold text-[#8B95A1]">부서코드</Label>
+                <Input
+                  className={INP}
+                  value={newUserForm.deptCd}
+                  onChange={(e) => setNewUserForm((f) => ({ ...f, deptCd: e.target.value }))}
+                  placeholder="예: D001"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] font-semibold text-[#8B95A1]">공정명</Label>
+                <Input
+                  className={INP}
+                  value={newUserForm.processName}
+                  onChange={(e) => setNewUserForm((f) => ({ ...f, processName: e.target.value }))}
+                  placeholder="예: 도장라인"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 flex-row pt-2 border-t border-[#F2F4F6]">
+            <button
+              className={`${BTN_GHOST} text-[13px]`}
+              onClick={() => { setShowUserDialog(false); setEditingUser(null); setNewUserForm(EMPTY_USER_FORM); }}
+              disabled={userSaving}
+            >
+              취소
+            </button>
+            <button
+              className={`${BTN_DARK} text-[13px] flex items-center gap-2`}
+              onClick={handleCreateUser}
+              disabled={userSaving}
+            >
+              {userSaving ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" />저장 중...</> : (editingUser ? "수정 완료" : "계정 생성")}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Confirmation */}
+      <AlertDialog open={deletingUserId !== null} onOpenChange={(open) => !open && setDeletingUserId(null)}>
+        <AlertDialogContent className="rounded-2xl bg-white border border-[#F2F4F6]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[16px] font-bold text-[#191F28]">계정을 삭제할까요?</AlertDialogTitle>
+            <AlertDialogDescription className="text-[13px] text-[#8B95A1]">
+              이 작업은 되돌릴 수 없습니다. 해당 계정으로 제출된 보고서는 유지됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl bg-[#F2F4F6] border-0 text-[#4E5968] hover:bg-[#E5E8EB]">취소</AlertDialogCancel>
+            <AlertDialogAction className="rounded-xl bg-red-500 text-white hover:bg-red-600" onClick={handleDeleteUser}>
               삭제
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -1,0 +1,120 @@
+import { Router, type IRouter } from "express";
+import bcrypt from "bcryptjs";
+import { eq } from "drizzle-orm";
+import { db, usersTable } from "@workspace/db";
+import { requireAdmin, requireAuth } from "../middleware/requireAuth.js";
+import { z } from "zod";
+
+const router: IRouter = Router();
+
+const CreateUserBody = z.object({
+  username: z.string().min(2, "아이디는 2자 이상"),
+  password: z.string().min(4, "비밀번호는 4자 이상"),
+  displayName: z.string().min(1, "이름을 입력해주세요"),
+  role: z.enum(["admin", "worker"]).default("worker"),
+  deptCd: z.string().optional(),
+  factory: z.string().optional(),
+  plantCd: z.string().optional(),
+  processName: z.string().optional(),
+  processCd: z.string().optional(),
+});
+
+const UpdateUserBody = z.object({
+  displayName: z.string().min(1).optional(),
+  password: z.string().min(4).optional(),
+  role: z.enum(["admin", "worker"]).optional(),
+  deptCd: z.string().nullable().optional(),
+  factory: z.string().nullable().optional(),
+  plantCd: z.string().nullable().optional(),
+  processName: z.string().nullable().optional(),
+  processCd: z.string().nullable().optional(),
+});
+
+router.get("/users", requireAdmin, async (_req, res): Promise<void> => {
+  const users = await db.select().from(usersTable).orderBy(usersTable.createdAt);
+  res.json(users.map(({ passwordHash: _ph, ...u }) => u));
+});
+
+router.post("/users", requireAdmin, async (req, res): Promise<void> => {
+  const parsed = CreateUserBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "입력값 오류" });
+    return;
+  }
+
+  const { password, ...rest } = parsed.data;
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  try {
+    const [user] = await db
+      .insert(usersTable)
+      .values({ ...rest, passwordHash })
+      .returning();
+
+    const { passwordHash: _ph, ...profile } = user;
+    res.status(201).json(profile);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "";
+    if (message.includes("unique")) {
+      res.status(409).json({ error: "이미 사용 중인 아이디입니다" });
+    } else {
+      res.status(500).json({ error: "사용자 생성 실패" });
+    }
+  }
+});
+
+router.put("/users/:id", requireAuth, async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "잘못된 ID" }); return; }
+
+  if (req.auth!.role !== "admin" && req.auth!.userId !== id) {
+    res.status(403).json({ error: "권한이 없습니다" });
+    return;
+  }
+
+  const parsed = UpdateUserBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "입력값 오류" });
+    return;
+  }
+
+  const { password, ...rest } = parsed.data;
+  const updates: Record<string, unknown> = { ...rest };
+  if (password) updates.passwordHash = await bcrypt.hash(password, 10);
+
+  if (req.auth!.role !== "admin") {
+    delete updates.role;
+  }
+
+  const [user] = await db
+    .update(usersTable)
+    .set(updates)
+    .where(eq(usersTable.id, id))
+    .returning();
+
+  if (!user) { res.status(404).json({ error: "사용자를 찾을 수 없습니다" }); return; }
+
+  const { passwordHash: _ph, ...profile } = user;
+  res.json(profile);
+});
+
+router.delete("/users/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "잘못된 ID" }); return; }
+
+  if (req.auth!.userId === id) {
+    res.status(400).json({ error: "본인 계정은 삭제할 수 없습니다" });
+    return;
+  }
+
+  const [deleted] = await db
+    .delete(usersTable)
+    .where(eq(usersTable.id, id))
+    .returning();
+
+  if (!deleted) { res.status(404).json({ error: "사용자를 찾을 수 없습니다" }); return; }
+
+  res.status(204).send();
+});
+
+export default router;

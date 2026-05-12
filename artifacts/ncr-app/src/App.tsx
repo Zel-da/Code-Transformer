@@ -1,21 +1,57 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider, useAuth } from "@/contexts/auth";
 import NotFound from "@/pages/not-found";
 import AdminDashboard from "@/pages/admin";
 import SubmitReport from "@/pages/submit";
 import ManagePage from "@/pages/manage";
+import LoginPage from "@/pages/login";
+import { ReactNode } from "react";
 
 const queryClient = new QueryClient();
 
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Redirect to="/login" />;
+  return <>{children}</>;
+}
+
+function RequireAdmin({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Redirect to="/login" />;
+  if (user.role !== "admin") return <Redirect to="/submit" />;
+  return <>{children}</>;
+}
+
 function Router() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+
   return (
     <Switch>
-      <Route path="/" component={AdminDashboard} />
-      <Route path="/admin" component={AdminDashboard} />
-      <Route path="/submit" component={SubmitReport} />
-      <Route path="/manage" component={ManagePage} />
+      <Route path="/login">
+        {user ? <Redirect to="/submit" /> : <LoginPage />}
+      </Route>
+      <Route path="/">
+        {user?.role === "admin"
+          ? <Redirect to="/admin" />
+          : user
+          ? <Redirect to="/submit" />
+          : <Redirect to="/login" />}
+      </Route>
+      <Route path="/admin">
+        <RequireAdmin><AdminDashboard /></RequireAdmin>
+      </Route>
+      <Route path="/submit">
+        <RequireAuth><SubmitReport /></RequireAuth>
+      </Route>
+      <Route path="/manage">
+        <RequireAdmin><ManagePage /></RequireAdmin>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -25,10 +61,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
+        <AuthProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <Router />
+          </WouterRouter>
+          <Toaster />
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

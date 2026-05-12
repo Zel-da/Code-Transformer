@@ -6,8 +6,10 @@ import {
   processesTable,
   dispositionsTable,
   departmentsTable,
+  usersTable,
 } from "@workspace/db";
 import { logger } from "./logger";
+import bcrypt from "bcryptjs";
 import {
   ITEM_MASTER_SEED,
   PLANT_SEED,
@@ -31,9 +33,28 @@ export async function seedMasterData(): Promise<void> {
         .values(ITEM_MASTER_SEED.slice(i, i + batchSize))
         .onConflictDoNothing({ target: itemCodesTable.code });
     }
+    await seedDefaultAdmin();
     logger.info("Master data seeded (idempotent)");
   } catch (err) {
     logger.error({ err }, "Failed to seed master data");
+  }
+}
+
+async function seedDefaultAdmin(): Promise<void> {
+  try {
+    const hash = await bcrypt.hash("admin1234", 10);
+    await db
+      .insert(usersTable)
+      .values({
+        username: "admin",
+        passwordHash: hash,
+        displayName: "관리자",
+        role: "admin",
+      })
+      .onConflictDoNothing({ target: usersTable.username });
+    logger.info("Default admin seeded (idempotent)");
+  } catch (err) {
+    logger.error({ err }, "Failed to seed default admin");
   }
 }
 
