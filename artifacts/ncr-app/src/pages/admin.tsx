@@ -186,7 +186,6 @@ export default function AdminDashboard() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pt-1">
           <div>
             <h1 className="text-[20px] font-bold text-[#191F28]">대시보드</h1>
-            <p className="text-[13px] text-[#8B95A1] mt-0.5">부적합 보고서 현황 및 관리</p>
           </div>
           <p className="text-[12px] text-[#8B95A1]">{format(new Date(), "yyyy년 MM월 dd일 HH:mm")}</p>
         </div>
