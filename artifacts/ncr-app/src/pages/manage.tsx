@@ -53,6 +53,14 @@ interface EditForm {
   syncStatus: string;
 }
 
+const EMPTY_EDIT_FORM: EditForm = {
+  itemCode: "",
+  processName: "",
+  defectType: "",
+  description: "",
+  syncStatus: "",
+};
+
 export default function ManagePage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -60,13 +68,9 @@ export default function ManagePage() {
   const [page, setPage] = useState(1);
   const [editingReport, setEditingReport] = useState<Report | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>({
-    itemCode: "",
-    processName: "",
-    defectType: "",
-    description: "",
-    syncStatus: "",
-  });
+  const [editForm, setEditForm] = useState<EditForm>(EMPTY_EDIT_FORM);
+  const [originalEditForm, setOriginalEditForm] = useState<EditForm>(EMPTY_EDIT_FORM);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [rpaResult, setRpaResult] = useState<RpaRunResult | null>(null);
   const [rpaRunning, setRpaRunning] = useState(false);
 
@@ -85,15 +89,39 @@ export default function ManagePage() {
     queryClient.invalidateQueries({ queryKey: getGetReportStatsQueryKey() });
   };
 
+  const isDirty = JSON.stringify(editForm) !== JSON.stringify(originalEditForm);
+
   const openEdit = (report: Report) => {
-    setEditingReport(report);
-    setEditForm({
+    const initial: EditForm = {
       itemCode: report.itemCode,
       processName: report.processName,
       defectType: report.defectType,
       description: report.description,
       syncStatus: report.syncStatus,
-    });
+    };
+    setEditingReport(report);
+    setOriginalEditForm(initial);
+    setEditForm(initial);
+    setConfirmCancel(false);
+  };
+
+  const closeEditDialog = () => {
+    setEditingReport(null);
+    setEditForm(EMPTY_EDIT_FORM);
+    setOriginalEditForm(EMPTY_EDIT_FORM);
+    setConfirmCancel(false);
+  };
+
+  const handleCloseDialog = () => {
+    if (isDirty) {
+      setConfirmCancel(true);
+    } else {
+      closeEditDialog();
+    }
+  };
+
+  const handleReset = () => {
+    setEditForm(originalEditForm);
   };
 
   const handleSave = async () => {
@@ -101,7 +129,7 @@ export default function ManagePage() {
     try {
       await updateReport.mutateAsync({ id: editingReport.id, data: editForm });
       invalidateAll();
-      setEditingReport(null);
+      closeEditDialog();
       toast({ title: "수정 완료", description: "보고서가 업데이트되었습니다." });
     } catch {
       toast({ title: "수정 실패", description: "다시 시도해주세요.", variant: "destructive" });
@@ -361,10 +389,17 @@ export default function ManagePage() {
       </div>
 
       {/* Edit Dialog */}
-      <Dialog open={editingReport !== null} onOpenChange={(open) => !open && setEditingReport(null)}>
-        <DialogContent className="sm:max-w-lg rounded-2xl">
+      <Dialog open={editingReport !== null} onOpenChange={(open) => { if (!open) handleCloseDialog(); }}>
+        <DialogContent className="sm:max-w-lg rounded-2xl" onEscapeKeyDown={(e) => { e.preventDefault(); handleCloseDialog(); }} onPointerDownOutside={(e) => { e.preventDefault(); handleCloseDialog(); }}>
           <DialogHeader>
-            <DialogTitle className="font-bold">보고서 수정</DialogTitle>
+            <DialogTitle className="font-bold flex items-center gap-2">
+              보고서 수정
+              {isDirty && (
+                <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                  미저장 변경 사항
+                </span>
+              )}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-3">
@@ -435,20 +470,51 @@ export default function ManagePage() {
               </Select>
             </div>
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" className="rounded-xl" onClick={() => setEditingReport(null)}>
+          <DialogFooter className="gap-2 flex-row items-center">
+            <Button
+              variant="ghost"
+              className="rounded-xl text-muted-foreground mr-auto"
+              onClick={handleReset}
+              disabled={!isDirty || updateReport.isPending}
+            >
+              원래대로
+            </Button>
+            <Button variant="outline" className="rounded-xl" onClick={handleCloseDialog} disabled={updateReport.isPending}>
               취소
             </Button>
             <Button
               className="rounded-xl"
               onClick={handleSave}
-              disabled={updateReport.isPending}
+              disabled={updateReport.isPending || !isDirty}
             >
               {updateReport.isPending ? <><RefreshCw className="h-4 w-4 animate-spin mr-2" />저장 중...</> : "저장"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Unsaved Changes Confirmation */}
+      <AlertDialog open={confirmCancel} onOpenChange={(open) => !open && setConfirmCancel(false)}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>변경 사항을 저장하지 않겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              수정한 내용이 저장되지 않고 닫힙니다. 계속하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl" onClick={() => setConfirmCancel(false)}>
+              계속 수정
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-xl"
+              onClick={closeEditDialog}
+            >
+              저장하지 않고 닫기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={deletingId !== null} onOpenChange={(open) => !open && setDeletingId(null)}>
