@@ -390,7 +390,7 @@ export default function ManagePage() {
               <div className="space-y-1.5">
                 <Label className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">품목코드</Label>
                 <Select value={editForm.itemCode} onValueChange={(v) => setEditForm((f) => ({ ...f, itemCode: v }))}>
-                  <SelectTrigger className="h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 focus:ring-0">
+                  <SelectTrigger className="h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus:ring-0 focus:outline-none">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
@@ -406,7 +406,7 @@ export default function ManagePage() {
               <div className="space-y-1.5">
                 <Label className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">공정명</Label>
                 <Input
-                  className="h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 focus-visible:ring-0"
+                  className="h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus-visible:ring-0 focus-visible:outline-none placeholder:text-[#BEC5CC]"
                   value={editForm.processName}
                   onChange={(e) => setEditForm((f) => ({ ...f, processName: e.target.value }))}
                 />
@@ -415,7 +415,7 @@ export default function ManagePage() {
             <div className="space-y-1.5">
               <Label className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">불량 유형</Label>
               <Input
-                className="h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 focus-visible:ring-0"
+                className="h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus-visible:ring-0 focus-visible:outline-none placeholder:text-[#BEC5CC]"
                 value={editForm.defectType}
                 onChange={(e) => setEditForm((f) => ({ ...f, defectType: e.target.value }))}
               />
@@ -423,7 +423,7 @@ export default function ManagePage() {
             <div className="space-y-1.5">
               <Label className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">상세 내용</Label>
               <Textarea
-                className="rounded-xl resize-none text-[13px] bg-[#F8F9FA] border-0 focus-visible:ring-0"
+                className="rounded-xl resize-none text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus-visible:ring-0 focus-visible:outline-none placeholder:text-[#BEC5CC]"
                 rows={3}
                 value={editForm.description}
                 onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
@@ -432,7 +432,7 @@ export default function ManagePage() {
             <div className="space-y-1.5">
               <Label className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">동기화 상태</Label>
               <Select value={editForm.syncStatus} onValueChange={(v) => setEditForm((f) => ({ ...f, syncStatus: v }))}>
-                <SelectTrigger className="h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 focus:ring-0">
+                <SelectTrigger className="h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus:ring-0 focus:outline-none">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">

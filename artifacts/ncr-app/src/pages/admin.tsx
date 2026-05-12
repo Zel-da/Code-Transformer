@@ -18,6 +18,15 @@ const SYNC_STATUS_LABELS: Record<string, string> = {
   FAILED: "실패",
 };
 
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="px-0 py-3 border-b border-[#F2F4F6] flex justify-between items-start gap-4">
+      <span className="text-[12px] text-[#8B95A1] font-medium shrink-0 pt-0.5">{label}</span>
+      <span className="text-[13px] font-medium text-[#191F28] text-right">{value || "—"}</span>
+    </div>
+  );
+}
+
 function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => void }) {
   const { data: report, isLoading } = useGetReport(reportId);
 
@@ -35,8 +44,9 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
   }
 
   return (
-    <div className="space-y-4 py-2">
-      <div className="flex items-start justify-between gap-3">
+    <div className="py-2">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 pb-4 border-b border-[#F2F4F6] mb-1">
         <div>
           <p className="text-[11px] text-[#8B95A1] mb-1">보고서 #{report.id.toString().padStart(4, "0")}</p>
           <h2 className="text-[18px] font-bold text-[#191F28]">{report.itemCode}</h2>
@@ -45,26 +55,37 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
         <StatusBadge status={report.syncStatus} />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-[#F8F9FA] rounded-xl p-3">
-          <p className="text-[11px] text-[#8B95A1] mb-1">불량 유형</p>
-          <p className="font-semibold text-[#191F28] text-[13px]">{report.defectType}</p>
-        </div>
-        <div className="bg-[#F8F9FA] rounded-xl p-3">
-          <p className="text-[11px] text-[#8B95A1] mb-1">접수 일시</p>
-          <p className="font-medium text-[13px] text-[#191F28]">{format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}</p>
-        </div>
-      </div>
+      {/* Fields */}
+      <DetailRow label="접수 일시" value={format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")} />
+      <DetailRow label="등록자" value={report.registrantName} />
+      <DetailRow label="공장" value={report.factory} />
+      <DetailRow label="발행팀" value={report.issuingTeam} />
+      <DetailRow label="부적합 구분" value={report.ncrType} />
+      <DetailRow label="불량 유형" value={report.defectType} />
+      {report.occurrenceDate && (
+        <DetailRow label="발생일" value={format(new Date(report.occurrenceDate), "yyyy.MM.dd")} />
+      )}
+      {report.defectQty != null && (
+        <DetailRow label="불량 수량" value={`${report.defectQty}개`} />
+      )}
+      {report.lostManHours != null && (
+        <DetailRow label="Loss 공수" value={`${report.lostManHours}H`} />
+      )}
+      {report.shipmentUnit && (
+        <DetailRow label="출하 단위" value={report.shipmentUnit} />
+      )}
 
-      <div className="bg-[#F8F9FA] rounded-xl p-4">
-        <p className="text-[11px] text-[#8B95A1] mb-2">상세 내용</p>
+      {/* Description */}
+      <div className="py-3 border-b border-[#F2F4F6]">
+        <p className="text-[12px] text-[#8B95A1] font-medium mb-2">상세 내용</p>
         <p className="text-[13px] leading-relaxed text-[#191F28] whitespace-pre-wrap">
-          {report.description || "내용 없음"}
+          {report.description || "—"}
         </p>
       </div>
 
+      {/* Image */}
       {report.imageUrl && (
-        <div className="overflow-hidden rounded-xl border border-[#F2F4F6]">
+        <div className="mt-3 overflow-hidden rounded-xl border border-[#F2F4F6]">
           <div className="bg-[#F8F9FA] px-3 py-2 flex items-center gap-2 border-b border-[#F2F4F6]">
             <ImageIcon className="h-3.5 w-3.5 text-[#8B95A1]" />
             <span className="text-[11px] text-[#8B95A1]">첨부 사진</span>
@@ -77,7 +98,7 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
         </div>
       )}
 
-      <div className="pt-2 md:hidden">
+      <div className="pt-4 md:hidden">
         <button
           onClick={onClose}
           className="w-full bg-[#F2F4F6] text-[#191F28] font-semibold text-[14px] rounded-2xl py-3.5"
