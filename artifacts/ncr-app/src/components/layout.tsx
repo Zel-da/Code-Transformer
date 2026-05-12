@@ -1,12 +1,37 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, FileWarning, ClipboardList, Settings2 } from "lucide-react";
+import { LayoutDashboard, FileWarning, ClipboardList, Settings2, Download, Bell, X } from "lucide-react";
+import { usePWAInstall, useNotifications } from "@/hooks/usePWA";
 
 export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
+  const { canInstall, install } = usePWAInstall();
+  const { permission, requestPermission } = useNotifications();
+  const [showNotifBanner, setShowNotifBanner] = useState(false);
+  const [notifDismissed, setNotifDismissed] = useState(false);
 
   const isActive = (path: string) =>
     path === "/admin" ? location === "/admin" || location === "/" : location === path;
+
+  useEffect(() => {
+    const dismissed = localStorage.getItem("ncr-notif-dismissed");
+    if (!dismissed && permission === "default") {
+      const t = setTimeout(() => setShowNotifBanner(true), 2000);
+      return () => clearTimeout(t);
+    }
+  }, [permission]);
+
+  const handleNotifAllow = async () => {
+    const result = await requestPermission();
+    setShowNotifBanner(false);
+    if (result === "granted") localStorage.setItem("ncr-notif-dismissed", "1");
+  };
+
+  const handleNotifDismiss = () => {
+    setShowNotifBanner(false);
+    setNotifDismissed(true);
+    localStorage.setItem("ncr-notif-dismissed", "1");
+  };
 
   return (
     <div
@@ -44,7 +69,16 @@ export function Layout({ children }: { children: ReactNode }) {
             ))}
           </nav>
 
-          <div className="flex flex-1 items-center justify-end">
+          <div className="flex flex-1 items-center justify-end gap-2">
+            {canInstall && (
+              <button
+                onClick={install}
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1A1A1A] text-white text-[13px] font-medium hover:bg-[#333] transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" />
+                앱 설치
+              </button>
+            )}
             <div className="hidden md:flex items-center space-x-1.5 text-[12px] text-[#8B95A1] bg-[#F2F4F6] px-2.5 py-1 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
               <span>시스템 정상</span>
@@ -52,6 +86,29 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
+
+      {/* Notification permission banner */}
+      {showNotifBanner && !notifDismissed && permission === "default" && (
+        <div className="bg-[#1A1A1A] text-white px-5 py-3 flex items-center justify-between gap-3 z-30">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Bell className="h-4 w-4 shrink-0 text-amber-400" />
+            <span className="text-[13px] font-medium truncate">
+              보고서 접수·상태 변경 알림을 받으시겠어요?
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleNotifAllow}
+              className="text-[12px] font-semibold bg-white text-[#191F28] px-3 py-1 rounded-lg hover:bg-[#F2F4F6] transition-colors"
+            >
+              허용
+            </button>
+            <button onClick={handleNotifDismiss} className="text-[#8B95A1] hover:text-white transition-colors">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 overflow-x-hidden">
         {children}
@@ -63,7 +120,7 @@ export function Layout({ children }: { children: ReactNode }) {
             { href: "/admin", label: "대시보드", Icon: LayoutDashboard },
             { href: "/submit", label: "보고서 등록", Icon: FileWarning },
             { href: "/manage", label: "관리자", Icon: Settings2 },
-          ].map(({ href, label, Icon }, i, arr) => (
+          ].map(({ href, label, Icon }) => (
             <Link key={href} href={href} className="flex-1">
               <span className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${
                 isActive(href) ? "text-[#191F28]" : "text-[#BEC5CC]"
@@ -74,6 +131,20 @@ export function Layout({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </nav>
+
+        {/* Mobile install bar */}
+        {canInstall && (
+          <div className="border-t border-[#F2F4F6] px-4 py-2 flex items-center justify-between bg-[#F8F9FA]">
+            <span className="text-[12px] text-[#4E5968]">홈 화면에 추가하면 앱처럼 사용할 수 있어요</span>
+            <button
+              onClick={install}
+              className="flex items-center gap-1 text-[12px] font-semibold bg-[#1A1A1A] text-white px-3 py-1.5 rounded-lg shrink-0"
+            >
+              <Download className="h-3 w-3" />
+              설치
+            </button>
+          </div>
+        )}
       </footer>
     </div>
   );

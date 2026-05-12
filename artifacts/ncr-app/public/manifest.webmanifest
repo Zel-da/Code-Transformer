@@ -1,0 +1,24 @@
+{
+  "name": "부적합 보고 시스템",
+  "short_name": "부적합 보고",
+  "description": "현장 부적합 보고서 등록 및 관리 시스템",
+  "theme_color": "#1A1A1A",
+  "background_color": "#F8F9FA",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
