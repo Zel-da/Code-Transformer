@@ -12,6 +12,7 @@ import type { Report, RpaRunResult } from "@workspace/api-client-react";
 import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
 import { useState } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -76,6 +77,7 @@ export default function ManagePage() {
   const [rpaResult, setRpaResult] = useState<RpaRunResult | null>(null);
   const [rpaRunning, setRpaRunning] = useState(false);
 
+  const isMobile = useIsMobile();
   const { data: items } = useListItems();
   const { data: reportsData, isLoading } = useListReports({ page, pageSize: 15 }, {
     query: { queryKey: getListReportsQueryKey({ page, pageSize: 15 }) },
@@ -185,84 +187,80 @@ export default function ManagePage() {
 
         {/* RPA Section */}
         <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#F2F4F6] flex items-center gap-3">
-            <div className="p-2 bg-[#F2F4F6] rounded-xl">
-              <Bot className="h-5 w-5 text-[#4E5968]" />
+          {/* Header — always compact on mobile */}
+          <div className="px-5 py-4 flex items-center gap-3">
+            <div className="p-1.5 bg-[#F2F4F6] rounded-lg">
+              <Bot className="h-4 w-4 text-[#4E5968]" />
             </div>
-            <div>
-              <h2 className="font-semibold text-[14px] text-[#191F28]">RPA 동기화 실행</h2>
-              <p className="text-[12px] text-[#8B95A1]">대기(PENDING) 상태 보고서를 일괄 처리합니다</p>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-semibold text-[14px] text-[#191F28]">RPA 동기화</h2>
+              {!isMobile && (
+                <p className="text-[12px] text-[#8B95A1]">대기(PENDING) 상태 보고서를 일괄 처리합니다</p>
+              )}
             </div>
-            <div className="ml-auto">
-              <button
-                onClick={handleRpaRun}
-                disabled={rpaRunning}
-                className={`${BTN_DARK} flex items-center gap-2`}
-              >
-                {rpaRunning ? (
-                  <><RefreshCw className="h-4 w-4 animate-spin" /> 실행 중...</>
-                ) : (
-                  <><Play className="h-4 w-4" /> RPA 실행</>
-                )}
-              </button>
-            </div>
+            <button
+              onClick={handleRpaRun}
+              disabled={rpaRunning}
+              className={`${BTN_DARK} flex items-center gap-1.5 text-[13px] px-3 py-2`}
+            >
+              {rpaRunning ? (
+                <><RefreshCw className="h-3.5 w-3.5 animate-spin" />{!isMobile && " 실행 중..."}</>
+              ) : (
+                <><Play className="h-3.5 w-3.5" />{isMobile ? "실행" : " RPA 실행"}</>
+              )}
+            </button>
           </div>
 
           {rpaResult ? (
-            <div className="p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <Zap className="h-4 w-4 text-[#4E5968]" />
-                <span className="font-semibold text-[13px] text-[#191F28]">실행 결과</span>
+            <div className="px-5 pb-5 border-t border-[#F2F4F6] pt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Zap className="h-3.5 w-3.5 text-[#4E5968]" />
+                <span className="font-semibold text-[12px] text-[#191F28]">실행 결과</span>
               </div>
-              <div className="grid grid-cols-3 gap-3 mb-5">
-                <div className="bg-[#F8F9FA] rounded-xl p-3 text-center">
-                  <p className="text-[22px] font-bold text-[#191F28]">{rpaResult.processed}</p>
-                  <p className="text-[11px] text-[#8B95A1] mt-0.5">처리 건수</p>
+              <div className="flex gap-2 mb-4">
+                <div className="flex-1 bg-[#F8F9FA] rounded-xl p-2.5 text-center">
+                  <p className="text-[18px] font-bold text-[#191F28]">{rpaResult.processed}</p>
+                  <p className="text-[10px] text-[#8B95A1]">처리</p>
                 </div>
-                <div className="bg-emerald-50 rounded-xl p-3 text-center">
-                  <p className="text-[22px] font-bold text-emerald-600">{rpaResult.completed}</p>
-                  <p className="text-[11px] text-[#8B95A1] mt-0.5">완료</p>
+                <div className="flex-1 bg-emerald-50 rounded-xl p-2.5 text-center">
+                  <p className="text-[18px] font-bold text-emerald-600">{rpaResult.completed}</p>
+                  <p className="text-[10px] text-[#8B95A1]">완료</p>
                 </div>
-                <div className="bg-red-50 rounded-xl p-3 text-center">
-                  <p className="text-[22px] font-bold text-red-500">{rpaResult.failed}</p>
-                  <p className="text-[11px] text-[#8B95A1] mt-0.5">실패</p>
+                <div className="flex-1 bg-red-50 rounded-xl p-2.5 text-center">
+                  <p className="text-[18px] font-bold text-red-500">{rpaResult.failed}</p>
+                  <p className="text-[10px] text-[#8B95A1]">실패</p>
                 </div>
               </div>
               {rpaResult.reports.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">처리된 보고서</p>
-                  <div className="divide-y divide-[#F2F4F6] border border-[#F2F4F6] rounded-xl overflow-hidden">
-                    {rpaResult.reports.map((r: any) => (
-                      <div key={r.id} className="flex items-center justify-between px-4 py-2.5 bg-white">
-                        <div className="flex items-center gap-3">
-                          {r.syncStatus === "COMPLETED" ? (
-                            <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                          ) : (
-                            <XCircle className="h-4 w-4 text-red-400 shrink-0" />
-                          )}
-                          <div>
-                            <span className="font-medium text-[13px] text-[#191F28]">{r.itemCode}</span>
-                            <span className="text-[11px] text-[#8B95A1] ml-2">{r.defectType}</span>
-                          </div>
-                        </div>
-                        <StatusBadge status={r.syncStatus} />
+                <div className="divide-y divide-[#F2F4F6] border border-[#F2F4F6] rounded-xl overflow-hidden">
+                  {rpaResult.reports.map((r: any) => (
+                    <div key={r.id} className="flex items-center justify-between px-3 py-2 bg-white">
+                      <div className="flex items-center gap-2">
+                        {r.syncStatus === "COMPLETED" ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                        ) : (
+                          <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                        )}
+                        <span className="font-medium text-[12px] text-[#191F28]">{r.itemCode}</span>
+                        <span className="text-[11px] text-[#8B95A1]">{r.defectType}</span>
                       </div>
-                    ))}
-                  </div>
+                      <StatusBadge status={r.syncStatus} />
+                    </div>
+                  ))}
                 </div>
               )}
               {rpaResult.processed === 0 && (
-                <p className="text-[13px] text-[#8B95A1] text-center py-4">처리할 대기 보고서가 없습니다.</p>
+                <p className="text-[12px] text-[#8B95A1] text-center py-2">처리할 대기 보고서가 없습니다.</p>
               )}
             </div>
-          ) : (
-            <div className="px-5 py-4 text-[13px] text-[#8B95A1]">
+          ) : !isMobile ? (
+            <div className="px-5 py-3 border-t border-[#F2F4F6] text-[13px] text-[#8B95A1]">
               RPA 실행 버튼을 누르면 <span className="font-semibold text-amber-600">대기(PENDING)</span> 상태의 모든 보고서를 자동으로 ERP에 동기화합니다.
             </div>
-          )}
+          ) : null}
         </div>
 
-        {/* Reports Management Table */}
+        {/* Reports Management */}
         <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
           <div className="px-5 py-3.5 border-b border-[#F2F4F6] flex items-center justify-between">
             <h2 className="font-semibold text-[13px] text-[#191F28]">보고서 관리</h2>
@@ -280,7 +278,42 @@ export default function ManagePage() {
             <div className="h-48 flex items-center justify-center text-[13px] text-[#8B95A1]">
               보고서가 없습니다.
             </div>
+          ) : isMobile ? (
+            /* Mobile: compact list rows */
+            <div className="divide-y divide-[#F2F4F6]">
+              {reports.map((report) => (
+                <div key={report.id} className="px-5 py-3.5 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="font-semibold text-[14px] text-[#191F28] truncate">{report.itemCode}</span>
+                      <StatusBadge status={report.syncStatus} />
+                    </div>
+                    <p className="text-[12px] text-[#8B95A1] truncate">
+                      {report.processName} · {report.defectType}
+                    </p>
+                    <p className="text-[11px] text-[#BEC5CC] mt-0.5">
+                      {format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center active:bg-[#E5E8EB]"
+                      onClick={() => openEdit(report)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center active:bg-red-50 active:text-red-400"
+                      onClick={() => setDeletingId(report.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
+            /* Desktop: full table */
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
