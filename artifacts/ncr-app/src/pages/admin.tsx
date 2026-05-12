@@ -132,14 +132,14 @@ function StatCard({
   dot?: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-[#F2F4F6] p-5">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[12px] text-[#8B95A1] font-medium">{title}</span>
+    <div className="bg-white rounded-2xl border border-[#F2F4F6] px-4 py-3">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[11px] text-[#8B95A1] font-medium">{title}</span>
         {dot && <span className={`w-2 h-2 rounded-full ${dot}`}></span>}
-        {!dot && <Icon className="h-4 w-4 text-[#BEC5CC]" />}
+        {!dot && <Icon className="h-3.5 w-3.5 text-[#BEC5CC]" />}
       </div>
-      <div className="text-[28px] font-bold text-[#191F28] tracking-tight">{value}</div>
-      {subtitle && <div className="text-[11px] text-[#8B95A1] mt-1">{subtitle}</div>}
+      <div className="text-[22px] font-bold text-[#191F28] tracking-tight leading-tight">{value}</div>
+      {subtitle && <div className="text-[10px] text-[#8B95A1] mt-0.5">{subtitle}</div>}
     </div>
   );
 }
