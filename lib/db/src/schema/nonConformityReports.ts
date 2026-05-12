@@ -5,6 +5,8 @@ import {
   timestamp,
   integer,
   real,
+  boolean,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -23,6 +25,46 @@ export const insertItemCodeSchema = createInsertSchema(itemCodesTable).omit({
 });
 export type InsertItemCode = z.infer<typeof insertItemCodeSchema>;
 export type ItemCode = typeof itemCodesTable.$inferSelect;
+
+export const plantsTable = pgTable("plants", {
+  plantCd: text("plant_cd").primaryKey(),
+  plantNm: text("plant_nm").notNull(),
+});
+export type Plant = typeof plantsTable.$inferSelect;
+
+export const flawTypesTable = pgTable("flaw_types", {
+  typeCd: text("type_cd").primaryKey(),
+  typeNm: text("type_nm").notNull(),
+  sortIndex: integer("sort_index").notNull().default(0),
+});
+export type FlawType = typeof flawTypesTable.$inferSelect;
+
+export const processesTable = pgTable(
+  "processes",
+  {
+    plantCd: text("plant_cd").notNull(),
+    processCd: text("process_cd").notNull(),
+    processNm: text("process_nm").notNull(),
+    laborCost: real("labor_cost").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.plantCd, t.processCd] })],
+);
+export type Process = typeof processesTable.$inferSelect;
+
+export const dispositionsTable = pgTable("dispositions", {
+  dispositionCd: text("disposition_cd").primaryKey(),
+  dispositionNm: text("disposition_nm").notNull(),
+  inspClassCd: text("insp_class_cd").notNull(),
+  stockType: text("stock_type").notNull(),
+});
+export type Disposition = typeof dispositionsTable.$inferSelect;
+
+export const departmentsTable = pgTable("departments", {
+  deptCd: text("dept_cd").primaryKey(),
+  deptName: text("dept_name").notNull(),
+  isFrequent: boolean("is_frequent").notNull().default(false),
+});
+export type Department = typeof departmentsTable.$inferSelect;
 
 export const syncStatusEnum = ["PENDING", "PROCESSING", "COMPLETED", "FAILED"] as const;
 
@@ -46,6 +88,11 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
   defectQty: integer("defect_qty"),
   occurrenceDate: timestamp("occurrence_date", { withTimezone: true }),
   issuingTeam: text("issuing_team"),
+  plantCd: text("plant_cd"),
+  processCd: text("process_cd"),
+  flawTypeCd: text("flaw_type_cd"),
+  deptCd: text("dept_cd"),
+  ncrGbnCd: text("ncr_gbn_cd"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()

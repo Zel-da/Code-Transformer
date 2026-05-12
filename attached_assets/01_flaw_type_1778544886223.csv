@@ -1,0 +1,16 @@
+﻿TYPE_CD,TYPE_NM,GRP_TYPE_CD,USE_YN,SORT_INDEX
+A,가공,,Y,0
+B,용접/제관,,Y,0
+D,유/공압,,Y,0
+E,전기,,Y,0
+F,공압,,Y,0
+H,도장/도금,,Y,0
+I,외관,,Y,0
+K,동력장치,,Y,0
+M,BOM/REV,,Y,0
+N,소재,,Y,0
+O,조립,,Y,0
+P,설계개선,,Y,0
+Q,설계불량,,Y,0
+Y,합격(출하),,Y,0
+Z,기타,,Y,0

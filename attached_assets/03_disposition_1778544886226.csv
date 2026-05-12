@@ -1,0 +1,29 @@
+﻿DISPOSITION_CD,DISPOSITION_NM,INSP_CLASS_CD,STOCK_TYPE
+F1,재작업,F,B
+F2,폐기,F,B
+F3,수리,F,B
+F4,수정,F,B
+F5,특채,F,G
+F6,선별(양품),F,G
+F7,선별(불량품),F,B
+P1,재작업,P,B
+P2,폐기,P,B
+P3,수리,P,B
+P4,수정,P,B
+P5,특채,P,G
+P6,선별(양품),P,G
+P7,선별(불량품),P,B
+R1,반품,R,B
+R2,폐기,R,B
+R3,수리,R,B
+R4,수정,R,B
+R5,특채,R,G
+R6,선별(양품),R,G
+R7,선별(불량품),R,B
+N1,불량 부자재 교체,S,G
+S1,양품으로 대체,S,B
+S2,수정,S,B
+S3,수리,S,B
+S4,특채,S,G
+S5,선별(양품),S,G
+S6,선별(불량품),S,B

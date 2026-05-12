@@ -85,6 +85,11 @@ router.post("/reports", async (req, res): Promise<void> => {
       defectQty: d.defectQty ?? null,
       occurrenceDate: d.occurrenceDate ?? null,
       issuingTeam: d.issuingTeam ?? null,
+      plantCd: d.plantCd ?? null,
+      processCd: d.processCd ?? null,
+      flawTypeCd: d.flawTypeCd ?? null,
+      deptCd: d.deptCd ?? null,
+      ncrGbnCd: d.ncrGbnCd ?? null,
     })
     .returning();
 
@@ -226,6 +231,11 @@ router.put("/reports/:id", async (req, res): Promise<void> => {
   if (body.data.defectQty !== undefined) updates.defectQty = body.data.defectQty;
   if (body.data.occurrenceDate !== undefined) updates.occurrenceDate = body.data.occurrenceDate;
   if (body.data.issuingTeam !== undefined) updates.issuingTeam = body.data.issuingTeam;
+  if (body.data.plantCd !== undefined) updates.plantCd = body.data.plantCd;
+  if (body.data.processCd !== undefined) updates.processCd = body.data.processCd;
+  if (body.data.flawTypeCd !== undefined) updates.flawTypeCd = body.data.flawTypeCd;
+  if (body.data.deptCd !== undefined) updates.deptCd = body.data.deptCd;
+  if (body.data.ncrGbnCd !== undefined) updates.ncrGbnCd = body.data.ncrGbnCd;
 
   const [report] = await db
     .update(nonConformityReportsTable)

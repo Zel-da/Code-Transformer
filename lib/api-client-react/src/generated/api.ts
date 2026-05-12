@@ -18,10 +18,17 @@ import type {
 
 import type {
   CreateReportBody,
+  Department,
   ErrorEnvelope,
+  FlawType,
   HealthStatus,
   Item,
+  ListDepartmentsParams,
+  ListProcessesParams,
   ListReportsParams,
+  Plant,
+  Process,
+  Disposition,
   Report,
   ReportListResponse,
   ReportStats,
@@ -1170,4 +1177,95 @@ export const useTriggerRpa = <
   TContext
 > => {
   return useMutation(getTriggerRpaMutationOptions(options));
+};
+
+// ─── Master data hooks ───────────────────────────────────────────────────────
+
+export const getListPlantsUrl = () => `/api/master/plants`;
+export const listPlants = async (options?: RequestInit): Promise<Plant[]> =>
+  customFetch<Plant[]>(getListPlantsUrl(), { ...options, method: "GET" });
+export const getListPlantsQueryKey = () => [`/api/master/plants`] as const;
+export const useListPlants = <TData = Plant[], TError = ErrorType<unknown>>(options?: {
+  query?: UseQueryOptions<Plant[], TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getListPlantsQueryKey();
+  const queryFn: QueryFunction<Plant[]> = ({ signal }) =>
+    listPlants({ signal, ...requestOptions });
+  return useQuery({ queryKey, queryFn, ...queryOptions } as UseQueryOptions<Plant[], TError, TData>);
+};
+
+export const getListFlawTypesUrl = () => `/api/master/flaw-types`;
+export const listFlawTypes = async (options?: RequestInit): Promise<FlawType[]> =>
+  customFetch<FlawType[]>(getListFlawTypesUrl(), { ...options, method: "GET" });
+export const getListFlawTypesQueryKey = () => [`/api/master/flaw-types`] as const;
+export const useListFlawTypes = <TData = FlawType[], TError = ErrorType<unknown>>(options?: {
+  query?: UseQueryOptions<FlawType[], TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getListFlawTypesQueryKey();
+  const queryFn: QueryFunction<FlawType[]> = ({ signal }) =>
+    listFlawTypes({ signal, ...requestOptions });
+  return useQuery({ queryKey, queryFn, ...queryOptions } as UseQueryOptions<FlawType[], TError, TData>);
+};
+
+export const getListProcessesUrl = (params?: ListProcessesParams) => {
+  const search = params?.plantCd ? `?plantCd=${encodeURIComponent(params.plantCd)}` : "";
+  return `/api/master/processes${search}`;
+};
+export const listProcesses = async (params?: ListProcessesParams, options?: RequestInit): Promise<Process[]> =>
+  customFetch<Process[]>(getListProcessesUrl(params), { ...options, method: "GET" });
+export const getListProcessesQueryKey = (params?: ListProcessesParams) =>
+  [`/api/master/processes`, ...(params ? [params] : [])] as const;
+export const useListProcesses = <TData = Process[], TError = ErrorType<unknown>>(
+  params?: ListProcessesParams,
+  options?: {
+    query?: UseQueryOptions<Process[], TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getListProcessesQueryKey(params);
+  const queryFn: QueryFunction<Process[]> = ({ signal }) =>
+    listProcesses(params, { signal, ...requestOptions });
+  return useQuery({ queryKey, queryFn, ...queryOptions } as UseQueryOptions<Process[], TError, TData>);
+};
+
+export const getListDispositionsUrl = () => `/api/master/dispositions`;
+export const listDispositions = async (options?: RequestInit): Promise<Disposition[]> =>
+  customFetch<Disposition[]>(getListDispositionsUrl(), { ...options, method: "GET" });
+export const getListDispositionsQueryKey = () => [`/api/master/dispositions`] as const;
+export const useListDispositions = <TData = Disposition[], TError = ErrorType<unknown>>(options?: {
+  query?: UseQueryOptions<Disposition[], TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getListDispositionsQueryKey();
+  const queryFn: QueryFunction<Disposition[]> = ({ signal }) =>
+    listDispositions({ signal, ...requestOptions });
+  return useQuery({ queryKey, queryFn, ...queryOptions } as UseQueryOptions<Disposition[], TError, TData>);
+};
+
+export const getListDepartmentsUrl = (params?: ListDepartmentsParams) => {
+  const search = params?.search ? `?search=${encodeURIComponent(params.search)}` : "";
+  return `/api/master/departments${search}`;
+};
+export const listDepartments = async (params?: ListDepartmentsParams, options?: RequestInit): Promise<Department[]> =>
+  customFetch<Department[]>(getListDepartmentsUrl(params), { ...options, method: "GET" });
+export const getListDepartmentsQueryKey = (params?: ListDepartmentsParams) =>
+  [`/api/master/departments`, ...(params ? [params] : [])] as const;
+export const useListDepartments = <TData = Department[], TError = ErrorType<unknown>>(
+  params?: ListDepartmentsParams,
+  options?: {
+    query?: UseQueryOptions<Department[], TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+  const queryKey = queryOptions?.queryKey ?? getListDepartmentsQueryKey(params);
+  const queryFn: QueryFunction<Department[]> = ({ signal }) =>
+    listDepartments(params, { signal, ...requestOptions });
+  return useQuery({ queryKey, queryFn, ...queryOptions } as UseQueryOptions<Department[], TError, TData>);
 };

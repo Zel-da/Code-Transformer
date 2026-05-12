@@ -16,6 +16,51 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
+ * Master data schemas
+ */
+export const PlantItem = zod.object({
+  plantCd: zod.string(),
+  plantNm: zod.string(),
+});
+export const ListPlantsResponse = zod.array(PlantItem);
+
+export const FlawTypeItem = zod.object({
+  typeCd: zod.string(),
+  typeNm: zod.string(),
+  sortIndex: zod.number(),
+});
+export const ListFlawTypesResponse = zod.array(FlawTypeItem);
+
+export const ProcessItem = zod.object({
+  plantCd: zod.string(),
+  processCd: zod.string(),
+  processNm: zod.string(),
+  laborCost: zod.number(),
+});
+export const ListProcessesQueryParams = zod.object({
+  plantCd: zod.string().optional(),
+});
+export const ListProcessesResponse = zod.array(ProcessItem);
+
+export const DispositionItem = zod.object({
+  dispositionCd: zod.string(),
+  dispositionNm: zod.string(),
+  inspClassCd: zod.string(),
+  stockType: zod.string(),
+});
+export const ListDispositionsResponse = zod.array(DispositionItem);
+
+export const DepartmentItem = zod.object({
+  deptCd: zod.string(),
+  deptName: zod.string(),
+  isFrequent: zod.boolean(),
+});
+export const ListDepartmentsQueryParams = zod.object({
+  search: zod.string().optional(),
+});
+export const ListDepartmentsResponse = zod.array(DepartmentItem);
+
+/**
  * Returns all available ERP item codes for use in report forms
  * @summary List ERP item codes
  */
@@ -60,6 +105,11 @@ const ReportShape = {
   defectQty: zod.number().nullable(),
   occurrenceDate: zod.coerce.date().nullable(),
   issuingTeam: zod.string().nullable(),
+  plantCd: zod.string().nullable(),
+  processCd: zod.string().nullable(),
+  flawTypeCd: zod.string().nullable(),
+  deptCd: zod.string().nullable(),
+  ncrGbnCd: zod.string().nullable(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 };
@@ -89,6 +139,11 @@ export const CreateReportBody = zod.object({
   defectQty: zod.coerce.number().int().nullish(),
   occurrenceDate: zod.coerce.date().nullish(),
   issuingTeam: zod.string().nullish(),
+  plantCd: zod.string().nullish(),
+  processCd: zod.string().nullish(),
+  flawTypeCd: zod.string().nullish(),
+  deptCd: zod.string().nullish(),
+  ncrGbnCd: zod.string().nullish(),
 });
 
 /**
@@ -188,6 +243,11 @@ export const UpdateReportBody = zod.object({
   defectQty: zod.coerce.number().int().nullish(),
   occurrenceDate: zod.coerce.date().nullish(),
   issuingTeam: zod.string().nullish(),
+  plantCd: zod.string().nullish(),
+  processCd: zod.string().nullish(),
+  flawTypeCd: zod.string().nullish(),
+  deptCd: zod.string().nullish(),
+  ncrGbnCd: zod.string().nullish(),
 });
 
 export const UpdateReportResponse = zod.object(ReportShape);

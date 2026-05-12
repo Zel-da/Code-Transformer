@@ -16,6 +16,45 @@ export interface Item {
   category: string;
 }
 
+export interface Plant {
+  plantCd: string;
+  plantNm: string;
+}
+
+export interface FlawType {
+  typeCd: string;
+  typeNm: string;
+  sortIndex: number;
+}
+
+export interface Process {
+  plantCd: string;
+  processCd: string;
+  processNm: string;
+  laborCost: number;
+}
+
+export interface Disposition {
+  dispositionCd: string;
+  dispositionNm: string;
+  inspClassCd: string;
+  stockType: string;
+}
+
+export interface Department {
+  deptCd: string;
+  deptName: string;
+  isFrequent: boolean;
+}
+
+export type ListProcessesParams = {
+  plantCd?: string;
+};
+
+export type ListDepartmentsParams = {
+  search?: string;
+};
+
 export type ReportSyncStatus =
   (typeof ReportSyncStatus)[keyof typeof ReportSyncStatus];
 
@@ -52,6 +91,16 @@ export interface Report {
   occurrenceDate: string | null;
   /** @nullable */
   issuingTeam: string | null;
+  /** @nullable */
+  plantCd: string | null;
+  /** @nullable */
+  processCd: string | null;
+  /** @nullable */
+  flawTypeCd: string | null;
+  /** @nullable */
+  deptCd: string | null;
+  /** @nullable */
+  ncrGbnCd: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -79,6 +128,11 @@ export interface CreateReportBody {
   defectQty?: number | null;
   occurrenceDate?: string | null;
   issuingTeam?: string | null;
+  plantCd?: string | null;
+  processCd?: string | null;
+  flawTypeCd?: string | null;
+  deptCd?: string | null;
+  ncrGbnCd?: string | null;
 }
 
 export type UpdateSyncStatusBodySyncStatus =
@@ -150,6 +204,11 @@ export interface UpdateReportBody {
   defectQty?: number | null;
   occurrenceDate?: string | null;
   issuingTeam?: string | null;
+  plantCd?: string | null;
+  processCd?: string | null;
+  flawTypeCd?: string | null;
+  deptCd?: string | null;
+  ncrGbnCd?: string | null;
 }
 
 export interface RpaRunResult {

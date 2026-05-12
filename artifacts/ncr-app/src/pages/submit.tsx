@@ -5,6 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
   useListItems,
+  useListFlawTypes,
+  useListProcesses,
+  useListDepartments,
   useRequestUploadUrl,
   useCreateReport,
   getListReportsQueryKey,
@@ -46,30 +49,25 @@ import {
   Clock3,
   FileWarning,
   Paperclip,
+  Building2,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
-const PROCESS_BY_FACTORY: Record<string, string[]> = {
-  아산: ["1라인", "2라인", "3라인", "전기", "제관", "가공라인", "사내외주"],
-  화성: [
-    "CR붐조립",
-    "CR장착검사",
-    "CR바디조립",
-    "BR선삭",
-    "BR연삭",
-    "BR열처리",
-    "BR-M/B조립",
-    "BR-BKT조립",
-  ],
+const FACTORY_OPTIONS = [
+  { label: "아산공장", value: "아산", plantCd: "SA00" },
+  { label: "화성공장", value: "화성", plantCd: "SH00" },
+] as const;
+
+const FACTORY_TO_PLANT_CD: Record<string, string> = {
+  아산: "SA00",
+  화성: "SH00",
 };
 
-const ISSUING_TEAM_BY_FACTORY: Record<string, string> = {
-  아산: "아산 품질팀",
-  화성: "화성 품질팀",
-};
-
-const NCR_TYPES = ["공정", "AS", "입고", "품질"] as const;
-const DEFECT_TYPES = ["치수불량", "외관불량", "기능불량", "재료불량", "포장불량", "기타"];
+const NCR_TYPES = [
+  { label: "공정", value: "QC" },
+  { label: "출하", value: "QO" },
+  { label: "AS", value: "AS" },
+] as const;
 
 const todayStr = () => new Date().toISOString().split("T")[0];
 
@@ -78,11 +76,13 @@ const formSchema = z.object({
   factory: z.string().min(1, "공장을 선택해주세요"),
   processName: z.string().min(1, "공정을 선택해주세요"),
   issuingTeam: z.string().optional(),
+  deptCd: z.string().optional(),
   ncrType: z.string().min(1, "부적합 구분을 선택해주세요"),
   itemCode: z.string().min(1, "제품코드를 선택해주세요"),
   shipmentUnit: z.string().optional(),
   occurrenceDate: z.string().optional(),
   defectType: z.string().min(1, "불량유형을 선택해주세요"),
+  flawTypeCd: z.string().optional(),
   defectQty: z.preprocess(
     (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
     z.number().int().min(0).optional(),
@@ -131,6 +131,9 @@ export default function SubmitReport() {
   const [isSuccess, setIsSuccess] = useState(false);
 
   const { data: items } = useListItems();
+  const { data: flawTypes = [] } = useListFlawTypes();
+  const { data: departments = [] } = useListDepartments();
+
   const requestUploadUrl = useRequestUploadUrl();
   const createReport = useCreateReport();
 
@@ -141,11 +144,13 @@ export default function SubmitReport() {
       factory: "",
       processName: "",
       issuingTeam: "",
+      deptCd: "",
       ncrType: "",
       itemCode: "",
       shipmentUnit: "",
       occurrenceDate: todayStr(),
       defectType: "",
+      flawTypeCd: "",
       defectQty: undefined,
       lostManHours: undefined,
       description: "",
@@ -153,12 +158,16 @@ export default function SubmitReport() {
   });
 
   const selectedFactory = form.watch("factory");
-  const processOptions = PROCESS_BY_FACTORY[selectedFactory] ?? [];
+  const selectedPlantCd = FACTORY_TO_PLANT_CD[selectedFactory] ?? "";
+
+  const { data: processes = [] } = useListProcesses(
+    selectedPlantCd ? { plantCd: selectedPlantCd } : undefined,
+    { query: { enabled: !!selectedPlantCd } },
+  );
 
   useEffect(() => {
     if (selectedFactory) {
       form.setValue("processName", "");
-      form.setValue("issuingTeam", ISSUING_TEAM_BY_FACTORY[selectedFactory] ?? "");
     }
   }, [selectedFactory]);
 
@@ -201,6 +210,10 @@ export default function SubmitReport() {
       let objectPath = null;
       if (photo) objectPath = await uploadPhoto(photo);
 
+      const selectedProcess = processes.find((p) => p.processNm === values.processName);
+      const selectedDept = departments.find((d) => d.deptCd === values.deptCd);
+      const ncrLabel = NCR_TYPES.find((t) => t.value === values.ncrType)?.label ?? values.ncrType;
+
       await createReport.mutateAsync({
         data: {
           itemCode: values.itemCode,
@@ -210,15 +223,20 @@ export default function SubmitReport() {
           reportDate: new Date().toISOString(),
           imageUrl: objectPath ? `/api/storage${objectPath}` : null,
           registrantName: values.registrantName || null,
-          ncrType: values.ncrType || null,
+          ncrType: ncrLabel || null,
+          ncrGbnCd: values.ncrType || null,
           factory: values.factory || null,
+          plantCd: selectedPlantCd || null,
+          processCd: selectedProcess?.processCd ?? null,
           shipmentUnit: values.shipmentUnit || null,
           lostManHours: values.lostManHours ?? null,
           defectQty: values.defectQty != null ? Math.round(values.defectQty) : null,
           occurrenceDate: values.occurrenceDate
             ? new Date(values.occurrenceDate).toISOString()
             : null,
-          issuingTeam: values.issuingTeam || null,
+          issuingTeam: selectedDept?.deptName ?? values.issuingTeam ?? null,
+          deptCd: values.deptCd || null,
+          flawTypeCd: values.flawTypeCd || null,
         },
       });
 
@@ -231,11 +249,13 @@ export default function SubmitReport() {
         factory: "",
         processName: "",
         issuingTeam: "",
+        deptCd: "",
         ncrType: "",
         itemCode: "",
         shipmentUnit: "",
         occurrenceDate: todayStr(),
         defectType: "",
+        flawTypeCd: "",
         defectQty: undefined,
         lostManHours: undefined,
         description: "",
@@ -335,18 +355,18 @@ export default function SubmitReport() {
                         공장
                       </FormLabel>
                       <div className="grid grid-cols-2 gap-2 pt-0.5">
-                        {["아산", "화성"].map((f) => (
+                        {FACTORY_OPTIONS.map((f) => (
                           <button
-                            key={f}
+                            key={f.value}
                             type="button"
-                            onClick={() => field.onChange(f)}
+                            onClick={() => field.onChange(f.value)}
                             className={`py-3 text-sm font-semibold rounded-xl border-2 transition-all ${
-                              field.value === f
+                              field.value === f.value
                                 ? "border-primary bg-primary/10 text-primary"
                                 : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
                             }`}
                           >
-                            {f}공장
+                            {f.label}
                           </button>
                         ))}
                       </div>
@@ -362,27 +382,28 @@ export default function SubmitReport() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm font-medium">등록자 공정</FormLabel>
-                      {processOptions.length > 0 ? (
+                      {processes.length > 0 ? (
                         <div className="grid grid-cols-2 gap-2 pt-0.5">
-                          {processOptions.map((p) => (
+                          {processes.map((p) => (
                             <button
-                              key={p}
+                              key={p.processCd}
                               type="button"
-                              onClick={() => field.onChange(p)}
+                              onClick={() => field.onChange(p.processNm)}
                               className={`py-2.5 px-3 text-sm font-medium rounded-xl border-2 text-left transition-all ${
-                                field.value === p
+                                field.value === p.processNm
                                   ? "border-primary bg-primary/10 text-primary"
                                   : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
                               }`}
                             >
-                              {p}
+                              <span className="block">{p.processNm}</span>
+                              <span className="text-[10px] opacity-60">{p.processCd}</span>
                             </button>
                           ))}
                         </div>
                       ) : (
                         <div className="h-11 rounded-xl border border-dashed border-border bg-muted/40 flex items-center justify-center">
                           <span className="text-xs text-muted-foreground">
-                            공장을 먼저 선택해주세요
+                            {selectedFactory ? "공정 로딩 중..." : "공장을 먼저 선택해주세요"}
                           </span>
                         </div>
                       )}
@@ -394,20 +415,32 @@ export default function SubmitReport() {
                 {/* 발행팀 */}
                 <FormField
                   control={form.control}
-                  name="issuingTeam"
+                  name="deptCd"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-muted-foreground">
-                        발행팀{" "}
-                        <span className="text-xs font-normal">(공장 선택 시 자동 입력)</span>
+                      <FormLabel className="text-sm font-medium flex items-center gap-1.5">
+                        <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                        발행팀
                       </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="발행팀명"
-                          className="h-11 rounded-xl bg-background"
-                          {...field}
-                        />
-                      </FormControl>
+                      <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                        <FormControl>
+                          <SelectTrigger className="h-11 rounded-xl bg-background">
+                            <SelectValue placeholder="발행팀을 선택하세요" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="rounded-xl max-h-60">
+                          {departments.map((dept) => (
+                            <SelectItem key={dept.deptCd} value={dept.deptCd}>
+                              <span className={dept.isFrequent ? "font-semibold" : ""}>
+                                {dept.deptName}
+                              </span>
+                              {dept.isFrequent && (
+                                <span className="ml-1.5 text-[10px] text-primary bg-primary/10 rounded px-1">자주사용</span>
+                              )}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage className="text-xs" />
                     </FormItem>
                   )}
@@ -431,19 +464,19 @@ export default function SubmitReport() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm font-medium">부적합 구분</FormLabel>
-                      <div className="grid grid-cols-4 gap-2 pt-0.5">
+                      <div className="grid grid-cols-3 gap-2 pt-0.5">
                         {NCR_TYPES.map((t) => (
                           <button
-                            key={t}
+                            key={t.value}
                             type="button"
-                            onClick={() => field.onChange(t)}
+                            onClick={() => field.onChange(t.value)}
                             className={`py-3 text-sm font-semibold rounded-xl border-2 transition-all ${
-                              field.value === t
+                              field.value === t.value
                                 ? "border-primary bg-primary/10 text-primary"
                                 : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
                             }`}
                           >
-                            {t}
+                            {t.label}
                           </button>
                         ))}
                       </div>
@@ -553,29 +586,38 @@ export default function SubmitReport() {
               />
 
               <div className="space-y-4">
-                {/* 불량유형 */}
+                {/* 불량유형 — ERP 실데이터 */}
                 <FormField
                   control={form.control}
                   name="defectType"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm font-medium">불량유형</FormLabel>
-                      <div className="grid grid-cols-3 gap-2 pt-0.5">
-                        {DEFECT_TYPES.map((type) => (
-                          <button
-                            key={type}
-                            type="button"
-                            onClick={() => field.onChange(type)}
-                            className={`py-3 px-2 text-sm font-medium rounded-xl border-2 transition-all ${
-                              field.value === type
-                                ? "border-primary bg-primary/10 text-primary"
-                                : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
-                            }`}
-                          >
-                            {type}
-                          </button>
-                        ))}
-                      </div>
+                      {flawTypes.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-2 pt-0.5">
+                          {flawTypes.map((ft) => (
+                            <button
+                              key={ft.typeCd}
+                              type="button"
+                              onClick={() => {
+                                field.onChange(ft.typeNm);
+                                form.setValue("flawTypeCd", ft.typeCd);
+                              }}
+                              className={`py-2.5 px-2 text-sm font-medium rounded-xl border-2 text-center transition-all ${
+                                field.value === ft.typeNm
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                              }`}
+                            >
+                              {ft.typeNm}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="h-11 rounded-xl border border-dashed border-border bg-muted/40 flex items-center justify-center">
+                          <span className="text-xs text-muted-foreground">불량유형 로딩 중...</span>
+                        </div>
+                      )}
                       <FormMessage className="text-xs" />
                     </FormItem>
                   )}
@@ -616,7 +658,7 @@ export default function SubmitReport() {
                       <FormItem>
                         <FormLabel className="text-sm font-medium flex items-center gap-1">
                           <Clock3 className="h-3.5 w-3.5 text-muted-foreground" />
-                          손실공수
+                          손실공수 (H)
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -636,7 +678,7 @@ export default function SubmitReport() {
                   />
                 </div>
 
-                {/* 부적합현상 */}
+                {/* 부적합 현상 */}
                 <FormField
                   control={form.control}
                   name="description"
@@ -645,8 +687,8 @@ export default function SubmitReport() {
                       <FormLabel className="text-sm font-medium">부적합 현상</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="불량 발생 상황, 특이사항 등 상세 내용을 기재해주세요"
-                          className="min-h-[120px] rounded-xl bg-background resize-none"
+                          placeholder="발생한 부적합 현상을 상세히 기술해주세요"
+                          className="min-h-[100px] rounded-xl bg-background resize-none"
                           {...field}
                         />
                       </FormControl>
@@ -666,71 +708,65 @@ export default function SubmitReport() {
               />
 
               <input
+                ref={fileInputRef}
                 type="file"
-                accept="image/*,video/*"
+                accept="image/*"
                 capture="environment"
                 className="hidden"
-                ref={fileInputRef}
                 onChange={handlePhotoSelect}
               />
 
-              {!photoPreview ? (
-                <button
-                  type="button"
-                  className="w-full border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center gap-3 text-muted-foreground hover:border-primary hover:bg-primary/5 hover:text-primary transition-all"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Camera className="h-7 w-7" strokeWidth={1.5} />
-                  <div className="text-center">
-                    <p className="text-sm font-medium">불량 사진 / 동영상 첨부</p>
-                    <p className="text-xs mt-0.5 opacity-70">
-                      탭하여 촬영하거나 파일을 선택하세요
-                    </p>
-                  </div>
-                </button>
-              ) : (
+              {photoPreview ? (
                 <div className="relative rounded-xl overflow-hidden border border-border">
                   <img
                     src={photoPreview}
-                    alt="미리보기"
-                    className="w-full h-auto max-h-72 object-contain bg-gray-50"
+                    alt="첨부 사진"
+                    className="w-full max-h-64 object-cover"
                   />
-                  <div className="absolute top-2 right-2 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="bg-white/90 backdrop-blur-sm text-foreground text-xs font-medium px-3 py-1.5 rounded-lg border border-border shadow-sm flex items-center gap-1.5 hover:bg-white transition-colors"
-                    >
-                      <Camera className="h-3.5 w-3.5" /> 재촬영
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPhoto(null);
-                        setPhotoPreview(null);
-                      }}
-                      className="bg-white/90 backdrop-blur-sm text-destructive p-1.5 rounded-lg border border-border shadow-sm hover:bg-white transition-colors"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="absolute bottom-2 left-2 bg-black/50 text-white text-[11px] px-2 py-1 rounded-md flex items-center gap-1">
-                    <ImageIcon className="h-3 w-3" />
-                    {photo?.size ? `${Math.round(photo.size / 1024)}KB` : ""}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPhoto(null);
+                      setPhotoPreview(null);
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                    className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1.5 hover:bg-black/80 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center gap-3 text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-primary/5 transition-all"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+                    <ImageIcon className="h-6 w-6" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium">사진 추가</p>
+                    <p className="text-xs mt-0.5 opacity-70">카메라 또는 갤러리에서 선택</p>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs bg-muted rounded-lg px-3 py-1.5">
+                    <Camera className="h-3.5 w-3.5" />
+                    촬영하기
+                  </div>
+                </button>
               )}
             </div>
 
+            {/* 제출 버튼 */}
             <Button
               type="submit"
               size="lg"
-              className="w-full h-14 text-base font-semibold rounded-2xl shadow-sm"
-              disabled={isUploading}
+              className="w-full rounded-xl font-semibold h-14 text-base"
+              disabled={isUploading || createReport.isPending}
             >
-              {isUploading ? (
+              {isUploading || createReport.isPending ? (
                 <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 업로드 중...
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  제출 중...
                 </>
               ) : (
                 "부적합 보고서 제출"
