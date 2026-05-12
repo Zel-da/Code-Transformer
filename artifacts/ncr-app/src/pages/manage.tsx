@@ -43,12 +43,23 @@ const SYNC_STATUS_LABELS: Record<string, string> = {
   FAILED: "실패",
 };
 
+const NCR_TYPES = ["공정", "출하", "AS"] as const;
+const FACTORY_OPTIONS = ["아산", "화성"] as const;
+
 interface EditForm {
   itemCode: string;
   processName: string;
   defectType: string;
   description: string;
   syncStatus: string;
+  registrantName: string;
+  ncrType: string;
+  factory: string;
+  issuingTeam: string;
+  defectQty: string;
+  lostManHours: string;
+  occurrenceDate: string;
+  shipmentUnit: string;
 }
 
 const EMPTY_EDIT_FORM: EditForm = {
@@ -57,12 +68,21 @@ const EMPTY_EDIT_FORM: EditForm = {
   defectType: "",
   description: "",
   syncStatus: "",
+  registrantName: "",
+  ncrType: "",
+  factory: "",
+  issuingTeam: "",
+  defectQty: "",
+  lostManHours: "",
+  occurrenceDate: "",
+  shipmentUnit: "",
 };
 
 const BTN_BASE = "rounded-xl font-semibold text-[14px] px-4 py-2.5 transition-all disabled:opacity-50";
 const BTN_DARK = `${BTN_BASE} bg-[#1A1A1A] text-white`;
 const BTN_GHOST = `${BTN_BASE} bg-[#F2F4F6] text-[#4E5968] hover:bg-[#E5E8EB]`;
 const BTN_DANGER = `${BTN_BASE} bg-red-500 text-white hover:bg-red-600`;
+const INP = "h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus-visible:ring-0 focus-visible:outline-none placeholder:text-[#BEC5CC]";
 
 export default function ManagePage() {
   const { toast } = useToast();
@@ -102,6 +122,14 @@ export default function ManagePage() {
       defectType: report.defectType,
       description: report.description,
       syncStatus: report.syncStatus,
+      registrantName: report.registrantName ?? "",
+      ncrType: report.ncrType ?? "",
+      factory: report.factory ?? "",
+      issuingTeam: report.issuingTeam ?? "",
+      defectQty: report.defectQty != null ? String(report.defectQty) : "",
+      lostManHours: report.lostManHours != null ? String(report.lostManHours) : "",
+      occurrenceDate: report.occurrenceDate ? report.occurrenceDate.slice(0, 10) : "",
+      shipmentUnit: report.shipmentUnit ?? "",
     };
     setEditingReport(report);
     setOriginalEditForm(initial);
@@ -124,7 +152,20 @@ export default function ManagePage() {
   const handleSave = async () => {
     if (!editingReport) return;
     try {
-      await updateReport.mutateAsync({ id: editingReport.id, data: editForm });
+      await updateReport.mutateAsync({
+        id: editingReport.id,
+        data: {
+          ...editForm,
+          defectQty: editForm.defectQty !== "" ? Number(editForm.defectQty) : null,
+          lostManHours: editForm.lostManHours !== "" ? Number(editForm.lostManHours) : null,
+          occurrenceDate: editForm.occurrenceDate ? new Date(editForm.occurrenceDate).toISOString() : null,
+          registrantName: editForm.registrantName || null,
+          ncrType: editForm.ncrType || null,
+          factory: editForm.factory || null,
+          issuingTeam: editForm.issuingTeam || null,
+          shipmentUnit: editForm.shipmentUnit || null,
+        },
+      });
       invalidateAll();
       closeEditDialog();
       toast({ title: "수정 완료", description: "보고서가 업데이트되었습니다." });
@@ -404,66 +445,124 @@ export default function ManagePage() {
       {/* Edit Dialog */}
       <Dialog open={editingReport !== null} onOpenChange={(open) => { if (!open) handleCloseDialog(); }}>
         <DialogContent
-          className="sm:max-w-lg rounded-2xl bg-white border border-[#F2F4F6]"
+          className="sm:max-w-lg rounded-2xl bg-white border border-[#F2F4F6] max-h-[90vh] flex flex-col"
           onEscapeKeyDown={(e) => { e.preventDefault(); handleCloseDialog(); }}
           onPointerDownOutside={(e) => { e.preventDefault(); handleCloseDialog(); }}
         >
-          <DialogHeader>
+          <DialogHeader className="shrink-0">
             <DialogTitle className="font-bold text-[16px] text-[#191F28] flex items-center gap-2">
               보고서 수정
               {isDirty && (
                 <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
-                  미저장 변경 사항
+                  미저장
                 </span>
               )}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">품목코드</Label>
-                <Select value={editForm.itemCode} onValueChange={(v) => setEditForm((f) => ({ ...f, itemCode: v }))}>
-                  <SelectTrigger className="h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus:ring-0 focus:outline-none">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {items?.map((item) => (
-                      <SelectItem key={item.code} value={item.code}>
-                        <span className="font-semibold text-[#191F28]">{item.code}</span>
-                        <span className="text-[#8B95A1] ml-1.5 text-[11px]">{item.name}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
+          {/* Scrollable body */}
+          <div className="overflow-y-auto flex-1 -mx-6 px-6">
+            {/* Section: 등록 정보 */}
+            <p className="text-[10px] font-bold text-[#8B95A1] uppercase tracking-widest mb-2 mt-1">등록 정보</p>
+            <div className="space-y-3 mb-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-semibold text-[#8B95A1]">등록자</Label>
+                  <Input className={INP} value={editForm.registrantName} placeholder="성명" onChange={(e) => setEditForm((f) => ({ ...f, registrantName: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-semibold text-[#8B95A1]">발행팀</Label>
+                  <Input className={INP} value={editForm.issuingTeam} placeholder="팀명" onChange={(e) => setEditForm((f) => ({ ...f, issuingTeam: e.target.value }))} />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">공정명</Label>
-                <Input
-                  className="h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus-visible:ring-0 focus-visible:outline-none placeholder:text-[#BEC5CC]"
-                  value={editForm.processName}
-                  onChange={(e) => setEditForm((f) => ({ ...f, processName: e.target.value }))}
-                />
+              <div className="space-y-1">
+                <Label className="text-[11px] font-semibold text-[#8B95A1]">공장</Label>
+                <div className="flex gap-2">
+                  {FACTORY_OPTIONS.map((f) => (
+                    <button key={f} type="button"
+                      onClick={() => setEditForm((ef) => ({ ...ef, factory: f }))}
+                      className={`flex-1 py-2 text-[13px] font-medium rounded-xl border-2 transition-all ${editForm.factory === f ? "border-[#1A1A1A] bg-[#1A1A1A] text-white" : "border-[#E5E8EB] text-[#4E5968] bg-[#F8F9FA]"}`}
+                    >{f}공장</button>
+                  ))}
+                </div>
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">불량 유형</Label>
-              <Input
-                className="h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus-visible:ring-0 focus-visible:outline-none placeholder:text-[#BEC5CC]"
-                value={editForm.defectType}
-                onChange={(e) => setEditForm((f) => ({ ...f, defectType: e.target.value }))}
-              />
+
+            {/* Section: 부적합 기본 정보 */}
+            <p className="text-[10px] font-bold text-[#8B95A1] uppercase tracking-widest mb-2">부적합 기본 정보</p>
+            <div className="space-y-3 mb-4">
+              <div className="space-y-1">
+                <Label className="text-[11px] font-semibold text-[#8B95A1]">부적합 구분</Label>
+                <div className="flex gap-2">
+                  {NCR_TYPES.map((t) => (
+                    <button key={t} type="button"
+                      onClick={() => setEditForm((ef) => ({ ...ef, ncrType: t }))}
+                      className={`flex-1 py-2 text-[13px] font-medium rounded-xl border-2 transition-all ${editForm.ncrType === t ? "border-[#1A1A1A] bg-[#1A1A1A] text-white" : "border-[#E5E8EB] text-[#4E5968] bg-[#F8F9FA]"}`}
+                    >{t}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-semibold text-[#8B95A1]">품목코드</Label>
+                  <Select value={editForm.itemCode} onValueChange={(v) => setEditForm((f) => ({ ...f, itemCode: v }))}>
+                    <SelectTrigger className={`h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus:ring-0 focus:outline-none`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {items?.map((item) => (
+                        <SelectItem key={item.code} value={item.code}>
+                          <span className="font-semibold text-[#191F28]">{item.code}</span>
+                          <span className="text-[#8B95A1] ml-1.5 text-[11px]">{item.name}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-semibold text-[#8B95A1]">공정명</Label>
+                  <Input className={INP} value={editForm.processName} onChange={(e) => setEditForm((f) => ({ ...f, processName: e.target.value }))} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] font-semibold text-[#8B95A1]">불량 유형</Label>
+                <Input className={INP} value={editForm.defectType} onChange={(e) => setEditForm((f) => ({ ...f, defectType: e.target.value }))} />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">상세 내용</Label>
-              <Textarea
-                className="rounded-xl resize-none text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus-visible:ring-0 focus-visible:outline-none placeholder:text-[#BEC5CC]"
-                rows={3}
-                value={editForm.description}
-                onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
-              />
+
+            {/* Section: 수량 / 일정 */}
+            <p className="text-[10px] font-bold text-[#8B95A1] uppercase tracking-widest mb-2">수량 및 일정</p>
+            <div className="space-y-3 mb-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-semibold text-[#8B95A1]">불량 수량</Label>
+                  <Input className={INP} type="number" min="0" value={editForm.defectQty} placeholder="0" onChange={(e) => setEditForm((f) => ({ ...f, defectQty: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-semibold text-[#8B95A1]">Loss 공수 (H)</Label>
+                  <Input className={INP} type="number" min="0" step="0.5" value={editForm.lostManHours} placeholder="0" onChange={(e) => setEditForm((f) => ({ ...f, lostManHours: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-semibold text-[#8B95A1]">출하 단위</Label>
+                  <Input className={INP} value={editForm.shipmentUnit} placeholder="예: LOT" onChange={(e) => setEditForm((f) => ({ ...f, shipmentUnit: e.target.value }))} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px] font-semibold text-[#8B95A1]">발생일</Label>
+                <input type="date" className={`w-full h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] px-3 outline-none`} value={editForm.occurrenceDate} onChange={(e) => setEditForm((f) => ({ ...f, occurrenceDate: e.target.value }))} />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">동기화 상태</Label>
+
+            {/* Section: 상세 내용 */}
+            <p className="text-[10px] font-bold text-[#8B95A1] uppercase tracking-widest mb-2">상세 내용</p>
+            <div className="space-y-3 mb-4">
+              <Textarea className={`${INP} resize-none`} rows={3} value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} />
+            </div>
+
+            {/* Section: 시스템 */}
+            <p className="text-[10px] font-bold text-[#8B95A1] uppercase tracking-widest mb-2">시스템</p>
+            <div className="space-y-1 mb-2">
+              <Label className="text-[11px] font-semibold text-[#8B95A1]">동기화 상태</Label>
               <Select value={editForm.syncStatus} onValueChange={(v) => setEditForm((f) => ({ ...f, syncStatus: v }))}>
                 <SelectTrigger className="h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus:ring-0 focus:outline-none">
                   <SelectValue />
@@ -476,7 +575,8 @@ export default function ManagePage() {
               </Select>
             </div>
           </div>
-          <DialogFooter className="gap-2 flex-row items-center">
+
+          <DialogFooter className="gap-2 flex-row items-center shrink-0 pt-3 border-t border-[#F2F4F6]">
             <button
               className={`${BTN_GHOST} mr-auto text-[13px]`}
               onClick={() => setEditForm(originalEditForm)}

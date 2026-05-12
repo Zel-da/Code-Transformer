@@ -292,14 +292,13 @@ export default function SubmitReport() {
               <br />
               관리자 검토 후 ERP에 동기화됩니다.
             </p>
-            <Button
-              size="lg"
-              className="w-full rounded-xl font-semibold"
+            <button
+              className="w-full rounded-xl font-semibold bg-[#1A1A1A] text-white py-3 text-[15px] flex items-center justify-center gap-2 transition-all hover:bg-[#333]"
               onClick={() => setIsSuccess(false)}
             >
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="h-4 w-4" />
               새 보고서 작성
-            </Button>
+            </button>
           </div>
         </div>
       </Layout>
