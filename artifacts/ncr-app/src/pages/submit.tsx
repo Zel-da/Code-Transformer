@@ -127,6 +127,7 @@ export default function SubmitReport() {
   const [itemDropdownOpen, setItemDropdownOpen] = useState(false);
   const [debouncedItemSearch, setDebouncedItemSearch] = useState("");
   const itemInputRef = useRef<HTMLInputElement>(null);
+  const skipFactoryClearRef = useRef(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedItemSearch(itemSearch), 300);
@@ -173,6 +174,15 @@ export default function SubmitReport() {
   );
 
   useEffect(() => {
+    if (user) {
+      skipFactoryClearRef.current = true;
+      form.reset(profileDefaults());
+      setTimeout(() => { skipFactoryClearRef.current = false; }, 0);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (skipFactoryClearRef.current) return;
     if (selectedFactory) {
       form.setValue("processName", "");
     }
