@@ -232,7 +232,7 @@ export default function AdminDashboard() {
               </button>
             )}
           </div>
-          <div className="p-4 grid gap-3 grid-cols-2 md:grid-cols-3">
+          <div className="p-4 grid gap-3 grid-cols-1 md:grid-cols-3">
             <div className="space-y-1.5">
               <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">동기화 상태</p>
               <Select value={syncStatus} onValueChange={(val) => { setSyncStatus(val); setPage(1); }}>
