@@ -3,19 +3,14 @@ import { useGetReportStats, useListReports, getListReportsQueryKey, useGetReport
 import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
 import { useState, useMemo } from "react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { BarChart3, Search, RefreshCw, X, SlidersHorizontal, Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
+import { BarChart3, Search, RefreshCw, X, Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 
-const DEFECT_TYPES = ["치수불량", "외관불량", "기능불량", "재료불량", "포장불량", "기타"];
 const SYNC_STATUSES = ["PENDING", "PROCESSING", "COMPLETED", "FAILED"];
-
 const SYNC_STATUS_LABELS: Record<string, string> = {
   PENDING: "대기",
   PROCESSING: "처리 중",
@@ -28,51 +23,51 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
 
   if (isLoading) {
     return (
-      <div className="p-10 text-center text-muted-foreground flex flex-col items-center gap-3">
-        <RefreshCw className="h-6 w-6 animate-spin text-primary" />
-        <p className="text-sm">불러오는 중...</p>
+      <div className="p-10 text-center flex flex-col items-center gap-3 text-[#8B95A1]">
+        <RefreshCw className="h-5 w-5 animate-spin" />
+        <p className="text-[13px]">불러오는 중...</p>
       </div>
     );
   }
 
   if (!report) {
-    return <div className="p-8 text-center text-destructive text-sm">보고서를 찾을 수 없습니다.</div>;
+    return <div className="p-8 text-center text-[13px] text-red-500">보고서를 찾을 수 없습니다.</div>;
   }
 
   return (
-    <div className="space-y-5 py-2">
+    <div className="space-y-4 py-2">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs text-muted-foreground mb-1">보고서 #{report.id.toString().padStart(4, "0")}</p>
-          <h2 className="text-xl font-bold text-foreground">{report.itemCode}</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">{report.processName}</p>
+          <p className="text-[11px] text-[#8B95A1] mb-1">보고서 #{report.id.toString().padStart(4, "0")}</p>
+          <h2 className="text-[18px] font-bold text-[#191F28]">{report.itemCode}</h2>
+          <p className="text-[13px] text-[#8B95A1] mt-0.5">{report.processName}</p>
         </div>
         <StatusBadge status={report.syncStatus} />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-muted/50 rounded-xl p-3">
-          <p className="text-[11px] text-muted-foreground mb-1">불량 유형</p>
-          <p className="font-semibold text-destructive text-sm">{report.defectType}</p>
+        <div className="bg-[#F8F9FA] rounded-xl p-3">
+          <p className="text-[11px] text-[#8B95A1] mb-1">불량 유형</p>
+          <p className="font-semibold text-[#191F28] text-[13px]">{report.defectType}</p>
         </div>
-        <div className="bg-muted/50 rounded-xl p-3">
-          <p className="text-[11px] text-muted-foreground mb-1">접수 일시</p>
-          <p className="font-medium text-sm text-foreground">{format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}</p>
+        <div className="bg-[#F8F9FA] rounded-xl p-3">
+          <p className="text-[11px] text-[#8B95A1] mb-1">접수 일시</p>
+          <p className="font-medium text-[13px] text-[#191F28]">{format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}</p>
         </div>
       </div>
 
-      <div className="bg-muted/50 rounded-xl p-4">
-        <p className="text-[11px] text-muted-foreground mb-2">상세 내용</p>
-        <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+      <div className="bg-[#F8F9FA] rounded-xl p-4">
+        <p className="text-[11px] text-[#8B95A1] mb-2">상세 내용</p>
+        <p className="text-[13px] leading-relaxed text-[#191F28] whitespace-pre-wrap">
           {report.description || "내용 없음"}
         </p>
       </div>
 
       {report.imageUrl && (
-        <div className="overflow-hidden rounded-xl border border-border">
-          <div className="bg-muted/40 px-3 py-2 flex items-center gap-2 border-b border-border">
-            <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-[11px] text-muted-foreground">첨부 사진</span>
+        <div className="overflow-hidden rounded-xl border border-[#F2F4F6]">
+          <div className="bg-[#F8F9FA] px-3 py-2 flex items-center gap-2 border-b border-[#F2F4F6]">
+            <ImageIcon className="h-3.5 w-3.5 text-[#8B95A1]" />
+            <span className="text-[11px] text-[#8B95A1]">첨부 사진</span>
           </div>
           <img
             src={report.imageUrl.startsWith("/api") ? report.imageUrl : `/api/storage${report.imageUrl}`}
@@ -83,9 +78,12 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
       )}
 
       <div className="pt-2 md:hidden">
-        <Button variant="outline" className="w-full" onClick={onClose}>
+        <button
+          onClick={onClose}
+          className="w-full bg-[#F2F4F6] text-[#191F28] font-semibold text-[14px] rounded-2xl py-3.5"
+        >
           닫기
-        </Button>
+        </button>
       </div>
     </div>
   );
@@ -94,7 +92,6 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
 interface QueryParams {
   page: number;
   pageSize: number;
-  defectType?: string;
   syncStatus?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -105,24 +102,23 @@ function StatCard({
   value,
   subtitle,
   icon: Icon,
-  color,
+  dot,
 }: {
   title: string;
   value: number;
   subtitle?: string;
   icon: React.ElementType;
-  color: string;
+  dot?: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-border p-5 shadow-sm">
+    <div className="bg-white rounded-2xl border border-[#F2F4F6] p-5">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm text-muted-foreground font-medium">{title}</span>
-        <div className={`p-2 rounded-xl ${color}`}>
-          <Icon className="h-4 w-4" />
-        </div>
+        <span className="text-[12px] text-[#8B95A1] font-medium">{title}</span>
+        {dot && <span className={`w-2 h-2 rounded-full ${dot}`}></span>}
+        {!dot && <Icon className="h-4 w-4 text-[#BEC5CC]" />}
       </div>
-      <div className="text-3xl font-bold tracking-tight">{value}</div>
-      {subtitle && <div className="text-xs text-muted-foreground mt-1">{subtitle}</div>}
+      <div className="text-[28px] font-bold text-[#191F28] tracking-tight">{value}</div>
+      {subtitle && <div className="text-[11px] text-[#8B95A1] mt-1">{subtitle}</div>}
     </div>
   );
 }
@@ -130,7 +126,6 @@ function StatCard({
 export default function AdminDashboard() {
   const isMobile = useIsMobile();
 
-  const [defectType, setDefectType] = useState<string>("all");
   const [syncStatus, setSyncStatus] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
@@ -141,12 +136,11 @@ export default function AdminDashboard() {
 
   const queryParams = useMemo<QueryParams>(() => {
     const p: QueryParams = { page, pageSize: 20 };
-    if (defectType !== "all") p.defectType = defectType;
     if (syncStatus !== "all") p.syncStatus = syncStatus;
     if (dateFrom) p.dateFrom = new Date(dateFrom).toISOString();
     if (dateTo) p.dateTo = new Date(dateTo + "T23:59:59").toISOString();
     return p;
-  }, [defectType, syncStatus, dateFrom, dateTo, page]);
+  }, [syncStatus, dateFrom, dateTo, page]);
 
   const { data: reportsData, isLoading: isLoadingReports } = useListReports(queryParams, {
     query: { queryKey: getListReportsQueryKey(queryParams), enabled: true },
@@ -155,95 +149,73 @@ export default function AdminDashboard() {
   const reports = reportsData?.data ?? [];
 
   const handleReset = () => {
-    setDefectType("all");
     setSyncStatus("all");
     setDateFrom("");
     setDateTo("");
     setPage(1);
   };
 
-  const hasFilters = defectType !== "all" || syncStatus !== "all" || dateFrom || dateTo;
+  const hasFilters = syncStatus !== "all" || dateFrom || dateTo;
 
   return (
     <Layout>
-      <div className="flex-1 p-4 md:p-6 space-y-5 max-w-[1400px] mx-auto pb-24">
+      <div className="max-w-[1400px] mx-auto px-5 py-5 space-y-5 pb-24">
 
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-1">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pt-1">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <BarChart3 className="h-6 w-6 text-primary" />
-              대시보드
-            </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">부적합 보고서 현황 및 관리</p>
+            <h1 className="text-[20px] font-bold text-[#191F28]">대시보드</h1>
+            <p className="text-[13px] text-[#8B95A1] mt-0.5">부적합 보고서 현황 및 관리</p>
           </div>
-          <p className="text-xs text-muted-foreground">{format(new Date(), "yyyy년 MM월 dd일 HH:mm")}</p>
+          <p className="text-[12px] text-[#8B95A1]">{format(new Date(), "yyyy년 MM월 dd일 HH:mm")}</p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard
             title="전체 보고서"
             value={stats?.total ?? 0}
             subtitle={`최근 7일 ${stats?.recentCount ?? 0}건`}
             icon={BarChart3}
-            color="bg-primary/10 text-primary"
           />
           <StatCard
             title="동기화 대기"
             value={stats?.bySyncStatus.find((s) => s.label === "PENDING")?.count ?? 0}
             icon={Clock}
-            color="bg-amber-100 text-amber-500"
+            dot="bg-amber-400"
           />
           <StatCard
             title="동기화 실패"
             value={stats?.bySyncStatus.find((s) => s.label === "FAILED")?.count ?? 0}
             icon={XCircle}
-            color="bg-red-100 text-red-500"
+            dot="bg-red-400"
           />
           <StatCard
             title="동기화 완료"
             value={stats?.bySyncStatus.find((s) => s.label === "COMPLETED")?.count ?? 0}
             icon={CheckCircle2}
-            color="bg-emerald-100 text-emerald-500"
+            dot="bg-emerald-400"
           />
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
-            <span className="text-sm font-semibold flex items-center gap-2 text-foreground">
-              <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
-              필터
-            </span>
+        <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-[#F2F4F6] flex items-center justify-between">
+            <span className="text-[13px] font-semibold text-[#191F28]">필터</span>
             {hasFilters && (
               <button
                 onClick={handleReset}
-                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                className="text-[12px] text-[#8B95A1] hover:text-[#191F28] flex items-center gap-1 transition-colors"
               >
                 <X className="w-3 h-3" /> 초기화
               </button>
             )}
           </div>
-          <div className="p-4 grid gap-3 grid-cols-2 md:grid-cols-4">
+          <div className="p-4 grid gap-3 grid-cols-2 md:grid-cols-3">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">불량 유형</Label>
-              <Select value={defectType} onValueChange={(val) => { setDefectType(val); setPage(1); }}>
-                <SelectTrigger className="h-9 rounded-lg text-sm bg-background">
-                  <SelectValue placeholder="전체" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="all">전체</SelectItem>
-                  {DEFECT_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">동기화 상태</Label>
+              <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">동기화 상태</p>
               <Select value={syncStatus} onValueChange={(val) => { setSyncStatus(val); setPage(1); }}>
-                <SelectTrigger className="h-9 rounded-lg text-sm bg-background">
+                <SelectTrigger className="h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 focus:ring-0">
                   <SelectValue placeholder="전체" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -255,19 +227,19 @@ export default function AdminDashboard() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">시작일</Label>
-              <Input
+              <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">시작일</p>
+              <input
                 type="date"
-                className="h-9 rounded-lg text-sm bg-background"
+                className="w-full h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 px-3 outline-none text-[#191F28]"
                 value={dateFrom}
                 onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">종료일</Label>
-              <Input
+              <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">종료일</p>
+              <input
                 type="date"
-                className="h-9 rounded-lg text-sm bg-background"
+                className="w-full h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 px-3 outline-none text-[#191F28]"
                 value={dateTo}
                 onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
               />
@@ -276,42 +248,42 @@ export default function AdminDashboard() {
         </div>
 
         {/* Data Table */}
-        <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
-            <span className="text-sm font-semibold text-foreground">보고서 목록</span>
+        <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-[#F2F4F6] flex items-center justify-between">
+            <span className="text-[13px] font-semibold text-[#191F28]">보고서 목록</span>
             {reportsData?.total !== undefined && (
-              <span className="text-xs text-muted-foreground">총 {reportsData.total}건</span>
+              <span className="text-[12px] text-[#8B95A1]">총 {reportsData.total}건</span>
             )}
           </div>
 
           {isLoadingReports ? (
-            <div className="h-56 flex flex-col items-center justify-center text-muted-foreground gap-3">
-              <RefreshCw className="h-5 w-5 animate-spin text-primary" />
-              <p className="text-sm">불러오는 중...</p>
+            <div className="h-56 flex flex-col items-center justify-center text-[#8B95A1] gap-3">
+              <RefreshCw className="h-5 w-5 animate-spin" />
+              <p className="text-[13px]">불러오는 중...</p>
             </div>
           ) : reports.length === 0 ? (
-            <div className="h-56 flex flex-col items-center justify-center text-muted-foreground gap-3">
-              <Search className="h-8 w-8 opacity-30" />
-              <p className="text-sm">조건에 맞는 보고서가 없습니다.</p>
+            <div className="h-56 flex flex-col items-center justify-center text-[#BEC5CC] gap-3">
+              <Search className="h-8 w-8 opacity-40" />
+              <p className="text-[13px]">조건에 맞는 보고서가 없습니다.</p>
             </div>
           ) : isMobile ? (
-            <div className="divide-y divide-border">
+            <div className="divide-y divide-[#F2F4F6]">
               {reports.map((report) => (
                 <div
                   key={report.id}
-                  className="p-4 cursor-pointer hover:bg-muted/30 transition-colors active:bg-muted/50"
+                  className="px-5 py-4 cursor-pointer active:bg-[#F8F9FA] transition-colors"
                   onClick={() => setSelectedReportId(report.id)}
                 >
-                  <div className="flex justify-between items-start mb-2">
+                  <div className="flex justify-between items-start mb-1.5">
                     <div>
-                      <span className="font-semibold text-foreground">{report.itemCode}</span>
-                      <span className="text-sm text-muted-foreground ml-2">{report.processName}</span>
+                      <span className="font-semibold text-[14px] text-[#191F28]">{report.itemCode}</span>
+                      <span className="text-[12px] text-[#8B95A1] ml-2">{report.processName}</span>
                     </div>
                     <StatusBadge status={report.syncStatus} />
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-destructive font-medium">{report.defectType}</span>
-                    <span className="text-xs text-muted-foreground">{format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}</span>
+                    <span className="text-[13px] font-medium text-[#191F28]">{report.defectType}</span>
+                    <span className="text-[11px] text-[#8B95A1]">{format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}</span>
                   </div>
                 </div>
               ))}
@@ -320,33 +292,29 @@ export default function AdminDashboard() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/30 hover:bg-muted/30">
-                    <TableHead className="h-10 text-xs font-semibold text-muted-foreground w-[160px]">접수 일시</TableHead>
-                    <TableHead className="text-xs font-semibold text-muted-foreground w-[120px]">품목코드</TableHead>
-                    <TableHead className="text-xs font-semibold text-muted-foreground">공정명</TableHead>
-                    <TableHead className="text-xs font-semibold text-muted-foreground">불량 유형</TableHead>
-                    <TableHead className="text-xs font-semibold text-muted-foreground text-center w-[120px]">상태</TableHead>
-                    <TableHead className="w-[80px]"></TableHead>
+                  <TableRow className="bg-[#F8F9FA] hover:bg-[#F8F9FA]">
+                    <TableHead className="h-10 text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[160px]">접수 일시</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[120px]">품목코드</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">공정명</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">불량 유형</TableHead>
+                    <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide text-center w-[120px]">상태</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {reports.map((report) => (
                     <TableRow
                       key={report.id}
-                      className="cursor-pointer hover:bg-muted/20 transition-colors"
+                      className="cursor-pointer hover:bg-[#F8F9FA] transition-colors border-[#F2F4F6]"
                       onClick={() => setSelectedReportId(report.id)}
                     >
-                      <TableCell className="text-xs text-muted-foreground">
+                      <TableCell className="text-[12px] text-[#8B95A1]">
                         {format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}
                       </TableCell>
-                      <TableCell className="font-semibold text-sm">{report.itemCode}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{report.processName}</TableCell>
-                      <TableCell className="text-sm font-medium text-destructive">{report.defectType}</TableCell>
+                      <TableCell className="font-semibold text-[13px] text-[#191F28]">{report.itemCode}</TableCell>
+                      <TableCell className="text-[13px] text-[#8B95A1]">{report.processName}</TableCell>
+                      <TableCell className="text-[13px] font-medium text-[#191F28]">{report.defectType}</TableCell>
                       <TableCell className="text-center">
                         <StatusBadge status={report.syncStatus} />
-                      </TableCell>
-                      <TableCell className="text-right pr-4">
-                        <span className="text-xs text-primary opacity-0 group-hover:opacity-100">보기</span>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -356,29 +324,25 @@ export default function AdminDashboard() {
           )}
 
           {reportsData && reportsData.total > reportsData.pageSize && (
-            <div className="border-t border-border px-4 py-3 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
+            <div className="border-t border-[#F2F4F6] px-5 py-3 flex items-center justify-between">
+              <span className="text-[12px] text-[#8B95A1]">
                 {page} / {Math.ceil(reportsData.total / reportsData.pageSize)} 페이지
               </span>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 p-0 rounded-lg"
+                <button
+                  className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center disabled:opacity-40"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 p-0 rounded-lg"
+                </button>
+                <button
+                  className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center disabled:opacity-40"
                   onClick={() => setPage((p) => p + 1)}
                   disabled={page >= Math.ceil(reportsData.total / reportsData.pageSize)}
                 >
                   <ChevronRight className="h-4 w-4" />
-                </Button>
+                </button>
               </div>
             </div>
           )}
@@ -387,11 +351,11 @@ export default function AdminDashboard() {
 
       {isMobile ? (
         <Drawer open={selectedReportId !== null} onOpenChange={(open) => !open && setSelectedReportId(null)}>
-          <DrawerContent className="bg-background rounded-t-3xl">
+          <DrawerContent className="bg-white rounded-t-3xl">
             <div className="mx-auto w-full max-w-sm px-5 pt-3 pb-10 max-h-[85vh] overflow-y-auto">
-              <div className="w-10 h-1 bg-border rounded-full mx-auto mb-4"></div>
+              <div className="w-10 h-1 bg-[#E5E8EB] rounded-full mx-auto mb-4"></div>
               <DrawerHeader className="px-0 text-left pb-3 mb-1">
-                <DrawerTitle className="font-bold text-lg">보고서 상세</DrawerTitle>
+                <DrawerTitle className="font-bold text-[17px] text-[#191F28]">보고서 상세</DrawerTitle>
               </DrawerHeader>
               {selectedReportId && <ReportDetail reportId={selectedReportId} onClose={() => setSelectedReportId(null)} />}
             </div>
@@ -399,9 +363,9 @@ export default function AdminDashboard() {
         </Drawer>
       ) : (
         <Sheet open={selectedReportId !== null} onOpenChange={(open) => !open && setSelectedReportId(null)}>
-          <SheetContent className="sm:max-w-md w-full overflow-y-auto bg-background border-l border-border shadow-xl">
-            <SheetHeader className="pb-4 mb-2 border-b border-border">
-              <SheetTitle className="font-bold text-lg">보고서 상세</SheetTitle>
+          <SheetContent className="sm:max-w-md w-full overflow-y-auto bg-white border-l border-[#F2F4F6]">
+            <SheetHeader className="pb-4 mb-2 border-b border-[#F2F4F6]">
+              <SheetTitle className="font-bold text-[17px] text-[#191F28]">보고서 상세</SheetTitle>
             </SheetHeader>
             {selectedReportId && <ReportDetail reportId={selectedReportId} onClose={() => setSelectedReportId(null)} />}
           </SheetContent>
