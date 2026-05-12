@@ -220,17 +220,6 @@ export default function AdminDashboard() {
 
         {/* Filters */}
         <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-[#F2F4F6] flex items-center justify-between">
-            <span className="text-[13px] font-semibold text-[#191F28]">필터</span>
-            {hasFilters && (
-              <button
-                onClick={handleReset}
-                className="text-[12px] text-[#8B95A1] hover:text-[#191F28] flex items-center gap-1 transition-colors"
-              >
-                <X className="w-3 h-3" /> 초기화
-              </button>
-            )}
-          </div>
           <div className="p-4 grid gap-3 grid-cols-1 md:grid-cols-3">
             <div className="space-y-1.5">
               <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">동기화 상태</p>
@@ -257,12 +246,22 @@ export default function AdminDashboard() {
             </div>
             <div className="space-y-1.5">
               <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">종료일</p>
-              <input
-                type="date"
-                className="w-full h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 px-3 outline-none text-[#191F28]"
-                value={dateTo}
-                onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  className="flex-1 h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 px-3 outline-none text-[#191F28]"
+                  value={dateTo}
+                  onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+                />
+                {hasFilters && (
+                  <button
+                    onClick={handleReset}
+                    className="h-9 px-3 rounded-xl text-[12px] text-[#8B95A1] bg-[#F2F4F6] hover:text-[#191F28] hover:bg-[#E5E8EB] flex items-center gap-1 transition-colors shrink-0"
+                  >
+                    <X className="w-3 h-3" /> 초기화
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
