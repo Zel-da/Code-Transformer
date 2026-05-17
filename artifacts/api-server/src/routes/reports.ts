@@ -10,7 +10,10 @@ import {
   UpdateReportBody,
   UpdateReportParams,
   DeleteReportParams,
+  SubmitQcActionBody,
+  SubmitQcActionParams,
 } from "@workspace/api-zod";
+import { requireAdmin, requireAuth } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
 
@@ -67,10 +70,15 @@ router.post("/reports", async (req, res): Promise<void> => {
   }
 
   const d = parsed.data;
+
+  // SLA 마감: 접수 시각 + 24시간
+  const reportDate = d.reportDate ? new Date(d.reportDate) : new Date();
+  const slaDeadlineAt = new Date(reportDate.getTime() + 24 * 60 * 60 * 1000);
+
   const [report] = await db
     .insert(nonConformityReportsTable)
     .values({
-      reportDate: d.reportDate ?? new Date(),
+      reportDate,
       itemCode: d.itemCode,
       processName: d.processName,
       defectType: d.defectType,
@@ -90,10 +98,12 @@ router.post("/reports", async (req, res): Promise<void> => {
       flawTypeCd: d.flawTypeCd ?? null,
       deptCd: d.deptCd ?? null,
       ncrGbnCd: d.ncrGbnCd ?? null,
+      productType: (d.productType as "양산" | "개발" | undefined) ?? null,
+      slaDeadlineAt,
     })
     .returning();
 
-  req.log.info({ reportId: report.id }, "Non-conformity report created");
+  req.log.info({ reportId: report.id, productType: report.productType }, "Non-conformity report created");
   res.status(201).json(report);
 });
 
@@ -126,6 +136,23 @@ router.get("/reports/stats", async (_req, res): Promise<void> => {
     .from(nonConformityReportsTable)
     .groupBy(nonConformityReportsTable.syncStatus);
 
+  // V2.0: Lock 건수
+  const [lockedResult] = await db
+    .select({ count: count() })
+    .from(nonConformityReportsTable)
+    .where(eq(nonConformityReportsTable.isLocked, true));
+
+  // V2.0: 개발품 중 QC 조치 미완료 건수
+  const [pendingLabResult] = await db
+    .select({ count: count() })
+    .from(nonConformityReportsTable)
+    .where(
+      and(
+        eq(nonConformityReportsTable.productType, "개발"),
+        sql`${nonConformityReportsTable.qcAction} IS NULL`,
+      ),
+    );
+
   res.json({
     total: Number(totalResult?.count ?? 0),
     recentCount: Number(recentResult?.count ?? 0),
@@ -137,6 +164,8 @@ router.get("/reports/stats", async (_req, res): Promise<void> => {
       label: r.label,
       count: Number(r.count),
     })),
+    lockedCount: Number(lockedResult?.count ?? 0),
+    pendingLabCount: Number(pendingLabResult?.count ?? 0),
   });
 });
 
@@ -203,7 +232,46 @@ router.patch("/reports/:id/sync-status", async (req, res): Promise<void> => {
   res.json(report);
 });
 
-router.put("/reports/:id", async (req, res): Promise<void> => {
+// V2.0: QC 조치 결과 확정 (admin 전용)
+router.post("/reports/:id/qc-action", requireAdmin, async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const params = SubmitQcActionParams.safeParse({ id: raw });
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const body = SubmitQcActionBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [existing] = await db
+    .select({ id: nonConformityReportsTable.id })
+    .from(nonConformityReportsTable)
+    .where(eq(nonConformityReportsTable.id, params.data.id));
+
+  if (!existing) {
+    res.status(404).json({ error: "Report not found" });
+    return;
+  }
+
+  const [report] = await db
+    .update(nonConformityReportsTable)
+    .set({
+      qcAction: body.data.qcAction,
+      qcActionAt: new Date(),
+      qcActionedBy: req.auth!.userId,
+    })
+    .where(eq(nonConformityReportsTable.id, params.data.id))
+    .returning();
+
+  req.log.info({ reportId: report.id, qcAction: report.qcAction, by: req.auth!.userId }, "QC action submitted");
+  res.json(report);
+});
+
+router.put("/reports/:id", requireAuth, async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = UpdateReportParams.safeParse({ id: raw });
   if (!params.success) {
@@ -214,6 +282,22 @@ router.put("/reports/:id", async (req, res): Promise<void> => {
   const body = UpdateReportBody.safeParse(req.body);
   if (!body.success) {
     res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  // V2.0: Lock 가드 — isLocked=true인 보고서는 수정 불가
+  const [existing] = await db
+    .select({ id: nonConformityReportsTable.id, isLocked: nonConformityReportsTable.isLocked })
+    .from(nonConformityReportsTable)
+    .where(eq(nonConformityReportsTable.id, params.data.id));
+
+  if (!existing) {
+    res.status(404).json({ error: "Report not found" });
+    return;
+  }
+
+  if (existing.isLocked) {
+    res.status(403).json({ error: "보고서가 잠금 상태입니다. SLA가 초과되어 수정이 제한됩니다." });
     return;
   }
 
@@ -242,11 +326,6 @@ router.put("/reports/:id", async (req, res): Promise<void> => {
     .set(updates)
     .where(eq(nonConformityReportsTable.id, params.data.id))
     .returning();
-
-  if (!report) {
-    res.status(404).json({ error: "Report not found" });
-    return;
-  }
 
   req.log.info({ reportId: report.id }, "Report updated");
   res.json(report);

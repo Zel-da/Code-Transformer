@@ -39,6 +39,17 @@ paths:
       tags: [items]
       summary: List ERP item codes
       description: Returns all available ERP item codes for use in report forms
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
       responses:
         "200":
           description: List of item codes
@@ -181,6 +192,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Report is locked (SLA expired)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
         "404":
           description: Report not found
           content:
@@ -257,6 +274,50 @@ paths:
                 $ref: "#/components/schemas/Report"
         "400":
           description: Invalid status value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /reports/{id}/qc-action:
+    post:
+      operationId: submitQcAction
+      tags: [reports]
+      summary: QC 조치 결과 확정 (admin 전용)
+      description: QC 담당자가 현장 확인 후 최종 조치 결과를 확정한다. 보고서가 isLocked인 경우에도 조치 가능.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QcActionBody"
+      responses:
+        "200":
+          description: QC action recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Admin role required
           content:
             application/json:
               schema:
@@ -368,6 +429,122 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
 
+  /master/plants:
+    get:
+      operationId: listPlants
+      tags: [items]
+      summary: List plants
+      responses:
+        "200":
+          description: List of plants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlantItem"
+
+  /master/processes:
+    get:
+      operationId: listProcesses
+      tags: [items]
+      summary: List processes
+      parameters:
+        - name: plantCd
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of processes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProcessItem"
+
+  /master/flaw-types:
+    get:
+      operationId: listFlawTypes
+      tags: [items]
+      summary: List flaw types
+      responses:
+        "200":
+          description: List of flaw types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FlawTypeItem"
+
+  /master/departments:
+    get:
+      operationId: listDepartments
+      tags: [items]
+      summary: List departments
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of departments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DepartmentItem"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [health]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [health]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
 components:
   schemas:
     HealthStatus:
@@ -395,6 +572,62 @@ components:
         - name
         - category
 
+    PlantItem:
+      type: object
+      properties:
+        plantCd:
+          type: string
+        plantNm:
+          type: string
+      required:
+        - plantCd
+        - plantNm
+
+    ProcessItem:
+      type: object
+      properties:
+        plantCd:
+          type: string
+        processCd:
+          type: string
+        processNm:
+          type: string
+        laborCost:
+          type: number
+      required:
+        - plantCd
+        - processCd
+        - processNm
+        - laborCost
+
+    FlawTypeItem:
+      type: object
+      properties:
+        typeCd:
+          type: string
+        typeNm:
+          type: string
+        sortIndex:
+          type: integer
+      required:
+        - typeCd
+        - typeNm
+        - sortIndex
+
+    DepartmentItem:
+      type: object
+      properties:
+        deptCd:
+          type: string
+        deptName:
+          type: string
+        isFrequent:
+          type: boolean
+      required:
+        - deptCd
+        - deptName
+        - isFrequent
+
     Report:
       type: object
       properties:
@@ -416,6 +649,57 @@ components:
         syncStatus:
           type: string
           enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+        registrantName:
+          type: ["string", "null"]
+        ncrType:
+          type: ["string", "null"]
+        factory:
+          type: ["string", "null"]
+        shipmentUnit:
+          type: ["string", "null"]
+        lostManHours:
+          type: ["number", "null"]
+        defectQty:
+          type: ["integer", "null"]
+        occurrenceDate:
+          type: ["string", "null"]
+          format: date-time
+        issuingTeam:
+          type: ["string", "null"]
+        plantCd:
+          type: ["string", "null"]
+        processCd:
+          type: ["string", "null"]
+        flawTypeCd:
+          type: ["string", "null"]
+        deptCd:
+          type: ["string", "null"]
+        ncrGbnCd:
+          type: ["string", "null"]
+        productType:
+          type: ["string", "null"]
+          description: "양산 or 개발"
+        labNotifiedAt:
+          type: ["string", "null"]
+          format: date-time
+        ssushanTalkSentAt:
+          type: ["string", "null"]
+          format: date-time
+        slaDeadlineAt:
+          type: ["string", "null"]
+          format: date-time
+        isLocked:
+          type: boolean
+          description: "SLA 초과 시 true로 설정, 수정 불가"
+        qcAction:
+          type: ["string", "null"]
+          description: "QC 최종 조치 결과"
+        qcActionAt:
+          type: ["string", "null"]
+          format: date-time
+        qcActionedBy:
+          type: ["integer", "null"]
+          description: "QC 조치 담당자 userId"
         createdAt:
           type: string
           format: date-time
@@ -431,6 +715,7 @@ components:
         - description
         - imageUrl
         - syncStatus
+        - isLocked
         - createdAt
         - updatedAt
 
@@ -469,6 +754,36 @@ components:
           type: string
         imageUrl:
           type: ["string", "null"]
+        registrantName:
+          type: ["string", "null"]
+        ncrType:
+          type: ["string", "null"]
+        factory:
+          type: ["string", "null"]
+        shipmentUnit:
+          type: ["string", "null"]
+        lostManHours:
+          type: ["number", "null"]
+        defectQty:
+          type: ["integer", "null"]
+        occurrenceDate:
+          type: ["string", "null"]
+          format: date-time
+        issuingTeam:
+          type: ["string", "null"]
+        plantCd:
+          type: ["string", "null"]
+        processCd:
+          type: ["string", "null"]
+        flawTypeCd:
+          type: ["string", "null"]
+        deptCd:
+          type: ["string", "null"]
+        ncrGbnCd:
+          type: ["string", "null"]
+        productType:
+          type: string
+          description: "양산 or 개발"
       required:
         - itemCode
         - processName
@@ -489,6 +804,42 @@ components:
         syncStatus:
           type: string
           enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+        registrantName:
+          type: ["string", "null"]
+        ncrType:
+          type: ["string", "null"]
+        factory:
+          type: ["string", "null"]
+        shipmentUnit:
+          type: ["string", "null"]
+        lostManHours:
+          type: ["number", "null"]
+        defectQty:
+          type: ["integer", "null"]
+        occurrenceDate:
+          type: ["string", "null"]
+          format: date-time
+        issuingTeam:
+          type: ["string", "null"]
+        plantCd:
+          type: ["string", "null"]
+        processCd:
+          type: ["string", "null"]
+        flawTypeCd:
+          type: ["string", "null"]
+        deptCd:
+          type: ["string", "null"]
+        ncrGbnCd:
+          type: ["string", "null"]
+
+    QcActionBody:
+      type: object
+      properties:
+        qcAction:
+          type: string
+          description: "QC 조치 결과 (반출/수정/기타 + 상세 내용)"
+      required:
+        - qcAction
 
     RpaRunResult:
       type: object
@@ -534,11 +885,19 @@ components:
         recentCount:
           type: integer
           description: Number of reports in the last 7 days
+        lockedCount:
+          type: integer
+          description: Number of reports with isLocked=true (SLA expired)
+        pendingLabCount:
+          type: integer
+          description: Number of development-type reports awaiting lab review
       required:
         - total
         - byDefectType
         - bySyncStatus
         - recentCount
+        - lockedCount
+        - pendingLabCount
 
     StatCount:
       type: object
@@ -583,3 +942,53 @@ components:
       properties:
         error:
           type: string
+
+    LoginBody:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/UserProfile"
+      required:
+        - token
+        - user
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+          enum: [admin, worker]
+        deptCd:
+          type: ["string", "null"]
+        factory:
+          type: ["string", "null"]
+        plantCd:
+          type: ["string", "null"]
+        processName:
+          type: ["string", "null"]
+        processCd:
+          type: ["string", "null"]
+      required:
+        - id
+        - username
+        - displayName
+        - role

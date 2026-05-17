@@ -16,54 +16,14 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
- * Master data schemas
- */
-export const PlantItem = zod.object({
-  plantCd: zod.string(),
-  plantNm: zod.string(),
-});
-export const ListPlantsResponse = zod.array(PlantItem);
-
-export const FlawTypeItem = zod.object({
-  typeCd: zod.string(),
-  typeNm: zod.string(),
-  sortIndex: zod.number(),
-});
-export const ListFlawTypesResponse = zod.array(FlawTypeItem);
-
-export const ProcessItem = zod.object({
-  plantCd: zod.string(),
-  processCd: zod.string(),
-  processNm: zod.string(),
-  laborCost: zod.number(),
-});
-export const ListProcessesQueryParams = zod.object({
-  plantCd: zod.string().optional(),
-});
-export const ListProcessesResponse = zod.array(ProcessItem);
-
-export const DispositionItem = zod.object({
-  dispositionCd: zod.string(),
-  dispositionNm: zod.string(),
-  inspClassCd: zod.string(),
-  stockType: zod.string(),
-});
-export const ListDispositionsResponse = zod.array(DispositionItem);
-
-export const DepartmentItem = zod.object({
-  deptCd: zod.string(),
-  deptName: zod.string(),
-  isFrequent: zod.boolean(),
-});
-export const ListDepartmentsQueryParams = zod.object({
-  search: zod.string().optional(),
-});
-export const ListDepartmentsResponse = zod.array(DepartmentItem);
-
-/**
  * Returns all available ERP item codes for use in report forms
  * @summary List ERP item codes
  */
+export const ListItemsQueryParams = zod.object({
+  search: zod.coerce.string().optional(),
+  limit: zod.coerce.number().optional(),
+});
+
 export const ListItemsResponseItem = zod.object({
   id: zod.number(),
   code: zod.string(),
@@ -81,41 +41,49 @@ export const listReportsQueryPageSizeDefault = 20;
 
 export const ListReportsQueryParams = zod.object({
   defectType: zod.coerce.string().optional(),
-  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]).optional(),
-  dateFrom: zod.coerce.date().optional(),
-  dateTo: zod.coerce.date().optional(),
+  syncStatus: zod.coerce.string().optional(),
+  dateFrom: zod.date().optional(),
+  dateTo: zod.date().optional(),
   page: zod.coerce.number().default(listReportsQueryPageDefault),
   pageSize: zod.coerce.number().default(listReportsQueryPageSizeDefault),
 });
 
-const ReportShape = {
-  id: zod.number(),
-  reportDate: zod.coerce.date(),
-  itemCode: zod.string(),
-  processName: zod.string(),
-  defectType: zod.string(),
-  description: zod.string(),
-  imageUrl: zod.string().nullable(),
-  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
-  registrantName: zod.string().nullable(),
-  ncrType: zod.string().nullable(),
-  factory: zod.string().nullable(),
-  shipmentUnit: zod.string().nullable(),
-  lostManHours: zod.number().nullable(),
-  defectQty: zod.number().nullable(),
-  occurrenceDate: zod.coerce.date().nullable(),
-  issuingTeam: zod.string().nullable(),
-  plantCd: zod.string().nullable(),
-  processCd: zod.string().nullable(),
-  flawTypeCd: zod.string().nullable(),
-  deptCd: zod.string().nullable(),
-  ncrGbnCd: zod.string().nullable(),
-  createdAt: zod.coerce.date(),
-  updatedAt: zod.coerce.date(),
-};
-
 export const ListReportsResponse = zod.object({
-  data: zod.array(zod.object(ReportShape)),
+  data: zod.array(
+    zod.object({
+      id: zod.number(),
+      reportDate: zod.coerce.date(),
+      itemCode: zod.string(),
+      processName: zod.string(),
+      defectType: zod.string(),
+      description: zod.string(),
+      imageUrl: zod.string().nullable(),
+      syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+      registrantName: zod.string().nullish(),
+      ncrType: zod.string().nullish(),
+      factory: zod.string().nullish(),
+      shipmentUnit: zod.string().nullish(),
+      lostManHours: zod.number().nullish(),
+      defectQty: zod.number().nullish(),
+      occurrenceDate: zod.coerce.date().nullish(),
+      issuingTeam: zod.string().nullish(),
+      plantCd: zod.string().nullish(),
+      processCd: zod.string().nullish(),
+      flawTypeCd: zod.string().nullish(),
+      deptCd: zod.string().nullish(),
+      ncrGbnCd: zod.string().nullish(),
+      productType: zod.string().nullish().describe("양산 or 개발"),
+      labNotifiedAt: zod.coerce.date().nullish(),
+      ssushanTalkSentAt: zod.coerce.date().nullish(),
+      slaDeadlineAt: zod.coerce.date().nullish(),
+      isLocked: zod.boolean().describe("SLA 초과 시 true로 설정, 수정 불가"),
+      qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
+      qcActionAt: zod.coerce.date().nullish(),
+      qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
   total: zod.number(),
   page: zod.number(),
   pageSize: zod.number(),
@@ -135,8 +103,8 @@ export const CreateReportBody = zod.object({
   ncrType: zod.string().nullish(),
   factory: zod.string().nullish(),
   shipmentUnit: zod.string().nullish(),
-  lostManHours: zod.coerce.number().nullish(),
-  defectQty: zod.coerce.number().int().nullish(),
+  lostManHours: zod.number().nullish(),
+  defectQty: zod.number().nullish(),
   occurrenceDate: zod.coerce.date().nullish(),
   issuingTeam: zod.string().nullish(),
   plantCd: zod.string().nullish(),
@@ -144,6 +112,7 @@ export const CreateReportBody = zod.object({
   flawTypeCd: zod.string().nullish(),
   deptCd: zod.string().nullish(),
   ncrGbnCd: zod.string().nullish(),
+  productType: zod.string().optional().describe("양산 or 개발"),
 });
 
 /**
@@ -165,14 +134,125 @@ export const GetReportStatsResponse = zod.object({
     }),
   ),
   recentCount: zod.number().describe("Number of reports in the last 7 days"),
+  lockedCount: zod
+    .number()
+    .describe("Number of reports with isLocked=true (SLA expired)"),
+  pendingLabCount: zod
+    .number()
+    .describe("Number of development-type reports awaiting lab review"),
 });
 
 /**
  * Returns all reports with PENDING sync status for the RPA bot to process
  * @summary List PENDING reports for RPA bot
  */
-export const ListPendingReportsResponseItem = zod.object(ReportShape);
-export const ListPendingReportsResponse = zod.array(ListPendingReportsResponseItem);
+export const ListPendingReportsResponseItem = zod.object({
+  id: zod.number(),
+  reportDate: zod.coerce.date(),
+  itemCode: zod.string(),
+  processName: zod.string(),
+  defectType: zod.string(),
+  description: zod.string(),
+  imageUrl: zod.string().nullable(),
+  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+  registrantName: zod.string().nullish(),
+  ncrType: zod.string().nullish(),
+  factory: zod.string().nullish(),
+  shipmentUnit: zod.string().nullish(),
+  lostManHours: zod.number().nullish(),
+  defectQty: zod.number().nullish(),
+  occurrenceDate: zod.coerce.date().nullish(),
+  issuingTeam: zod.string().nullish(),
+  plantCd: zod.string().nullish(),
+  processCd: zod.string().nullish(),
+  flawTypeCd: zod.string().nullish(),
+  deptCd: zod.string().nullish(),
+  ncrGbnCd: zod.string().nullish(),
+  productType: zod.string().nullish().describe("양산 or 개발"),
+  labNotifiedAt: zod.coerce.date().nullish(),
+  ssushanTalkSentAt: zod.coerce.date().nullish(),
+  slaDeadlineAt: zod.coerce.date().nullish(),
+  isLocked: zod.boolean().describe("SLA 초과 시 true로 설정, 수정 불가"),
+  qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
+  qcActionAt: zod.coerce.date().nullish(),
+  qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListPendingReportsResponse = zod.array(
+  ListPendingReportsResponseItem,
+);
+
+/**
+ * @summary Update a non-conformity report
+ */
+export const UpdateReportParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateReportBody = zod.object({
+  itemCode: zod.string().optional(),
+  processName: zod.string().optional(),
+  defectType: zod.string().optional(),
+  description: zod.string().optional(),
+  syncStatus: zod
+    .enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"])
+    .optional(),
+  registrantName: zod.string().nullish(),
+  ncrType: zod.string().nullish(),
+  factory: zod.string().nullish(),
+  shipmentUnit: zod.string().nullish(),
+  lostManHours: zod.number().nullish(),
+  defectQty: zod.number().nullish(),
+  occurrenceDate: zod.coerce.date().nullish(),
+  issuingTeam: zod.string().nullish(),
+  plantCd: zod.string().nullish(),
+  processCd: zod.string().nullish(),
+  flawTypeCd: zod.string().nullish(),
+  deptCd: zod.string().nullish(),
+  ncrGbnCd: zod.string().nullish(),
+});
+
+export const UpdateReportResponse = zod.object({
+  id: zod.number(),
+  reportDate: zod.coerce.date(),
+  itemCode: zod.string(),
+  processName: zod.string(),
+  defectType: zod.string(),
+  description: zod.string(),
+  imageUrl: zod.string().nullable(),
+  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+  registrantName: zod.string().nullish(),
+  ncrType: zod.string().nullish(),
+  factory: zod.string().nullish(),
+  shipmentUnit: zod.string().nullish(),
+  lostManHours: zod.number().nullish(),
+  defectQty: zod.number().nullish(),
+  occurrenceDate: zod.coerce.date().nullish(),
+  issuingTeam: zod.string().nullish(),
+  plantCd: zod.string().nullish(),
+  processCd: zod.string().nullish(),
+  flawTypeCd: zod.string().nullish(),
+  deptCd: zod.string().nullish(),
+  ncrGbnCd: zod.string().nullish(),
+  productType: zod.string().nullish().describe("양산 or 개발"),
+  labNotifiedAt: zod.coerce.date().nullish(),
+  ssushanTalkSentAt: zod.coerce.date().nullish(),
+  slaDeadlineAt: zod.coerce.date().nullish(),
+  isLocked: zod.boolean().describe("SLA 초과 시 true로 설정, 수정 불가"),
+  qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
+  qcActionAt: zod.coerce.date().nullish(),
+  qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a non-conformity report
+ */
+export const DeleteReportParams = zod.object({
+  id: zod.coerce.number(),
+});
 
 /**
  * @summary Get a single report
@@ -181,7 +261,39 @@ export const GetReportParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetReportResponse = zod.object(ReportShape);
+export const GetReportResponse = zod.object({
+  id: zod.number(),
+  reportDate: zod.coerce.date(),
+  itemCode: zod.string(),
+  processName: zod.string(),
+  defectType: zod.string(),
+  description: zod.string(),
+  imageUrl: zod.string().nullable(),
+  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+  registrantName: zod.string().nullish(),
+  ncrType: zod.string().nullish(),
+  factory: zod.string().nullish(),
+  shipmentUnit: zod.string().nullish(),
+  lostManHours: zod.number().nullish(),
+  defectQty: zod.number().nullish(),
+  occurrenceDate: zod.coerce.date().nullish(),
+  issuingTeam: zod.string().nullish(),
+  plantCd: zod.string().nullish(),
+  processCd: zod.string().nullish(),
+  flawTypeCd: zod.string().nullish(),
+  deptCd: zod.string().nullish(),
+  ncrGbnCd: zod.string().nullish(),
+  productType: zod.string().nullish().describe("양산 or 개발"),
+  labNotifiedAt: zod.coerce.date().nullish(),
+  ssushanTalkSentAt: zod.coerce.date().nullish(),
+  slaDeadlineAt: zod.coerce.date().nullish(),
+  isLocked: zod.boolean().describe("SLA 초과 시 true로 설정, 수정 불가"),
+  qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
+  qcActionAt: zod.coerce.date().nullish(),
+  qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
 
 /**
  * Used by the RPA bot to update the sync status after processing
@@ -195,7 +307,132 @@ export const UpdateReportSyncStatusBody = zod.object({
   syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
 });
 
-export const UpdateReportSyncStatusResponse = zod.object(ReportShape);
+export const UpdateReportSyncStatusResponse = zod.object({
+  id: zod.number(),
+  reportDate: zod.coerce.date(),
+  itemCode: zod.string(),
+  processName: zod.string(),
+  defectType: zod.string(),
+  description: zod.string(),
+  imageUrl: zod.string().nullable(),
+  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+  registrantName: zod.string().nullish(),
+  ncrType: zod.string().nullish(),
+  factory: zod.string().nullish(),
+  shipmentUnit: zod.string().nullish(),
+  lostManHours: zod.number().nullish(),
+  defectQty: zod.number().nullish(),
+  occurrenceDate: zod.coerce.date().nullish(),
+  issuingTeam: zod.string().nullish(),
+  plantCd: zod.string().nullish(),
+  processCd: zod.string().nullish(),
+  flawTypeCd: zod.string().nullish(),
+  deptCd: zod.string().nullish(),
+  ncrGbnCd: zod.string().nullish(),
+  productType: zod.string().nullish().describe("양산 or 개발"),
+  labNotifiedAt: zod.coerce.date().nullish(),
+  ssushanTalkSentAt: zod.coerce.date().nullish(),
+  slaDeadlineAt: zod.coerce.date().nullish(),
+  isLocked: zod.boolean().describe("SLA 초과 시 true로 설정, 수정 불가"),
+  qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
+  qcActionAt: zod.coerce.date().nullish(),
+  qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * QC 담당자가 현장 확인 후 최종 조치 결과를 확정한다. 보고서가 isLocked인 경우에도 조치 가능.
+ * @summary QC 조치 결과 확정 (admin 전용)
+ */
+export const SubmitQcActionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SubmitQcActionBody = zod.object({
+  qcAction: zod
+    .string()
+    .describe("QC 조치 결과 (반출\/수정\/기타 + 상세 내용)"),
+});
+
+export const SubmitQcActionResponse = zod.object({
+  id: zod.number(),
+  reportDate: zod.coerce.date(),
+  itemCode: zod.string(),
+  processName: zod.string(),
+  defectType: zod.string(),
+  description: zod.string(),
+  imageUrl: zod.string().nullable(),
+  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+  registrantName: zod.string().nullish(),
+  ncrType: zod.string().nullish(),
+  factory: zod.string().nullish(),
+  shipmentUnit: zod.string().nullish(),
+  lostManHours: zod.number().nullish(),
+  defectQty: zod.number().nullish(),
+  occurrenceDate: zod.coerce.date().nullish(),
+  issuingTeam: zod.string().nullish(),
+  plantCd: zod.string().nullish(),
+  processCd: zod.string().nullish(),
+  flawTypeCd: zod.string().nullish(),
+  deptCd: zod.string().nullish(),
+  ncrGbnCd: zod.string().nullish(),
+  productType: zod.string().nullish().describe("양산 or 개발"),
+  labNotifiedAt: zod.coerce.date().nullish(),
+  ssushanTalkSentAt: zod.coerce.date().nullish(),
+  slaDeadlineAt: zod.coerce.date().nullish(),
+  isLocked: zod.boolean().describe("SLA 초과 시 true로 설정, 수정 불가"),
+  qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
+  qcActionAt: zod.coerce.date().nullish(),
+  qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * Simulates RPA bot execution - processes all PENDING reports and marks them COMPLETED or FAILED
+ * @summary Trigger RPA processing on all PENDING reports
+ */
+export const TriggerRpaResponse = zod.object({
+  processed: zod.number(),
+  completed: zod.number(),
+  failed: zod.number(),
+  reports: zod.array(
+    zod.object({
+      id: zod.number(),
+      reportDate: zod.coerce.date(),
+      itemCode: zod.string(),
+      processName: zod.string(),
+      defectType: zod.string(),
+      description: zod.string(),
+      imageUrl: zod.string().nullable(),
+      syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+      registrantName: zod.string().nullish(),
+      ncrType: zod.string().nullish(),
+      factory: zod.string().nullish(),
+      shipmentUnit: zod.string().nullish(),
+      lostManHours: zod.number().nullish(),
+      defectQty: zod.number().nullish(),
+      occurrenceDate: zod.coerce.date().nullish(),
+      issuingTeam: zod.string().nullish(),
+      plantCd: zod.string().nullish(),
+      processCd: zod.string().nullish(),
+      flawTypeCd: zod.string().nullish(),
+      deptCd: zod.string().nullish(),
+      ncrGbnCd: zod.string().nullish(),
+      productType: zod.string().nullish().describe("양산 or 개발"),
+      labNotifiedAt: zod.coerce.date().nullish(),
+      ssushanTalkSentAt: zod.coerce.date().nullish(),
+      slaDeadlineAt: zod.coerce.date().nullish(),
+      isLocked: zod.boolean().describe("SLA 초과 시 true로 설정, 수정 불가"),
+      qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
+      qcActionAt: zod.coerce.date().nullish(),
+      qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+});
 
 /**
  * Returns a presigned GCS URL for direct upload. The client sends JSON
@@ -223,53 +460,6 @@ export const RequestUploadUrlResponse = zod.object({
 });
 
 /**
- * @summary Update a non-conformity report
- */
-export const UpdateReportParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const UpdateReportBody = zod.object({
-  itemCode: zod.string().optional(),
-  processName: zod.string().optional(),
-  defectType: zod.string().optional(),
-  description: zod.string().optional(),
-  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]).optional(),
-  registrantName: zod.string().nullish(),
-  ncrType: zod.string().nullish(),
-  factory: zod.string().nullish(),
-  shipmentUnit: zod.string().nullish(),
-  lostManHours: zod.coerce.number().nullish(),
-  defectQty: zod.coerce.number().int().nullish(),
-  occurrenceDate: zod.coerce.date().nullish(),
-  issuingTeam: zod.string().nullish(),
-  plantCd: zod.string().nullish(),
-  processCd: zod.string().nullish(),
-  flawTypeCd: zod.string().nullish(),
-  deptCd: zod.string().nullish(),
-  ncrGbnCd: zod.string().nullish(),
-});
-
-export const UpdateReportResponse = zod.object(ReportShape);
-
-/**
- * @summary Delete a non-conformity report
- */
-export const DeleteReportParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-/**
- * @summary Trigger RPA processing on all PENDING reports
- */
-export const TriggerRpaResponse = zod.object({
-  processed: zod.number(),
-  completed: zod.number(),
-  failed: zod.number(),
-  reports: zod.array(zod.object(ReportShape)),
-});
-
-/**
  * @summary Serve a public asset from PUBLIC_OBJECT_SEARCH_PATHS
  */
 export const GetPublicObjectParams = zod.object({
@@ -281,4 +471,90 @@ export const GetPublicObjectParams = zod.object({
  */
 export const GetStorageObjectParams = zod.object({
   objectPath: zod.coerce.string(),
+});
+
+/**
+ * @summary List plants
+ */
+export const ListPlantsResponseItem = zod.object({
+  plantCd: zod.string(),
+  plantNm: zod.string(),
+});
+export const ListPlantsResponse = zod.array(ListPlantsResponseItem);
+
+/**
+ * @summary List processes
+ */
+export const ListProcessesQueryParams = zod.object({
+  plantCd: zod.coerce.string().optional(),
+});
+
+export const ListProcessesResponseItem = zod.object({
+  plantCd: zod.string(),
+  processCd: zod.string(),
+  processNm: zod.string(),
+  laborCost: zod.number(),
+});
+export const ListProcessesResponse = zod.array(ListProcessesResponseItem);
+
+/**
+ * @summary List flaw types
+ */
+export const ListFlawTypesResponseItem = zod.object({
+  typeCd: zod.string(),
+  typeNm: zod.string(),
+  sortIndex: zod.number(),
+});
+export const ListFlawTypesResponse = zod.array(ListFlawTypesResponseItem);
+
+/**
+ * @summary List departments
+ */
+export const ListDepartmentsQueryParams = zod.object({
+  search: zod.coerce.string().optional(),
+});
+
+export const ListDepartmentsResponseItem = zod.object({
+  deptCd: zod.string(),
+  deptName: zod.string(),
+  isFrequent: zod.boolean(),
+});
+export const ListDepartmentsResponse = zod.array(ListDepartmentsResponseItem);
+
+/**
+ * @summary Login
+ */
+export const LoginBody = zod.object({
+  username: zod.string(),
+  password: zod.string(),
+});
+
+export const LoginResponse = zod.object({
+  token: zod.string(),
+  user: zod.object({
+    id: zod.number(),
+    username: zod.string(),
+    displayName: zod.string(),
+    role: zod.enum(["admin", "worker"]),
+    deptCd: zod.string().nullish(),
+    factory: zod.string().nullish(),
+    plantCd: zod.string().nullish(),
+    processName: zod.string().nullish(),
+    processCd: zod.string().nullish(),
+  }),
+});
+
+/**
+ * @summary Get current user
+ */
+export const GetMeResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  displayName: zod.string(),
+  role: zod.enum(["admin", "worker"]),
+  deptCd: zod.string().nullish(),
+  factory: zod.string().nullish(),
+  plantCd: zod.string().nullish(),
+  processName: zod.string().nullish(),
+  processCd: zod.string().nullish(),
 });

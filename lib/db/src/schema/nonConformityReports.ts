@@ -110,6 +110,15 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
   flawTypeCd: text("flaw_type_cd"),
   deptCd: text("dept_cd"),
   ncrGbnCd: text("ncr_gbn_cd"),
+  // V2.0 columns
+  productType: text("product_type").$type<"양산" | "개발">(),
+  labNotifiedAt: timestamp("lab_notified_at", { withTimezone: true }),
+  ssushanTalkSentAt: timestamp("ssushan_talk_sent_at", { withTimezone: true }),
+  slaDeadlineAt: timestamp("sla_deadline_at", { withTimezone: true }),
+  isLocked: boolean("is_locked").notNull().default(false),
+  qcAction: text("qc_action"),
+  qcActionAt: timestamp("qc_action_at", { withTimezone: true }),
+  qcActionedBy: integer("qc_actioned_by"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()

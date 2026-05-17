@@ -16,44 +16,29 @@ export interface Item {
   category: string;
 }
 
-export interface Plant {
+export interface PlantItem {
   plantCd: string;
   plantNm: string;
 }
 
-export interface FlawType {
-  typeCd: string;
-  typeNm: string;
-  sortIndex: number;
-}
-
-export interface Process {
+export interface ProcessItem {
   plantCd: string;
   processCd: string;
   processNm: string;
   laborCost: number;
 }
 
-export interface Disposition {
-  dispositionCd: string;
-  dispositionNm: string;
-  inspClassCd: string;
-  stockType: string;
+export interface FlawTypeItem {
+  typeCd: string;
+  typeNm: string;
+  sortIndex: number;
 }
 
-export interface Department {
+export interface DepartmentItem {
   deptCd: string;
   deptName: string;
   isFrequent: boolean;
 }
-
-export type ListProcessesParams = {
-  plantCd?: string;
-};
-
-export type ListDepartmentsParams = {
-  search?: string;
-};
 
 export type ReportSyncStatus =
   (typeof ReportSyncStatus)[keyof typeof ReportSyncStatus];
@@ -76,31 +61,56 @@ export interface Report {
   imageUrl: string | null;
   syncStatus: ReportSyncStatus;
   /** @nullable */
-  registrantName: string | null;
+  registrantName?: string | null;
   /** @nullable */
-  ncrType: string | null;
+  ncrType?: string | null;
   /** @nullable */
-  factory: string | null;
+  factory?: string | null;
   /** @nullable */
-  shipmentUnit: string | null;
+  shipmentUnit?: string | null;
   /** @nullable */
-  lostManHours: number | null;
+  lostManHours?: number | null;
   /** @nullable */
-  defectQty: number | null;
+  defectQty?: number | null;
   /** @nullable */
-  occurrenceDate: string | null;
+  occurrenceDate?: string | null;
   /** @nullable */
-  issuingTeam: string | null;
+  issuingTeam?: string | null;
   /** @nullable */
-  plantCd: string | null;
+  plantCd?: string | null;
   /** @nullable */
-  processCd: string | null;
+  processCd?: string | null;
   /** @nullable */
-  flawTypeCd: string | null;
+  flawTypeCd?: string | null;
   /** @nullable */
-  deptCd: string | null;
+  deptCd?: string | null;
   /** @nullable */
-  ncrGbnCd: string | null;
+  ncrGbnCd?: string | null;
+  /**
+   * 양산 or 개발
+   * @nullable
+   */
+  productType?: string | null;
+  /** @nullable */
+  labNotifiedAt?: string | null;
+  /** @nullable */
+  ssushanTalkSentAt?: string | null;
+  /** @nullable */
+  slaDeadlineAt?: string | null;
+  /** SLA 초과 시 true로 설정, 수정 불가 */
+  isLocked: boolean;
+  /**
+   * QC 최종 조치 결과
+   * @nullable
+   */
+  qcAction?: string | null;
+  /** @nullable */
+  qcActionAt?: string | null;
+  /**
+   * QC 조치 담당자 userId
+   * @nullable
+   */
+  qcActionedBy?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -120,19 +130,90 @@ export interface CreateReportBody {
   description: string;
   /** @nullable */
   imageUrl?: string | null;
+  /** @nullable */
   registrantName?: string | null;
+  /** @nullable */
   ncrType?: string | null;
+  /** @nullable */
   factory?: string | null;
+  /** @nullable */
   shipmentUnit?: string | null;
+  /** @nullable */
   lostManHours?: number | null;
+  /** @nullable */
   defectQty?: number | null;
+  /** @nullable */
   occurrenceDate?: string | null;
+  /** @nullable */
   issuingTeam?: string | null;
+  /** @nullable */
   plantCd?: string | null;
+  /** @nullable */
   processCd?: string | null;
+  /** @nullable */
   flawTypeCd?: string | null;
+  /** @nullable */
   deptCd?: string | null;
+  /** @nullable */
   ncrGbnCd?: string | null;
+  /** 양산 or 개발 */
+  productType?: string;
+}
+
+export type UpdateReportBodySyncStatus =
+  (typeof UpdateReportBodySyncStatus)[keyof typeof UpdateReportBodySyncStatus];
+
+export const UpdateReportBodySyncStatus = {
+  PENDING: "PENDING",
+  PROCESSING: "PROCESSING",
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
+} as const;
+
+export interface UpdateReportBody {
+  itemCode?: string;
+  processName?: string;
+  defectType?: string;
+  description?: string;
+  syncStatus?: UpdateReportBodySyncStatus;
+  /** @nullable */
+  registrantName?: string | null;
+  /** @nullable */
+  ncrType?: string | null;
+  /** @nullable */
+  factory?: string | null;
+  /** @nullable */
+  shipmentUnit?: string | null;
+  /** @nullable */
+  lostManHours?: number | null;
+  /** @nullable */
+  defectQty?: number | null;
+  /** @nullable */
+  occurrenceDate?: string | null;
+  /** @nullable */
+  issuingTeam?: string | null;
+  /** @nullable */
+  plantCd?: string | null;
+  /** @nullable */
+  processCd?: string | null;
+  /** @nullable */
+  flawTypeCd?: string | null;
+  /** @nullable */
+  deptCd?: string | null;
+  /** @nullable */
+  ncrGbnCd?: string | null;
+}
+
+export interface QcActionBody {
+  /** QC 조치 결과 (반출/수정/기타 + 상세 내용) */
+  qcAction: string;
+}
+
+export interface RpaRunResult {
+  processed: number;
+  completed: number;
+  failed: number;
+  reports: Report[];
 }
 
 export type UpdateSyncStatusBodySyncStatus =
@@ -160,6 +241,10 @@ export interface ReportStats {
   bySyncStatus: StatCount[];
   /** Number of reports in the last 7 days */
   recentCount: number;
+  /** Number of reports with isLocked=true (SLA expired) */
+  lockedCount: number;
+  /** Number of development-type reports awaiting lab review */
+  pendingLabCount: number;
 }
 
 export interface UploadUrlRequest {
@@ -181,6 +266,46 @@ export interface ErrorEnvelope {
   error: string;
 }
 
+export interface LoginBody {
+  username: string;
+  password: string;
+}
+
+export type UserProfileRole =
+  (typeof UserProfileRole)[keyof typeof UserProfileRole];
+
+export const UserProfileRole = {
+  admin: "admin",
+  worker: "worker",
+} as const;
+
+export interface UserProfile {
+  id: number;
+  username: string;
+  displayName: string;
+  role: UserProfileRole;
+  /** @nullable */
+  deptCd?: string | null;
+  /** @nullable */
+  factory?: string | null;
+  /** @nullable */
+  plantCd?: string | null;
+  /** @nullable */
+  processName?: string | null;
+  /** @nullable */
+  processCd?: string | null;
+}
+
+export interface LoginResponse {
+  token: string;
+  user: UserProfile;
+}
+
+export type ListItemsParams = {
+  search?: string;
+  limit?: number;
+};
+
 export type ListReportsParams = {
   defectType?: string;
   syncStatus?: string;
@@ -190,30 +315,10 @@ export type ListReportsParams = {
   pageSize?: number;
 };
 
-export interface UpdateReportBody {
-  itemCode?: string;
-  processName?: string;
-  defectType?: string;
-  description?: string;
-  syncStatus?: ReportSyncStatus;
-  registrantName?: string | null;
-  ncrType?: string | null;
-  factory?: string | null;
-  shipmentUnit?: string | null;
-  lostManHours?: number | null;
-  defectQty?: number | null;
-  occurrenceDate?: string | null;
-  issuingTeam?: string | null;
-  plantCd?: string | null;
-  processCd?: string | null;
-  flawTypeCd?: string | null;
-  deptCd?: string | null;
-  ncrGbnCd?: string | null;
-}
+export type ListProcessesParams = {
+  plantCd?: string;
+};
 
-export interface RpaRunResult {
-  processed: number;
-  completed: number;
-  failed: number;
-  reports: Report[];
-}
+export type ListDepartmentsParams = {
+  search?: string;
+};
