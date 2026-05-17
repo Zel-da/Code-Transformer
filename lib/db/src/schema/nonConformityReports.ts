@@ -1,5 +1,6 @@
 import {
   pgTable,
+  pgEnum,
   text,
   serial,
   timestamp,
@@ -85,6 +86,8 @@ export type PublicUser = Omit<User, "passwordHash">;
 
 export const syncStatusEnum = ["PENDING", "PROCESSING", "COMPLETED", "FAILED"] as const;
 
+export const productTypeEnum = pgEnum("product_type_enum", ["양산", "개발"]);
+
 export const nonConformityReportsTable = pgTable("non_conformity_reports", {
   id: serial("id").primaryKey(),
   reportDate: timestamp("report_date", { withTimezone: true }).notNull().defaultNow(),
@@ -111,14 +114,14 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
   deptCd: text("dept_cd"),
   ncrGbnCd: text("ncr_gbn_cd"),
   // V2.0 columns
-  productType: text("product_type").$type<"양산" | "개발">(),
+  productType: productTypeEnum("product_type"),
   labNotifiedAt: timestamp("lab_notified_at", { withTimezone: true }),
   ssushanTalkSentAt: timestamp("ssushan_talk_sent_at", { withTimezone: true }),
   slaDeadlineAt: timestamp("sla_deadline_at", { withTimezone: true }),
   isLocked: boolean("is_locked").notNull().default(false),
   qcAction: text("qc_action"),
   qcActionAt: timestamp("qc_action_at", { withTimezone: true }),
-  qcActionedBy: integer("qc_actioned_by"),
+  qcActionedBy: integer("qc_actioned_by").references(() => usersTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()

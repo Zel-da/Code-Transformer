@@ -50,6 +50,19 @@ export const ReportSyncStatus = {
   FAILED: "FAILED",
 } as const;
 
+/**
+ * 양산 or 개발
+ * @nullable
+ */
+export type ReportProductType =
+  | (typeof ReportProductType)[keyof typeof ReportProductType]
+  | null;
+
+export const ReportProductType = {
+  양산: "양산",
+  개발: "개발",
+} as const;
+
 export interface Report {
   id: number;
   reportDate: string;
@@ -90,7 +103,7 @@ export interface Report {
    * 양산 or 개발
    * @nullable
    */
-  productType?: string | null;
+  productType?: ReportProductType;
   /** @nullable */
   labNotifiedAt?: string | null;
   /** @nullable */
@@ -121,6 +134,17 @@ export interface ReportListResponse {
   page: number;
   pageSize: number;
 }
+
+/**
+ * 양산 or 개발
+ */
+export type CreateReportBodyProductType =
+  (typeof CreateReportBodyProductType)[keyof typeof CreateReportBodyProductType];
+
+export const CreateReportBodyProductType = {
+  양산: "양산",
+  개발: "개발",
+} as const;
 
 export interface CreateReportBody {
   reportDate?: string;
@@ -157,7 +181,7 @@ export interface CreateReportBody {
   /** @nullable */
   ncrGbnCd?: string | null;
   /** 양산 or 개발 */
-  productType?: string;
+  productType?: CreateReportBodyProductType;
 }
 
 export type UpdateReportBodySyncStatus =

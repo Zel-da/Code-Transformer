@@ -82,13 +82,13 @@ paths:
           required: false
           schema:
             type: string
-            format: date
+            format: date-time
         - name: dateTo
           in: query
           required: false
           schema:
             type: string
-            format: date
+            format: date-time
         - name: page
           in: query
           required: false
@@ -678,6 +678,7 @@ components:
           type: ["string", "null"]
         productType:
           type: ["string", "null"]
+          enum: ["양산", "개발", null]
           description: "양산 or 개발"
         labNotifiedAt:
           type: ["string", "null"]
@@ -783,6 +784,7 @@ components:
           type: ["string", "null"]
         productType:
           type: string
+          enum: ["양산", "개발"]
           description: "양산 or 개발"
       required:
         - itemCode

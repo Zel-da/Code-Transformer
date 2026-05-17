@@ -42,8 +42,8 @@ export const listReportsQueryPageSizeDefault = 20;
 export const ListReportsQueryParams = zod.object({
   defectType: zod.coerce.string().optional(),
   syncStatus: zod.coerce.string().optional(),
-  dateFrom: zod.date().optional(),
-  dateTo: zod.date().optional(),
+  dateFrom: zod.coerce.date().optional(),
+  dateTo: zod.coerce.date().optional(),
   page: zod.coerce.number().default(listReportsQueryPageDefault),
   pageSize: zod.coerce.number().default(listReportsQueryPageSizeDefault),
 });
@@ -72,7 +72,10 @@ export const ListReportsResponse = zod.object({
       flawTypeCd: zod.string().nullish(),
       deptCd: zod.string().nullish(),
       ncrGbnCd: zod.string().nullish(),
-      productType: zod.string().nullish().describe("양산 or 개발"),
+      productType: zod
+        .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
+        .nullish()
+        .describe("양산 or 개발"),
       labNotifiedAt: zod.coerce.date().nullish(),
       ssushanTalkSentAt: zod.coerce.date().nullish(),
       slaDeadlineAt: zod.coerce.date().nullish(),
@@ -112,7 +115,7 @@ export const CreateReportBody = zod.object({
   flawTypeCd: zod.string().nullish(),
   deptCd: zod.string().nullish(),
   ncrGbnCd: zod.string().nullish(),
-  productType: zod.string().optional().describe("양산 or 개발"),
+  productType: zod.enum(["양산", "개발"]).optional().describe("양산 or 개발"),
 });
 
 /**
@@ -168,7 +171,10 @@ export const ListPendingReportsResponseItem = zod.object({
   flawTypeCd: zod.string().nullish(),
   deptCd: zod.string().nullish(),
   ncrGbnCd: zod.string().nullish(),
-  productType: zod.string().nullish().describe("양산 or 개발"),
+  productType: zod
+    .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
+    .nullish()
+    .describe("양산 or 개발"),
   labNotifiedAt: zod.coerce.date().nullish(),
   ssushanTalkSentAt: zod.coerce.date().nullish(),
   slaDeadlineAt: zod.coerce.date().nullish(),
@@ -235,7 +241,10 @@ export const UpdateReportResponse = zod.object({
   flawTypeCd: zod.string().nullish(),
   deptCd: zod.string().nullish(),
   ncrGbnCd: zod.string().nullish(),
-  productType: zod.string().nullish().describe("양산 or 개발"),
+  productType: zod
+    .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
+    .nullish()
+    .describe("양산 or 개발"),
   labNotifiedAt: zod.coerce.date().nullish(),
   ssushanTalkSentAt: zod.coerce.date().nullish(),
   slaDeadlineAt: zod.coerce.date().nullish(),
@@ -283,7 +292,10 @@ export const GetReportResponse = zod.object({
   flawTypeCd: zod.string().nullish(),
   deptCd: zod.string().nullish(),
   ncrGbnCd: zod.string().nullish(),
-  productType: zod.string().nullish().describe("양산 or 개발"),
+  productType: zod
+    .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
+    .nullish()
+    .describe("양산 or 개발"),
   labNotifiedAt: zod.coerce.date().nullish(),
   ssushanTalkSentAt: zod.coerce.date().nullish(),
   slaDeadlineAt: zod.coerce.date().nullish(),
@@ -329,7 +341,10 @@ export const UpdateReportSyncStatusResponse = zod.object({
   flawTypeCd: zod.string().nullish(),
   deptCd: zod.string().nullish(),
   ncrGbnCd: zod.string().nullish(),
-  productType: zod.string().nullish().describe("양산 or 개발"),
+  productType: zod
+    .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
+    .nullish()
+    .describe("양산 or 개발"),
   labNotifiedAt: zod.coerce.date().nullish(),
   ssushanTalkSentAt: zod.coerce.date().nullish(),
   slaDeadlineAt: zod.coerce.date().nullish(),
@@ -377,7 +392,10 @@ export const SubmitQcActionResponse = zod.object({
   flawTypeCd: zod.string().nullish(),
   deptCd: zod.string().nullish(),
   ncrGbnCd: zod.string().nullish(),
-  productType: zod.string().nullish().describe("양산 or 개발"),
+  productType: zod
+    .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
+    .nullish()
+    .describe("양산 or 개발"),
   labNotifiedAt: zod.coerce.date().nullish(),
   ssushanTalkSentAt: zod.coerce.date().nullish(),
   slaDeadlineAt: zod.coerce.date().nullish(),
@@ -420,7 +438,10 @@ export const TriggerRpaResponse = zod.object({
       flawTypeCd: zod.string().nullish(),
       deptCd: zod.string().nullish(),
       ncrGbnCd: zod.string().nullish(),
-      productType: zod.string().nullish().describe("양산 or 개발"),
+      productType: zod
+        .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
+        .nullish()
+        .describe("양산 or 개발"),
       labNotifiedAt: zod.coerce.date().nullish(),
       ssushanTalkSentAt: zod.coerce.date().nullish(),
       slaDeadlineAt: zod.coerce.date().nullish(),

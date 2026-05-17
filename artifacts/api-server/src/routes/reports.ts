@@ -98,7 +98,7 @@ router.post("/reports", async (req, res): Promise<void> => {
       flawTypeCd: d.flawTypeCd ?? null,
       deptCd: d.deptCd ?? null,
       ncrGbnCd: d.ncrGbnCd ?? null,
-      productType: (d.productType as "양산" | "개발" | undefined) ?? null,
+      productType: d.productType ?? null,
       slaDeadlineAt,
     })
     .returning();
