@@ -623,8 +623,9 @@ export default function ManagePage() {
                         <Select
                           value={report.syncStatus}
                           onValueChange={(val) => handleStatusChange(report.id, val)}
+                          disabled={!!report.isLocked}
                         >
-                          <SelectTrigger className="h-8 text-[12px] rounded-lg bg-[#F8F9FA] border-0 w-[120px] focus:ring-0">
+                          <SelectTrigger className="h-8 text-[12px] rounded-lg bg-[#F8F9FA] border-0 w-[120px] focus:ring-0 disabled:opacity-50">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl">
