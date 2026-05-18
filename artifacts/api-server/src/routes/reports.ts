@@ -142,14 +142,14 @@ router.get("/reports/stats", async (_req, res): Promise<void> => {
     .from(nonConformityReportsTable)
     .where(eq(nonConformityReportsTable.isLocked, true));
 
-  // V2.0: 개발품 중 QC 조치 미완료 건수
+  // V2.0: 개발품 중 랩 통보 미완료 건수 (labNotifiedAt IS NULL)
   const [pendingLabResult] = await db
     .select({ count: count() })
     .from(nonConformityReportsTable)
     .where(
       and(
         eq(nonConformityReportsTable.productType, "개발"),
-        sql`${nonConformityReportsTable.qcAction} IS NULL`,
+        sql`${nonConformityReportsTable.labNotifiedAt} IS NULL`,
       ),
     );
 
