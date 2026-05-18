@@ -42,10 +42,14 @@ import {
   EyeOff,
   Lock,
   ShieldCheck,
+  KeyRound,
+  Power,
 } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const API = `${BASE}/api`;
+
+let _onUnauthorized: (() => void) | null = null;
 
 function authHeader(): HeadersInit {
   const token = localStorage.getItem("ncr_auth_token");
@@ -58,6 +62,9 @@ async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
     ...init,
   });
   if (!res.ok) {
+    if (res.status === 401 && _onUnauthorized) {
+      _onUnauthorized();
+    }
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { error?: string }).error ?? `HTTP ${res.status}`);
   }
@@ -137,7 +144,12 @@ const EMPTY_USER_FORM: NewUserForm = {
 export default function ManagePage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, logout } = useAuth();
+
+  useEffect(() => {
+    _onUnauthorized = logout;
+    return () => { _onUnauthorized = null; };
+  }, [logout]);
 
   const [page, setPage] = useState(1);
   const [editingReport, setEditingReport] = useState<Report | null>(null);
@@ -159,6 +171,11 @@ export default function ManagePage() {
   const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
   const [showPw, setShowPw] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [resetPwUser, setResetPwUser] = useState<UserProfile | null>(null);
+  const [resetPwValue, setResetPwValue] = useState("");
+  const [showResetPw, setShowResetPw] = useState(false);
+  const [resetPwSaving, setResetPwSaving] = useState(false);
+  const [togglingActiveId, setTogglingActiveId] = useState<number | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setUsersLoading(true);
@@ -224,6 +241,44 @@ export default function ManagePage() {
       fetchUsers();
     } catch (err) {
       toast({ title: err instanceof Error ? err.message : "삭제 실패", variant: "destructive" });
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetPwUser || !resetPwValue) return;
+    if (resetPwValue.length < 4) {
+      toast({ title: "비밀번호는 4자 이상이어야 합니다", variant: "destructive" });
+      return;
+    }
+    setResetPwSaving(true);
+    try {
+      await apiJson(`${API}/users/${resetPwUser.id}/reset-password`, {
+        method: "POST",
+        body: JSON.stringify({ password: resetPwValue }),
+      });
+      toast({ title: `${resetPwUser.displayName} 계정의 비밀번호가 초기화되었습니다` });
+      setResetPwUser(null);
+      setResetPwValue("");
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "비밀번호 초기화 실패", variant: "destructive" });
+    } finally {
+      setResetPwSaving(false);
+    }
+  };
+
+  const handleToggleActive = async (u: UserProfile) => {
+    setTogglingActiveId(u.id);
+    try {
+      await apiJson(`${API}/users/${u.id}/active`, {
+        method: "PATCH",
+        body: JSON.stringify({ isActive: !u.isActive }),
+      });
+      toast({ title: u.isActive ? `${u.displayName} 계정이 비활성화되었습니다` : `${u.displayName} 계정이 활성화되었습니다` });
+      fetchUsers();
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "상태 변경 실패", variant: "destructive" });
+    } finally {
+      setTogglingActiveId(null);
     }
   };
 
@@ -429,16 +484,21 @@ export default function ManagePage() {
             ) : (
               <div className="divide-y divide-[#F2F4F6]">
                 {users.map((u) => (
-                  <div key={u.id} className="flex items-center gap-3 px-5 py-3">
-                    <div className="w-8 h-8 rounded-full bg-[#F2F4F6] flex items-center justify-center text-[12px] font-bold text-[#4E5968] shrink-0">
+                  <div key={u.id} className={`flex items-center gap-3 px-5 py-3 ${!u.isActive ? "opacity-50" : ""}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0 ${u.isActive ? "bg-[#F2F4F6] text-[#4E5968]" : "bg-gray-100 text-gray-400"}`}>
                       {u.displayName.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[14px] font-semibold text-[#191F28]">{u.displayName}</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-[14px] font-semibold ${u.isActive ? "text-[#191F28]" : "text-[#8B95A1]"}`}>{u.displayName}</span>
                         <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${u.role === "admin" ? "bg-[#1A1A1A] text-white" : "bg-[#F2F4F6] text-[#4E5968]"}`}>
                           {u.role === "admin" ? "관리자" : "작업자"}
                         </span>
+                        {!u.isActive && (
+                          <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-red-100 text-red-500">
+                            비활성
+                          </span>
+                        )}
                       </div>
                       <div className="text-[12px] text-[#8B95A1] mt-0.5">
                         @{u.username}
@@ -449,17 +509,38 @@ export default function ManagePage() {
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => openEditUser(u)}
+                        title="계정 수정"
                         className="p-1.5 rounded-lg hover:bg-[#F2F4F6] text-[#8B95A1] hover:text-[#191F28] transition-colors"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
+                      <button
+                        onClick={() => { setResetPwUser(u); setResetPwValue(""); setShowResetPw(false); }}
+                        title="비밀번호 초기화"
+                        className="p-1.5 rounded-lg hover:bg-amber-50 text-[#8B95A1] hover:text-amber-600 transition-colors"
+                      >
+                        <KeyRound className="h-3.5 w-3.5" />
+                      </button>
                       {currentUser?.id !== u.id && (
-                        <button
-                          onClick={() => setDeletingUserId(u.id)}
-                          className="p-1.5 rounded-lg hover:bg-red-50 text-[#8B95A1] hover:text-red-500 transition-colors"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleToggleActive(u)}
+                            disabled={togglingActiveId === u.id}
+                            title={u.isActive ? "계정 비활성화" : "계정 활성화"}
+                            className={`p-1.5 rounded-lg transition-colors ${u.isActive ? "hover:bg-orange-50 text-[#8B95A1] hover:text-orange-500" : "hover:bg-emerald-50 text-[#8B95A1] hover:text-emerald-600"}`}
+                          >
+                            {togglingActiveId === u.id
+                              ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                              : <Power className="h-3.5 w-3.5" />}
+                          </button>
+                          <button
+                            onClick={() => setDeletingUserId(u.id)}
+                            title="계정 삭제"
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-[#8B95A1] hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -1069,6 +1150,56 @@ export default function ManagePage() {
               disabled={userSaving}
             >
               {userSaving ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" />저장 중...</> : (editingUser ? "수정 완료" : "계정 생성")}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Password Reset Dialog */}
+      <Dialog open={resetPwUser !== null} onOpenChange={(open) => { if (!open) { setResetPwUser(null); setResetPwValue(""); } }}>
+        <DialogContent className="rounded-2xl bg-white border border-[#F2F4F6] max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-[16px] font-bold text-[#191F28]">비밀번호 초기화</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-[13px] text-[#8B95A1]">
+              <span className="font-semibold text-[#191F28]">{resetPwUser?.displayName}</span> 계정의 새 비밀번호를 입력하세요.
+            </p>
+            <div className="space-y-1">
+              <Label className="text-[11px] font-semibold text-[#8B95A1]">새 비밀번호 *</Label>
+              <div className="relative">
+                <Input
+                  className={`${INP} pr-9`}
+                  type={showResetPw ? "text" : "password"}
+                  value={resetPwValue}
+                  onChange={(e) => setResetPwValue(e.target.value)}
+                  placeholder="4자 이상 입력"
+                  onKeyDown={(e) => { if (e.key === "Enter") handleResetPassword(); }}
+                />
+                <button
+                  type="button"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8B95A1] hover:text-[#4E5968]"
+                  onClick={() => setShowResetPw((v) => !v)}
+                >
+                  {showResetPw ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 flex-row pt-2 border-t border-[#F2F4F6]">
+            <button
+              className={`${BTN_GHOST} text-[13px]`}
+              onClick={() => { setResetPwUser(null); setResetPwValue(""); }}
+              disabled={resetPwSaving}
+            >
+              취소
+            </button>
+            <button
+              className={`${BTN_DARK} text-[13px] flex items-center gap-2`}
+              onClick={handleResetPassword}
+              disabled={resetPwSaving || !resetPwValue}
+            >
+              {resetPwSaving ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" />초기화 중...</> : <><KeyRound className="h-3.5 w-3.5" />비밀번호 초기화</>}
             </button>
           </DialogFooter>
         </DialogContent>

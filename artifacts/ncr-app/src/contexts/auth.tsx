@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
+import { createContext, useContext, useState, useEffect, ReactNode, useRef } from "react";
+import { setAuthTokenGetter, setUnauthorizedHandler } from "@workspace/api-client-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const API = `${BASE}/api`;
@@ -9,6 +9,7 @@ export interface UserProfile {
   username: string;
   displayName: string;
   role: "admin" | "worker";
+  isActive: boolean;
   deptCd: string | null;
   factory: string | null;
   plantCd: string | null;
@@ -45,8 +46,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   });
 
+  const logoutRef = useRef<() => void>(() => {});
+
   useEffect(() => {
     setAuthTokenGetter(() => localStorage.getItem(TOKEN_KEY));
+    setUnauthorizedHandler(() => logoutRef.current());
+    return () => setUnauthorizedHandler(null);
   }, []);
 
   useEffect(() => {
@@ -76,6 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(USER_KEY);
     setState({ user: null, token: null, loading: false });
   };
+
+  logoutRef.current = logout;
 
   const refreshUser = async () => {
     const token = localStorage.getItem(TOKEN_KEY);

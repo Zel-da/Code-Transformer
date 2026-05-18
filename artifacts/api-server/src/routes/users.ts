@@ -30,6 +30,10 @@ const UpdateUserBody = z.object({
   processCd: z.string().nullable().optional(),
 });
 
+const ResetPasswordBody = z.object({
+  password: z.string().min(4, "비밀번호는 4자 이상"),
+});
+
 router.get("/users", requireAdmin, async (_req, res): Promise<void> => {
   const users = await db.select().from(usersTable).orderBy(usersTable.createdAt);
   res.json(users.map(({ passwordHash: _ph, ...u }) => u));
@@ -89,6 +93,55 @@ router.put("/users/:id", requireAuth, async (req, res): Promise<void> => {
   const [user] = await db
     .update(usersTable)
     .set(updates)
+    .where(eq(usersTable.id, id))
+    .returning();
+
+  if (!user) { res.status(404).json({ error: "사용자를 찾을 수 없습니다" }); return; }
+
+  const { passwordHash: _ph, ...profile } = user;
+  res.json(profile);
+});
+
+router.post("/users/:id/reset-password", requireAdmin, async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "잘못된 ID" }); return; }
+
+  const parsed = ResetPasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "입력값 오류" });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(parsed.data.password, 10);
+  const [user] = await db
+    .update(usersTable)
+    .set({ passwordHash })
+    .where(eq(usersTable.id, id))
+    .returning();
+
+  if (!user) { res.status(404).json({ error: "사용자를 찾을 수 없습니다" }); return; }
+
+  res.json({ ok: true });
+});
+
+router.patch("/users/:id/active", requireAdmin, async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "잘못된 ID" }); return; }
+
+  if (req.auth!.userId === id) {
+    res.status(400).json({ error: "본인 계정은 비활성화할 수 없습니다" });
+    return;
+  }
+
+  const isActive = req.body?.isActive;
+  if (typeof isActive !== "boolean") {
+    res.status(400).json({ error: "isActive(boolean) 필드가 필요합니다" });
+    return;
+  }
+
+  const [user] = await db
+    .update(usersTable)
+    .set({ isActive })
     .where(eq(usersTable.id, id))
     .returning();
 

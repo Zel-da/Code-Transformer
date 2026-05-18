@@ -73,6 +73,7 @@ export const usersTable = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   displayName: text("display_name").notNull(),
   role: text("role").$type<"admin" | "worker">().notNull().default("worker"),
+  isActive: boolean("is_active").notNull().default(true),
   deptCd: text("dept_cd"),
   factory: text("factory"),
   plantCd: text("plant_cd"),

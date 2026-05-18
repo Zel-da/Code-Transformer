@@ -18,6 +18,8 @@ tags:
     description: RPA bridge endpoints
   - name: storage
     description: Object storage upload and serving endpoints
+  - name: users
+    description: User account management (admin only)
 paths:
   /healthz:
     get:
@@ -501,6 +503,224 @@ paths:
                 items:
                   $ref: "#/components/schemas/DepartmentItem"
 
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all user accounts
+      description: Returns all user accounts. Admin only.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserProfile"
+        "403":
+          description: Forbidden (not admin or account inactive)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a new user account
+      description: Creates a new user account. Admin only.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserBody"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Username already taken
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /users/{id}:
+    put:
+      operationId: updateUser
+      tags: [users]
+      summary: Update a user account
+      description: Admins can update any user. Non-admins can only update their own profile (role change excluded).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserBody"
+      responses:
+        "200":
+          description: Updated user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Delete a user account
+      description: Permanently deletes a user account. Admin only. Cannot delete own account.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted successfully
+        "400":
+          description: Cannot delete own account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /users/{id}/reset-password:
+    post:
+      operationId: resetUserPassword
+      tags: [users]
+      summary: Reset a user's password
+      description: Sets a new password for the specified user. Admin only.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  minLength: 4
+              required:
+                - password
+      responses:
+        "200":
+          description: Password reset successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /users/{id}/active:
+    patch:
+      operationId: setUserActive
+      tags: [users]
+      summary: Activate or deactivate a user account
+      description: Toggles the isActive status of a user account. Admin only. Cannot deactivate own account. Deactivated accounts cannot log in and existing tokens are immediately rejected.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                isActive:
+                  type: boolean
+              required:
+                - isActive
+      responses:
+        "200":
+          description: Updated user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "400":
+          description: Cannot deactivate own account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /auth/login:
     post:
       operationId: login
@@ -963,6 +1183,60 @@ components:
         error:
           type: string
 
+    CreateUserBody:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 2
+        password:
+          type: string
+          minLength: 4
+        displayName:
+          type: string
+          minLength: 1
+        role:
+          type: string
+          enum: [admin, worker]
+          default: worker
+        deptCd:
+          type: string
+        factory:
+          type: string
+        plantCd:
+          type: string
+        processName:
+          type: string
+        processCd:
+          type: string
+      required:
+        - username
+        - password
+        - displayName
+
+    UpdateUserBody:
+      type: object
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 4
+        role:
+          type: string
+          enum: [admin, worker]
+        deptCd:
+          type: ["string", "null"]
+        factory:
+          type: ["string", "null"]
+        plantCd:
+          type: ["string", "null"]
+        processName:
+          type: ["string", "null"]
+        processCd:
+          type: ["string", "null"]
+
     LoginBody:
       type: object
       properties:
@@ -997,6 +1271,9 @@ components:
         role:
           type: string
           enum: [admin, worker]
+        isActive:
+          type: boolean
+          description: Whether the account is active. Inactive accounts cannot log in and existing tokens are rejected.
         deptCd:
           type: ["string", "null"]
         factory:
@@ -1012,3 +1289,4 @@ components:
         - username
         - displayName
         - role
+        - isActive

@@ -34,7 +34,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login">
-        {user ? <Redirect to="/submit" /> : <LoginPage />}
+        {user?.role === "admin" ? <Redirect to="/admin" /> : user ? <Redirect to="/submit" /> : <LoginPage />}
       </Route>
       <Route path="/">
         {user?.role === "admin"

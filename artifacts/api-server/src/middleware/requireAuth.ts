@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { eq } from "drizzle-orm";
+import { db, usersTable } from "@workspace/db";
 
 const JWT_SECRET = process.env.JWT_SECRET || "ncr-dev-secret-2026";
 
@@ -24,13 +26,33 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
     return;
   }
   const token = header.slice(7);
+
+  let payload: AuthPayload;
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as AuthPayload;
-    req.auth = payload;
-    next();
+    payload = jwt.verify(token, JWT_SECRET) as AuthPayload;
   } catch {
     res.status(401).json({ error: "유효하지 않은 토큰입니다" });
+    return;
   }
+
+  db.select({ isActive: usersTable.isActive })
+    .from(usersTable)
+    .where(eq(usersTable.id, payload.userId))
+    .then(([user]) => {
+      if (!user) {
+        res.status(401).json({ error: "사용자를 찾을 수 없습니다" });
+        return;
+      }
+      if (!user.isActive) {
+        res.status(401).json({ error: "비활성화된 계정입니다. 관리자에게 문의하세요." });
+        return;
+      }
+      req.auth = payload;
+      next();
+    })
+    .catch(() => {
+      res.status(500).json({ error: "인증 처리 중 오류가 발생했습니다" });
+    });
 }
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
