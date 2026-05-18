@@ -5,10 +5,12 @@ import {
   useDeleteReport,
   useTriggerRpa,
   useListItems,
+  useSubmitQcAction,
   getListReportsQueryKey,
   getGetReportStatsQueryKey,
+  getGetReportQueryKey,
 } from "@workspace/api-client-react";
-import type { Report, RpaRunResult } from "@workspace/api-client-react";
+import type { Report, RpaRunResult, UpdateReportBodySyncStatus } from "@workspace/api-client-react";
 import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
 import { useState, useEffect, useCallback } from "react";
@@ -38,6 +40,8 @@ import {
   Users,
   Eye,
   EyeOff,
+  Lock,
+  ShieldCheck,
 } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -144,6 +148,9 @@ export default function ManagePage() {
   const [rpaResult, setRpaResult] = useState<RpaRunResult | null>(null);
   const [rpaRunning, setRpaRunning] = useState(false);
 
+  const [qcActionType, setQcActionType] = useState<"반출" | "수정" | "기타">("반출");
+  const [qcActionNote, setQcActionNote] = useState("");
+
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [showUserDialog, setShowUserDialog] = useState(false);
@@ -245,10 +252,36 @@ export default function ManagePage() {
   const updateReport = useUpdateReport();
   const deleteReport = useDeleteReport();
   const triggerRpa = useTriggerRpa();
+  const submitQcAction = useSubmitQcAction();
 
-  const invalidateAll = () => {
+  const invalidateAll = (reportId?: number) => {
     queryClient.invalidateQueries({ queryKey: getListReportsQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetReportStatsQueryKey() });
+    if (reportId != null) {
+      queryClient.invalidateQueries({ queryKey: getGetReportQueryKey(reportId) });
+    }
+  };
+
+  const handleQcAction = async () => {
+    if (!editingReport) return;
+    const actionText = qcActionNote.trim()
+      ? `${qcActionType} — ${qcActionNote.trim()}`
+      : qcActionType;
+    try {
+      await submitQcAction.mutateAsync({
+        id: editingReport.id,
+        data: { qcAction: actionText },
+      });
+      invalidateAll(editingReport.id);
+      closeEditDialog();
+      toast({ title: "QC 조치 확정 완료", description: `${actionText}` });
+    } catch (err) {
+      toast({
+        title: err instanceof Error ? err.message : "QC 조치 실패",
+        description: "다시 시도해주세요.",
+        variant: "destructive",
+      });
+    }
   };
 
   const isDirty = JSON.stringify(editForm) !== JSON.stringify(originalEditForm);
@@ -273,6 +306,8 @@ export default function ManagePage() {
     setOriginalEditForm(initial);
     setEditForm(initial);
     setConfirmCancel(false);
+    setQcActionType("반출");
+    setQcActionNote("");
   };
 
   const closeEditDialog = () => {
@@ -280,6 +315,8 @@ export default function ManagePage() {
     setEditForm(EMPTY_EDIT_FORM);
     setOriginalEditForm(EMPTY_EDIT_FORM);
     setConfirmCancel(false);
+    setQcActionType("반출");
+    setQcActionNote("");
   };
 
   const handleCloseDialog = () => {
@@ -294,6 +331,7 @@ export default function ManagePage() {
         id: editingReport.id,
         data: {
           ...editForm,
+          syncStatus: editForm.syncStatus as UpdateReportBodySyncStatus,
           defectQty: editForm.defectQty !== "" ? Number(editForm.defectQty) : null,
           lostManHours: editForm.lostManHours !== "" ? Number(editForm.lostManHours) : null,
           occurrenceDate: editForm.occurrenceDate ? new Date(editForm.occurrenceDate).toISOString() : null,
@@ -657,7 +695,12 @@ export default function ManagePage() {
           <DialogHeader className="shrink-0">
             <DialogTitle className="font-bold text-[16px] text-[#191F28] flex items-center gap-2">
               보고서 수정
-              {isDirty && (
+              {editingReport?.isLocked && (
+                <span className="text-[11px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded-full px-2 py-0.5 flex items-center gap-1">
+                  <Lock className="h-3 w-3" /> SLA 잠금
+                </span>
+              )}
+              {!editingReport?.isLocked && isDirty && (
                 <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
                   미저장
                 </span>
@@ -667,17 +710,25 @@ export default function ManagePage() {
 
           {/* Scrollable body */}
           <div className="overflow-y-auto flex-1 -mx-6 px-6">
+            {/* Lock notice */}
+            {editingReport?.isLocked && (
+              <div className="mb-3 rounded-xl bg-red-50 border border-red-200 px-3 py-2.5 flex items-center gap-2">
+                <Lock className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                <span className="text-[12px] text-red-600">SLA 초과로 일반 필드 수정이 잠겼습니다. QC 조치만 입력 가능합니다.</span>
+              </div>
+            )}
+
             {/* Section: 등록 정보 */}
             <p className="text-[10px] font-bold text-[#8B95A1] uppercase tracking-widest mb-2 mt-1">등록 정보</p>
             <div className="space-y-3 mb-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-[11px] font-semibold text-[#8B95A1]">등록자</Label>
-                  <Input className={INP} value={editForm.registrantName} placeholder="성명" onChange={(e) => setEditForm((f) => ({ ...f, registrantName: e.target.value }))} />
+                  <Input className={INP} value={editForm.registrantName} placeholder="성명" disabled={!!editingReport?.isLocked} onChange={(e) => setEditForm((f) => ({ ...f, registrantName: e.target.value }))} />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[11px] font-semibold text-[#8B95A1]">발행팀</Label>
-                  <Input className={INP} value={editForm.issuingTeam} placeholder="팀명" onChange={(e) => setEditForm((f) => ({ ...f, issuingTeam: e.target.value }))} />
+                  <Input className={INP} value={editForm.issuingTeam} placeholder="팀명" disabled={!!editingReport?.isLocked} onChange={(e) => setEditForm((f) => ({ ...f, issuingTeam: e.target.value }))} />
                 </div>
               </div>
               <div className="space-y-1">
@@ -685,8 +736,9 @@ export default function ManagePage() {
                 <div className="flex gap-2">
                   {FACTORY_OPTIONS.map((f) => (
                     <button key={f} type="button"
+                      disabled={!!editingReport?.isLocked}
                       onClick={() => setEditForm((ef) => ({ ...ef, factory: f }))}
-                      className={`flex-1 py-2 text-[13px] font-medium rounded-xl border-2 transition-all ${editForm.factory === f ? "border-[#1A1A1A] bg-[#1A1A1A] text-white" : "border-[#E5E8EB] text-[#4E5968] bg-[#F8F9FA]"}`}
+                      className={`flex-1 py-2 text-[13px] font-medium rounded-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${editForm.factory === f ? "border-[#1A1A1A] bg-[#1A1A1A] text-white" : "border-[#E5E8EB] text-[#4E5968] bg-[#F8F9FA]"}`}
                     >{f}공장</button>
                   ))}
                 </div>
@@ -701,8 +753,9 @@ export default function ManagePage() {
                 <div className="flex gap-2">
                   {NCR_TYPES.map((t) => (
                     <button key={t} type="button"
+                      disabled={!!editingReport?.isLocked}
                       onClick={() => setEditForm((ef) => ({ ...ef, ncrType: t }))}
-                      className={`flex-1 py-2 text-[13px] font-medium rounded-xl border-2 transition-all ${editForm.ncrType === t ? "border-[#1A1A1A] bg-[#1A1A1A] text-white" : "border-[#E5E8EB] text-[#4E5968] bg-[#F8F9FA]"}`}
+                      className={`flex-1 py-2 text-[13px] font-medium rounded-xl border-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${editForm.ncrType === t ? "border-[#1A1A1A] bg-[#1A1A1A] text-white" : "border-[#E5E8EB] text-[#4E5968] bg-[#F8F9FA]"}`}
                     >{t}</button>
                   ))}
                 </div>
@@ -710,8 +763,8 @@ export default function ManagePage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-[11px] font-semibold text-[#8B95A1]">품목코드</Label>
-                  <Select value={editForm.itemCode} onValueChange={(v) => setEditForm((f) => ({ ...f, itemCode: v }))}>
-                    <SelectTrigger className={`h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus:ring-0 focus:outline-none`}>
+                  <Select value={editForm.itemCode} disabled={!!editingReport?.isLocked} onValueChange={(v) => setEditForm((f) => ({ ...f, itemCode: v }))}>
+                    <SelectTrigger className={`h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus:ring-0 focus:outline-none disabled:opacity-50`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
@@ -726,12 +779,12 @@ export default function ManagePage() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[11px] font-semibold text-[#8B95A1]">공정명</Label>
-                  <Input className={INP} value={editForm.processName} onChange={(e) => setEditForm((f) => ({ ...f, processName: e.target.value }))} />
+                  <Input className={INP} value={editForm.processName} disabled={!!editingReport?.isLocked} onChange={(e) => setEditForm((f) => ({ ...f, processName: e.target.value }))} />
                 </div>
               </div>
               <div className="space-y-1">
                 <Label className="text-[11px] font-semibold text-[#8B95A1]">불량 유형</Label>
-                <Input className={INP} value={editForm.defectType} onChange={(e) => setEditForm((f) => ({ ...f, defectType: e.target.value }))} />
+                <Input className={INP} value={editForm.defectType} disabled={!!editingReport?.isLocked} onChange={(e) => setEditForm((f) => ({ ...f, defectType: e.target.value }))} />
               </div>
             </div>
 
@@ -741,35 +794,35 @@ export default function ManagePage() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <Label className="text-[11px] font-semibold text-[#8B95A1]">불량 수량</Label>
-                  <Input className={INP} type="number" min="0" value={editForm.defectQty} placeholder="0" onChange={(e) => setEditForm((f) => ({ ...f, defectQty: e.target.value }))} />
+                  <Input className={INP} type="number" min="0" value={editForm.defectQty} placeholder="0" disabled={!!editingReport?.isLocked} onChange={(e) => setEditForm((f) => ({ ...f, defectQty: e.target.value }))} />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[11px] font-semibold text-[#8B95A1]">Loss 공수 (H)</Label>
-                  <Input className={INP} type="number" min="0" step="0.5" value={editForm.lostManHours} placeholder="0" onChange={(e) => setEditForm((f) => ({ ...f, lostManHours: e.target.value }))} />
+                  <Input className={INP} type="number" min="0" step="0.5" value={editForm.lostManHours} placeholder="0" disabled={!!editingReport?.isLocked} onChange={(e) => setEditForm((f) => ({ ...f, lostManHours: e.target.value }))} />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[11px] font-semibold text-[#8B95A1]">출하 단위</Label>
-                  <Input className={INP} value={editForm.shipmentUnit} placeholder="예: LOT" onChange={(e) => setEditForm((f) => ({ ...f, shipmentUnit: e.target.value }))} />
+                  <Input className={INP} value={editForm.shipmentUnit} placeholder="예: LOT" disabled={!!editingReport?.isLocked} onChange={(e) => setEditForm((f) => ({ ...f, shipmentUnit: e.target.value }))} />
                 </div>
               </div>
               <div className="space-y-1">
                 <Label className="text-[11px] font-semibold text-[#8B95A1]">발생일</Label>
-                <input type="date" className={`w-full h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] px-3 outline-none`} value={editForm.occurrenceDate} onChange={(e) => setEditForm((f) => ({ ...f, occurrenceDate: e.target.value }))} />
+                <input type="date" className={`w-full h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] px-3 outline-none disabled:opacity-50`} value={editForm.occurrenceDate} disabled={!!editingReport?.isLocked} onChange={(e) => setEditForm((f) => ({ ...f, occurrenceDate: e.target.value }))} />
               </div>
             </div>
 
             {/* Section: 상세 내용 */}
             <p className="text-[10px] font-bold text-[#8B95A1] uppercase tracking-widest mb-2">상세 내용</p>
             <div className="space-y-3 mb-4">
-              <Textarea className={`${INP} resize-none`} rows={3} value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} />
+              <Textarea className={`${INP} resize-none`} rows={3} value={editForm.description} disabled={!!editingReport?.isLocked} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} />
             </div>
 
             {/* Section: 시스템 */}
             <p className="text-[10px] font-bold text-[#8B95A1] uppercase tracking-widest mb-2">시스템</p>
-            <div className="space-y-1 mb-2">
+            <div className="space-y-1 mb-4">
               <Label className="text-[11px] font-semibold text-[#8B95A1]">동기화 상태</Label>
-              <Select value={editForm.syncStatus} onValueChange={(v) => setEditForm((f) => ({ ...f, syncStatus: v }))}>
-                <SelectTrigger className="h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus:ring-0 focus:outline-none">
+              <Select value={editForm.syncStatus} disabled={!!editingReport?.isLocked} onValueChange={(v) => setEditForm((f) => ({ ...f, syncStatus: v }))}>
+                <SelectTrigger className="h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus:ring-0 focus:outline-none disabled:opacity-50">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -779,13 +832,73 @@ export default function ManagePage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Section: QC 조치 확정 (admin only) */}
+            {currentUser?.role === "admin" && (
+              <>
+                <div className="border-t border-[#F2F4F6] pt-4 mb-2">
+                  <div className="flex items-center gap-2 mb-3">
+                    <ShieldCheck className="h-4 w-4 text-[#4E5968]" />
+                    <p className="text-[10px] font-bold text-[#8B95A1] uppercase tracking-widest">QC 조치 확정</p>
+                  </div>
+
+                  {editingReport?.qcAction ? (
+                    <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-3 mb-2">
+                      <p className="text-[11px] font-semibold text-emerald-700 mb-0.5">조치 완료</p>
+                      <p className="text-[13px] text-emerald-800 font-medium">{editingReport.qcAction}</p>
+                      {editingReport.qcActionAt && (
+                        <p className="text-[11px] text-emerald-600 mt-1">
+                          {format(new Date(editingReport.qcActionAt), "yyyy.MM.dd HH:mm")}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-3 mb-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] font-semibold text-[#8B95A1]">조치 유형</Label>
+                        <div className="flex gap-2">
+                          {(["반출", "수정", "기타"] as const).map((t) => (
+                            <button key={t} type="button"
+                              onClick={() => setQcActionType(t)}
+                              className={`flex-1 py-2 text-[13px] font-medium rounded-xl border-2 transition-all ${qcActionType === t ? "border-[#1A1A1A] bg-[#1A1A1A] text-white" : "border-[#E5E8EB] text-[#4E5968] bg-[#F8F9FA]"}`}
+                            >{t}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] font-semibold text-[#8B95A1]">상세 내용 (선택)</Label>
+                        <Textarea
+                          className={`${INP} resize-none`}
+                          rows={2}
+                          placeholder="조치 상세 내용을 입력하세요"
+                          value={qcActionNote}
+                          onChange={(e) => setQcActionNote(e.target.value)}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleQcAction}
+                        disabled={submitQcAction.isPending}
+                        className={`w-full ${BTN_DARK} text-[13px] flex items-center justify-center gap-2`}
+                      >
+                        {submitQcAction.isPending ? (
+                          <><RefreshCw className="h-4 w-4 animate-spin" />처리 중...</>
+                        ) : (
+                          <><ShieldCheck className="h-4 w-4" />QC 조치 확정</>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           <DialogFooter className="gap-2 flex-row items-center shrink-0 pt-3 border-t border-[#F2F4F6]">
             <button
               className={`${BTN_GHOST} mr-auto text-[13px]`}
               onClick={() => setEditForm(originalEditForm)}
-              disabled={!isDirty || updateReport.isPending}
+              disabled={!isDirty || updateReport.isPending || !!editingReport?.isLocked}
             >
               원래대로
             </button>
@@ -795,7 +908,7 @@ export default function ManagePage() {
             <button
               className={`${BTN_DARK} text-[13px] flex items-center gap-2`}
               onClick={handleSave}
-              disabled={updateReport.isPending || !isDirty}
+              disabled={updateReport.isPending || !isDirty || !!editingReport?.isLocked}
             >
               {updateReport.isPending ? <><RefreshCw className="h-4 w-4 animate-spin" />저장 중...</> : "저장"}
             </button>

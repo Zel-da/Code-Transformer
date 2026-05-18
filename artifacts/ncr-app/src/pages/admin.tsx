@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { BarChart3, Search, RefreshCw, X, Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
+import { BarChart3, Search, RefreshCw, X, Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight, ImageIcon, Lock, FlaskConical } from "lucide-react";
 
 const SYNC_STATUSES = ["PENDING", "PROCESSING", "COMPLETED", "FAILED"];
 const SYNC_STATUS_LABELS: Record<string, string> = {
@@ -45,6 +45,14 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
 
   return (
     <div className="py-2">
+      {/* Lock Banner */}
+      {report.isLocked && (
+        <div className="mb-3 rounded-xl bg-red-50 border border-red-200 px-3 py-2.5 flex items-center gap-2">
+          <Lock className="h-3.5 w-3.5 text-red-500 shrink-0" />
+          <span className="text-[12px] font-semibold text-red-600">SLA 초과 · 수정 잠금</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-3 pb-4 border-b border-[#F2F4F6] mb-1">
         <div>
@@ -52,7 +60,14 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
           <h2 className="text-[18px] font-bold text-[#191F28]">{report.itemCode}</h2>
           <p className="text-[13px] text-[#8B95A1] mt-0.5">{report.processName}</p>
         </div>
-        <StatusBadge status={report.syncStatus} />
+        <div className="flex flex-col items-end gap-1.5">
+          <StatusBadge status={report.syncStatus} />
+          {report.productType && (
+            <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${report.productType === "개발" ? "bg-amber-100 text-amber-700" : "bg-[#F2F4F6] text-[#4E5968]"}`}>
+              {report.productType}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Fields */}
@@ -191,7 +206,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <StatCard
             title="전체 보고서"
             value={stats?.total ?? 0}
@@ -215,6 +230,19 @@ export default function AdminDashboard() {
             value={stats?.bySyncStatus.find((s) => s.label === "COMPLETED")?.count ?? 0}
             icon={CheckCircle2}
             dot="bg-emerald-400"
+          />
+          <StatCard
+            title="SLA 잠금"
+            value={stats?.lockedCount ?? 0}
+            icon={Lock}
+            dot="bg-slate-400"
+          />
+          <StatCard
+            title="연구소 대기"
+            value={stats?.pendingLabCount ?? 0}
+            subtitle="개발품 랩 통보 미완료"
+            icon={FlaskConical}
+            dot="bg-violet-400"
           />
         </div>
 

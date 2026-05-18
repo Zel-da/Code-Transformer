@@ -56,7 +56,13 @@ const NCR_TYPES = [
 
 const todayStr = () => new Date().toISOString().split("T")[0];
 
+const PRODUCT_TYPES = [
+  { label: "양산", value: "양산" },
+  { label: "개발", value: "개발" },
+] as const;
+
 const formSchema = z.object({
+  productType: z.enum(["양산", "개발"]).default("양산"),
   registrantName: z.string().min(1, "등록자명을 입력해주세요"),
   factory: z.string().min(1, "공장을 선택해주세요"),
   processName: z.string().min(1, "공정을 선택해주세요"),
@@ -144,6 +150,7 @@ export default function SubmitReport() {
   const createReport = useCreateReport();
 
   const profileDefaults = () => ({
+    productType: "양산" as "양산" | "개발",
     registrantName: user?.displayName ?? "",
     factory: user?.factory ?? "",
     processName: user?.processName ?? "",
@@ -165,6 +172,7 @@ export default function SubmitReport() {
     defaultValues: profileDefaults(),
   });
 
+  const selectedProductType = form.watch("productType");
   const selectedFactory = form.watch("factory");
   const selectedPlantCd = FACTORY_TO_PLANT_CD[selectedFactory] ?? "";
 
@@ -254,6 +262,7 @@ export default function SubmitReport() {
           issuingTeam: selectedDept?.deptName ?? values.issuingTeam ?? null,
           deptCd: values.deptCd || null,
           flawTypeCd: values.flawTypeCd || null,
+          productType: values.productType,
         },
       });
 
@@ -321,6 +330,41 @@ export default function SubmitReport() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
+
+            {/* ── 제품 구분 ── */}
+            <FormField
+              control={form.control}
+              name="productType"
+              render={({ field }) => (
+                <FieldRow label="제품 구분">
+                  <div className="grid grid-cols-2 gap-2">
+                    {PRODUCT_TYPES.map((pt) => (
+                      <button
+                        key={pt.value}
+                        type="button"
+                        onClick={() => field.onChange(pt.value)}
+                        className={`py-3.5 rounded-2xl text-[14px] font-bold transition-all ${field.value === pt.value ? SEL : UNSEL}`}
+                      >
+                        {pt.label}
+                      </button>
+                    ))}
+                  </div>
+                </FieldRow>
+              )}
+            />
+
+            {/* 개발품 안내 배너 */}
+            {selectedProductType === "개발" && (
+              <div className="mx-5 mb-1 mt-0 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-2.5">
+                <span className="text-amber-500 text-[16px] leading-none mt-0.5">⚠</span>
+                <div>
+                  <p className="text-[12px] font-semibold text-amber-700">개발품 부적합 보고</p>
+                  <p className="text-[11px] text-amber-600 mt-0.5 leading-relaxed">
+                    접수 후 연구소 담당자에게 자동으로 전파됩니다.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* ── 등록자 정보 ── */}
             <FormField

@@ -21,6 +21,7 @@ export function Layout({ children }: { children: ReactNode }) {
       const t = setTimeout(() => setShowNotifBanner(true), 2000);
       return () => clearTimeout(t);
     }
+    return undefined;
   }, [permission]);
 
   const handleNotifAllow = async () => {
