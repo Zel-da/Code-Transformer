@@ -1,0 +1,26 @@
+kind = "mobile"
+previewPath = "/ncr-mobile/"
+title = "NCR Mobile"
+version = "1.0.0"
+id = "artifacts/ncr-mobile"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+name = "expo"
+paths = [ "/ncr-mobile/" ]
+localPort = 24715
+
+[services.development]
+run = "pnpm --filter @workspace/ncr-mobile run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ncr-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/ncr-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "24715"
+BASE_PATH = "/ncr-mobile/"
