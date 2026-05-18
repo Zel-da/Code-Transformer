@@ -14,6 +14,7 @@ import {
   SubmitQcActionParams,
 } from "@workspace/api-zod";
 import { requireAdmin, requireAuth } from "../middleware/requireAuth.js";
+import { sendSushantalkMessage } from "../lib/sushantalk.js";
 
 const router: IRouter = Router();
 
@@ -32,7 +33,7 @@ router.get("/reports", async (req, res): Promise<void> => {
     conditions.push(eq(nonConformityReportsTable.defectType, defectType));
   }
   if (syncStatus) {
-    conditions.push(eq(nonConformityReportsTable.syncStatus, syncStatus));
+    conditions.push(eq(nonConformityReportsTable.syncStatus, syncStatus as "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"));
   }
   if (dateFrom) {
     conditions.push(gte(nonConformityReportsTable.reportDate, dateFrom));
@@ -105,6 +106,27 @@ router.post("/reports", async (req, res): Promise<void> => {
 
   req.log.info({ reportId: report.id, productType: report.productType }, "Non-conformity report created");
   res.status(201).json(report);
+
+  // Fire-and-forget: 수산톡 웹훅 비동기 발송 (클라이언트 대기 없음)
+  (async () => {
+    try {
+      const channel = report.productType === "개발" ? "lab" : "qc";
+      const appUrl = process.env.APP_URL ?? "https://your-app.replit.app";
+      const text = `부적합 보고서 접수\n품목: ${report.itemCode}\n링크: ${appUrl}/admin`;
+      const sentAt = new Date();
+      await sendSushantalkMessage(channel, text);
+      await db
+        .update(nonConformityReportsTable)
+        .set({
+          ssushanTalkSentAt: sentAt,
+          ...(channel === "lab" ? { labNotifiedAt: sentAt } : {}),
+        })
+        .where(eq(nonConformityReportsTable.id, report.id));
+      req.log.info({ reportId: report.id, channel }, "Sushantalk message sent");
+    } catch (err) {
+      req.log.error({ err, reportId: report.id }, "Sushantalk webhook failed (non-fatal)");
+    }
+  })();
 });
 
 router.get("/reports/stats", async (_req, res): Promise<void> => {

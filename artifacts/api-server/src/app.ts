@@ -4,6 +4,7 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { seedItemCodes } from "./lib/seed";
+import { startSlaScheduler } from "./lib/sla-scheduler";
 
 const app: Express = express();
 
@@ -33,5 +34,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api", router);
 
 seedItemCodes().catch((err) => logger.error({ err }, "Seed failed"));
+startSlaScheduler();
 
 export default app;
