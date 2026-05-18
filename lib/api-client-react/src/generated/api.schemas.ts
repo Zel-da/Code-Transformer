@@ -124,6 +124,18 @@ export interface Report {
    * @nullable
    */
   qcActionedBy?: number | null;
+  /** 누적 RPA 동기화 시도 횟수 */
+  syncAttemptCount: number;
+  /**
+   * 마지막 동기화 실패 오류 메시지
+   * @nullable
+   */
+  syncLastError?: string | null;
+  /**
+   * 다음 재시도 허용 시각
+   * @nullable
+   */
+  syncNextRetryAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -237,6 +249,8 @@ export interface RpaRunResult {
   processed: number;
   completed: number;
   failed: number;
+  /** 재시도 대기 중인 건수 (backoff 기간 내) */
+  skipped: number;
   reports: Report[];
 }
 
@@ -252,6 +266,8 @@ export const UpdateSyncStatusBodySyncStatus = {
 
 export interface UpdateSyncStatusBody {
   syncStatus: UpdateSyncStatusBodySyncStatus;
+  /** true이면 syncAttemptCount=0, syncNextRetryAt=null 초기화 */
+  resetRetry?: boolean;
 }
 
 export interface StatCount {

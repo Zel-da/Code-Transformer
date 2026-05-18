@@ -83,6 +83,15 @@ export const ListReportsResponse = zod.object({
       qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
       qcActionAt: zod.coerce.date().nullish(),
       qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+      syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
+      syncLastError: zod
+        .string()
+        .nullish()
+        .describe("마지막 동기화 실패 오류 메시지"),
+      syncNextRetryAt: zod.coerce
+        .date()
+        .nullish()
+        .describe("다음 재시도 허용 시각"),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     }),
@@ -182,6 +191,15 @@ export const ListPendingReportsResponseItem = zod.object({
   qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
   qcActionAt: zod.coerce.date().nullish(),
   qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+  syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
+  syncLastError: zod
+    .string()
+    .nullish()
+    .describe("마지막 동기화 실패 오류 메시지"),
+  syncNextRetryAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("다음 재시도 허용 시각"),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -252,6 +270,15 @@ export const UpdateReportResponse = zod.object({
   qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
   qcActionAt: zod.coerce.date().nullish(),
   qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+  syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
+  syncLastError: zod
+    .string()
+    .nullish()
+    .describe("마지막 동기화 실패 오류 메시지"),
+  syncNextRetryAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("다음 재시도 허용 시각"),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -303,6 +330,15 @@ export const GetReportResponse = zod.object({
   qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
   qcActionAt: zod.coerce.date().nullish(),
   qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+  syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
+  syncLastError: zod
+    .string()
+    .nullish()
+    .describe("마지막 동기화 실패 오류 메시지"),
+  syncNextRetryAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("다음 재시도 허용 시각"),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -317,6 +353,10 @@ export const UpdateReportSyncStatusParams = zod.object({
 
 export const UpdateReportSyncStatusBody = zod.object({
   syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+  resetRetry: zod
+    .boolean()
+    .optional()
+    .describe("true이면 syncAttemptCount=0, syncNextRetryAt=null 초기화"),
 });
 
 export const UpdateReportSyncStatusResponse = zod.object({
@@ -352,6 +392,15 @@ export const UpdateReportSyncStatusResponse = zod.object({
   qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
   qcActionAt: zod.coerce.date().nullish(),
   qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+  syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
+  syncLastError: zod
+    .string()
+    .nullish()
+    .describe("마지막 동기화 실패 오류 메시지"),
+  syncNextRetryAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("다음 재시도 허용 시각"),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -403,6 +452,15 @@ export const SubmitQcActionResponse = zod.object({
   qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
   qcActionAt: zod.coerce.date().nullish(),
   qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+  syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
+  syncLastError: zod
+    .string()
+    .nullish()
+    .describe("마지막 동기화 실패 오류 메시지"),
+  syncNextRetryAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("다음 재시도 허용 시각"),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -415,6 +473,7 @@ export const TriggerRpaResponse = zod.object({
   processed: zod.number(),
   completed: zod.number(),
   failed: zod.number(),
+  skipped: zod.number().describe("재시도 대기 중인 건수 (backoff 기간 내)"),
   reports: zod.array(
     zod.object({
       id: zod.number(),
@@ -449,6 +508,15 @@ export const TriggerRpaResponse = zod.object({
       qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
       qcActionAt: zod.coerce.date().nullish(),
       qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+      syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
+      syncLastError: zod
+        .string()
+        .nullish()
+        .describe("마지막 동기화 실패 오류 메시지"),
+      syncNextRetryAt: zod.coerce
+        .date()
+        .nullish()
+        .describe("다음 재시도 허용 시각"),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     }),

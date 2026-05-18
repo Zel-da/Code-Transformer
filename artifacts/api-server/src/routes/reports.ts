@@ -236,9 +236,16 @@ router.patch("/reports/:id/sync-status", async (req, res): Promise<void> => {
     return;
   }
 
+  const updates: Record<string, unknown> = { syncStatus: body.data.syncStatus };
+  if (body.data.resetRetry) {
+    updates.syncAttemptCount = 0;
+    updates.syncNextRetryAt = null;
+    updates.syncLastError = null;
+  }
+
   const [report] = await db
     .update(nonConformityReportsTable)
-    .set({ syncStatus: body.data.syncStatus })
+    .set(updates)
     .where(eq(nonConformityReportsTable.id, params.data.id))
     .returning();
 
@@ -248,7 +255,7 @@ router.patch("/reports/:id/sync-status", async (req, res): Promise<void> => {
   }
 
   req.log.info(
-    { reportId: report.id, syncStatus: report.syncStatus },
+    { reportId: report.id, syncStatus: report.syncStatus, resetRetry: body.data.resetRetry },
     "Report sync status updated",
   );
   res.json(report);

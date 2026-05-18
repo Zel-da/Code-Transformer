@@ -1,8 +1,10 @@
 import { Layout } from "@/components/layout";
-import { useGetReportStats, useListReports, getListReportsQueryKey, useGetReport } from "@workspace/api-client-react";
+import { useGetReportStats, useListReports, getListReportsQueryKey, useGetReport, useUpdateReportSyncStatus, getGetReportQueryKey, getGetReportStatsQueryKey } from "@workspace/api-client-react";
 import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
 import { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -29,6 +31,24 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 
 function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => void }) {
   const { data: report, isLoading } = useGetReport(reportId);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const resetRetry = useUpdateReportSyncStatus();
+
+  const handleResetRetry = async () => {
+    if (!report) return;
+    try {
+      await resetRetry.mutateAsync({ id: report.id, data: { syncStatus: "PENDING", resetRetry: true } });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListReportsQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetReportStatsQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetReportQueryKey(report.id) }),
+      ]);
+      toast({ title: "재시도 초기화 완료", description: "보고서가 PENDING으로 재설정되었습니다." });
+    } catch {
+      toast({ title: "오류", description: "재시도 초기화에 실패했습니다.", variant: "destructive" });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -50,6 +70,29 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
         <div className="mb-3 rounded-xl bg-red-50 border border-red-200 px-3 py-2.5 flex items-center gap-2">
           <Lock className="h-3.5 w-3.5 text-red-500 shrink-0" />
           <span className="text-[12px] font-semibold text-red-600">SLA 초과 · 수정 잠금</span>
+        </div>
+      )}
+
+      {/* FAILED retry banner */}
+      {report.syncStatus === "FAILED" && (
+        <div className="mb-3 rounded-xl bg-orange-50 border border-orange-200 px-3 py-2.5 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <XCircle className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-[12px] font-semibold text-orange-700">동기화 최종 실패</p>
+              {report.syncLastError && (
+                <p className="text-[11px] text-orange-500 truncate">{report.syncLastError}</p>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={handleResetRetry}
+            disabled={resetRetry.isPending}
+            className="shrink-0 h-7 px-3 rounded-lg bg-[#1A1A1A] text-white text-[11px] font-semibold disabled:opacity-50 flex items-center gap-1"
+          >
+            {resetRetry.isPending ? <RefreshCw className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+            재시도
+          </button>
         </div>
       )}
 

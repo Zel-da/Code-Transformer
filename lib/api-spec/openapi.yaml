@@ -701,6 +701,16 @@ components:
         qcActionedBy:
           type: ["integer", "null"]
           description: "QC 조치 담당자 userId"
+        syncAttemptCount:
+          type: integer
+          description: "누적 RPA 동기화 시도 횟수"
+        syncLastError:
+          type: ["string", "null"]
+          description: "마지막 동기화 실패 오류 메시지"
+        syncNextRetryAt:
+          type: ["string", "null"]
+          format: date-time
+          description: "다음 재시도 허용 시각"
         createdAt:
           type: string
           format: date-time
@@ -717,6 +727,7 @@ components:
         - imageUrl
         - syncStatus
         - isLocked
+        - syncAttemptCount
         - createdAt
         - updatedAt
 
@@ -852,6 +863,9 @@ components:
           type: integer
         failed:
           type: integer
+        skipped:
+          type: integer
+          description: "재시도 대기 중인 건수 (backoff 기간 내)"
         reports:
           type: array
           items:
@@ -860,6 +874,7 @@ components:
         - processed
         - completed
         - failed
+        - skipped
         - reports
 
     UpdateSyncStatusBody:
@@ -868,6 +883,9 @@ components:
         syncStatus:
           type: string
           enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+        resetRetry:
+          type: boolean
+          description: "true이면 syncAttemptCount=0, syncNextRetryAt=null 초기화"
       required:
         - syncStatus
 

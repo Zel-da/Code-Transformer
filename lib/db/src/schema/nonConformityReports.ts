@@ -122,6 +122,10 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
   qcAction: text("qc_action"),
   qcActionAt: timestamp("qc_action_at", { withTimezone: true }),
   qcActionedBy: integer("qc_actioned_by").references(() => usersTable.id, { onDelete: "set null" }),
+  // V2.0 RPA 재시도 관련 컬럼
+  syncAttemptCount: integer("sync_attempt_count").notNull().default(0),
+  syncLastError: text("sync_last_error"),
+  syncNextRetryAt: timestamp("sync_next_retry_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
