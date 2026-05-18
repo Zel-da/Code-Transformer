@@ -1,5 +1,5 @@
 import { db, nonConformityReportsTable } from "@workspace/db";
-import { and, eq, lt, isNull, sql } from "drizzle-orm";
+import { and, eq, lt, isNull, inArray } from "drizzle-orm";
 import { logger } from "./logger.js";
 
 const INTERVAL_MS = 5 * 60 * 1000;
@@ -28,7 +28,7 @@ async function runSlaCheck(): Promise<void> {
     await db
       .update(nonConformityReportsTable)
       .set({ isLocked: true })
-      .where(sql`${nonConformityReportsTable.id} = ANY(${ids})`);
+      .where(inArray(nonConformityReportsTable.id, ids));
 
     logger.info({ count: ids.length, ids }, `SLA scheduler: locked ${ids.length} expired report(s)`);
   } catch (err) {

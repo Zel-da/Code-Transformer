@@ -112,7 +112,7 @@ router.post("/reports", async (req, res): Promise<void> => {
     try {
       const channel = report.productType === "개발" ? "lab" : "qc";
       const appUrl = process.env.APP_URL ?? "https://your-app.replit.app";
-      const text = `부적합 보고서 접수\n품목: ${report.itemCode}\n링크: ${appUrl}/admin`;
+      const text = `부적합 보고서 접수\n품목: ${report.itemCode}\n링크: ${appUrl}/admin?reportId=${report.id}`;
       const sentAt = new Date();
       await sendSushantalkMessage(channel, text);
       await db
