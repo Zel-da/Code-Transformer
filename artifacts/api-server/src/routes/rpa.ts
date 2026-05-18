@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, or, isNull, lte } from "drizzle-orm";
+import { eq, and, or, isNull, lte, gt, count } from "drizzle-orm";
 import { db, nonConformityReportsTable } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -12,6 +12,18 @@ function backoffMinutes(attempt: number): number {
 
 router.post("/rpa/trigger", async (req, res): Promise<void> => {
   const now = new Date();
+
+  // 재시도 대기 중인 건수 (backoff 기간 내 — 아직 처리 불가)
+  const [skippedResult] = await db
+    .select({ count: count() })
+    .from(nonConformityReportsTable)
+    .where(
+      and(
+        eq(nonConformityReportsTable.syncStatus, "PENDING"),
+        gt(nonConformityReportsTable.syncNextRetryAt, now),
+      ),
+    );
+  const skipped = Number(skippedResult?.count ?? 0);
 
   const pending = await db
     .select()
@@ -28,7 +40,7 @@ router.post("/rpa/trigger", async (req, res): Promise<void> => {
     .orderBy(nonConformityReportsTable.createdAt);
 
   if (pending.length === 0) {
-    res.json({ processed: 0, completed: 0, failed: 0, skipped: 0, reports: [] });
+    res.json({ processed: 0, completed: 0, failed: 0, skipped, reports: [] });
     return;
   }
 
@@ -115,7 +127,7 @@ router.post("/rpa/trigger", async (req, res): Promise<void> => {
     processed: pending.length,
     completed,
     failed,
-    skipped: 0,
+    skipped,
     reports: results,
   });
 });
