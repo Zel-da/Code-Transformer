@@ -44,7 +44,28 @@ import {
   ShieldCheck,
   KeyRound,
   Power,
+  History,
 } from "lucide-react";
+
+interface AuditLog {
+  id: number;
+  actorId: number | null;
+  actorName: string;
+  action: string;
+  targetType: string;
+  targetId: number | null;
+  detail: string | null;
+  createdAt: string;
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  create_user: "계정 생성",
+  update_user: "계정 수정",
+  reset_password: "비밀번호 초기화",
+  activate_user: "계정 활성화",
+  deactivate_user: "계정 비활성화",
+  delete_user: "계정 삭제",
+};
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const API = `${BASE}/api`;
@@ -177,6 +198,21 @@ export default function ManagePage() {
   const [resetPwSaving, setResetPwSaving] = useState(false);
   const [togglingActiveId, setTogglingActiveId] = useState<number | null>(null);
 
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [auditLogsLoading, setAuditLogsLoading] = useState(false);
+
+  const fetchAuditLogs = useCallback(async () => {
+    setAuditLogsLoading(true);
+    try {
+      const data = await apiJson<AuditLog[]>(`${API}/audit-logs?limit=30`);
+      setAuditLogs(data);
+    } catch {
+      // silently ignore
+    } finally {
+      setAuditLogsLoading(false);
+    }
+  }, []);
+
   const fetchUsers = useCallback(async () => {
     setUsersLoading(true);
     try {
@@ -190,6 +226,7 @@ export default function ManagePage() {
   }, []);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useEffect(() => { fetchAuditLogs(); }, [fetchAuditLogs]);
 
   const handleCreateUser = async () => {
     const pwRequired = !editingUser;
@@ -225,6 +262,7 @@ export default function ManagePage() {
       setNewUserForm(EMPTY_USER_FORM);
       setEditingUser(null);
       fetchUsers();
+      fetchAuditLogs();
     } catch (err) {
       toast({ title: err instanceof Error ? err.message : "저장 실패", variant: "destructive" });
     } finally {
@@ -239,6 +277,7 @@ export default function ManagePage() {
       toast({ title: "계정이 삭제되었습니다" });
       setDeletingUserId(null);
       fetchUsers();
+      fetchAuditLogs();
     } catch (err) {
       toast({ title: err instanceof Error ? err.message : "삭제 실패", variant: "destructive" });
     }
@@ -259,6 +298,7 @@ export default function ManagePage() {
       toast({ title: `${resetPwUser.displayName} 계정의 비밀번호가 초기화되었습니다` });
       setResetPwUser(null);
       setResetPwValue("");
+      fetchAuditLogs();
     } catch (err) {
       toast({ title: err instanceof Error ? err.message : "비밀번호 초기화 실패", variant: "destructive" });
     } finally {
@@ -275,6 +315,7 @@ export default function ManagePage() {
       });
       toast({ title: u.isActive ? `${u.displayName} 계정이 비활성화되었습니다` : `${u.displayName} 계정이 활성화되었습니다` });
       fetchUsers();
+      fetchAuditLogs();
     } catch (err) {
       toast({ title: err instanceof Error ? err.message : "상태 변경 실패", variant: "destructive" });
     } finally {
@@ -545,6 +586,61 @@ export default function ManagePage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Audit Log Section */}
+        <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+          <div className="px-5 py-4 flex items-center gap-3">
+            <div className="p-1.5 bg-[#F2F4F6] rounded-lg">
+              <History className="h-4 w-4 text-[#4E5968]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-semibold text-[14px] text-[#191F28]">최근 활동 기록</h2>
+              {!isMobile && <p className="text-[12px] text-[#8B95A1]">관리자 계정 조치 이력 (최근 30건)</p>}
+            </div>
+            <button
+              onClick={fetchAuditLogs}
+              disabled={auditLogsLoading}
+              className={`${BTN_GHOST} flex items-center gap-1.5 text-[13px] px-3 py-2`}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${auditLogsLoading ? "animate-spin" : ""}`} />
+              {!isMobile && "새로고침"}
+            </button>
+          </div>
+          <div className="border-t border-[#F2F4F6]">
+            {auditLogsLoading ? (
+              <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">불러오는 중...</div>
+            ) : auditLogs.length === 0 ? (
+              <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">활동 기록이 없습니다</div>
+            ) : (
+              <div className="divide-y divide-[#F2F4F6]">
+                {auditLogs.map((log) => {
+                  const actionLabel = ACTION_LABELS[log.action] ?? log.action;
+                  const isDestructive = log.action === "delete_user" || log.action === "deactivate_user";
+                  const isPositive = log.action === "create_user" || log.action === "activate_user";
+                  return (
+                    <div key={log.id} className="flex items-start gap-3 px-5 py-3">
+                      <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${isDestructive ? "bg-red-400" : isPositive ? "bg-emerald-400" : "bg-[#BEC5CC]"}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-[11px] font-bold rounded px-1.5 py-0.5 ${isDestructive ? "bg-red-50 text-red-500" : isPositive ? "bg-emerald-50 text-emerald-600" : "bg-[#F2F4F6] text-[#4E5968]"}`}>
+                            {actionLabel}
+                          </span>
+                          <span className="text-[12px] font-semibold text-[#191F28]">@{log.actorName}</span>
+                        </div>
+                        {log.detail && (
+                          <p className="text-[12px] text-[#8B95A1] mt-0.5 truncate">{log.detail}</p>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-[#BEC5CC] shrink-0 mt-0.5">
+                        {format(new Date(log.createdAt), "MM.dd HH:mm")}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

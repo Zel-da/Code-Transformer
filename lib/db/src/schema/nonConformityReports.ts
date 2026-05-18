@@ -134,6 +134,18 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
     .$onUpdate(() => new Date()),
 });
 
+export const auditLogsTable = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  actorId: integer("actor_id").references(() => usersTable.id, { onDelete: "set null" }),
+  actorName: text("actor_name").notNull(),
+  action: text("action").notNull(),
+  targetType: text("target_type").notNull(),
+  targetId: integer("target_id"),
+  detail: text("detail"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type AuditLog = typeof auditLogsTable.$inferSelect;
+
 export const insertNonConformityReportSchema = createInsertSchema(
   nonConformityReportsTable,
 ).omit({
