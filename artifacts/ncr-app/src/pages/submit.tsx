@@ -413,7 +413,13 @@ export default function SubmitReport() {
                         <button
                           key={p.processCd}
                           type="button"
-                          onClick={() => field.onChange(p.processNm)}
+                          onClick={() => {
+                            field.onChange(p.processNm);
+                            const matchedDept = departments.find((d) => d.deptName === p.processNm);
+                            if (matchedDept) {
+                              form.setValue("deptCd", matchedDept.deptCd);
+                            }
+                          }}
                           className={`px-3.5 py-2 rounded-full text-[13px] border-2 transition-all ${field.value === p.processNm ? CHIP_SEL : CHIP_UNSEL}`}
                         >
                           {p.processNm}
