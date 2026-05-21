@@ -113,7 +113,7 @@ function FieldRow({
 function GroupDivider({ title }: { title: string }) {
   return (
     <div className="bg-[#F8F9FA] border-y border-[#F2F4F6] px-5 py-3">
-      <span className="text-[11px] font-bold text-[#8B95A1] tracking-widest uppercase">{title}</span>
+      <span className="font-bold text-[#8B95A1] tracking-widest uppercase text-[20px]">{title}</span>
     </div>
   );
 }
