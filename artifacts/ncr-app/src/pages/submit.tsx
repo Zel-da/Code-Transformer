@@ -78,10 +78,6 @@ const formSchema = z.object({
     (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
     z.number().int().min(0).optional(),
   ),
-  lostManHours: z.preprocess(
-    (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
-    z.number().min(0).optional(),
-  ),
   description: z.string().min(1, "부적합 현상을 입력해주세요"),
 });
 
@@ -164,7 +160,7 @@ export default function SubmitReport() {
     defectType: "",
     flawTypeCd: "",
     defectQty: undefined as number | undefined,
-    lostManHours: undefined as number | undefined,
+
     description: "",
   });
 
@@ -256,7 +252,7 @@ export default function SubmitReport() {
           plantCd: selectedPlantCd || null,
           processCd: selectedProcess?.processCd ?? null,
           shipmentUnit: values.shipmentUnit || null,
-          lostManHours: values.lostManHours ?? null,
+
           defectQty: values.defectQty != null ? Math.round(values.defectQty) : null,
           occurrenceDate: values.occurrenceDate
             ? new Date(values.occurrenceDate).toISOString()
@@ -643,28 +639,6 @@ export default function SubmitReport() {
                       inputMode="numeric"
                       min="0"
                       placeholder="0"
-                      className="w-full text-[15px] text-[#191F28] placeholder-[#BEC5CC] outline-none bg-transparent font-medium"
-                      value={field.value ?? ""}
-                      onChange={(e) => field.onChange(e.target.value)}
-                    />
-                  </div>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="lostManHours"
-                render={({ field }) => (
-                  <div>
-                    <div className="flex items-center justify-between mb-2.5">
-                      <span className="text-[13px] font-semibold text-[#191F28]">손실공수 (H)</span>
-                      <span className="text-[11px] text-[#BEC5CC]">선택</span>
-                    </div>
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      min="0"
-                      step="0.5"
-                      placeholder="0.0"
                       className="w-full text-[15px] text-[#191F28] placeholder-[#BEC5CC] outline-none bg-transparent font-medium"
                       value={field.value ?? ""}
                       onChange={(e) => field.onChange(e.target.value)}
