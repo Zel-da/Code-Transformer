@@ -466,7 +466,7 @@ export default function SubmitReport() {
               name="ncrType"
               render={({ field }) => (
                 <FieldRow label="부적합 구분" error={form.formState.errors.ncrType?.message}>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {NCR_TYPES.map((t) => (
                       <button
                         key={t.value}
