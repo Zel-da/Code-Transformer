@@ -4,7 +4,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/auth";
 import NotFound from "@/pages/not-found";
-import AdminDashboard from "@/pages/admin";
 import LedgerPage from "@/pages/ledger";
 import SubmitReport from "@/pages/submit";
 import ManagePage from "@/pages/manage";
@@ -35,17 +34,10 @@ function Router() {
   return (
     <Switch>
       <Route path="/login">
-        {user?.role === "admin" ? <Redirect to="/admin" /> : user ? <Redirect to="/submit" /> : <LoginPage />}
+        {user ? <Redirect to="/ledger" /> : <LoginPage />}
       </Route>
       <Route path="/">
-        {user?.role === "admin"
-          ? <Redirect to="/admin" />
-          : user
-          ? <Redirect to="/submit" />
-          : <Redirect to="/login" />}
-      </Route>
-      <Route path="/admin">
-        <RequireAdmin><AdminDashboard /></RequireAdmin>
+        {user ? <Redirect to="/ledger" /> : <Redirect to="/login" />}
       </Route>
       <Route path="/ledger">
         <RequireAuth><LedgerPage /></RequireAuth>

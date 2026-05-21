@@ -6,6 +6,7 @@ import {
   useTriggerRpa,
   useListItems,
   useSubmitQcAction,
+  useGetReportStats,
   getListReportsQueryKey,
   getGetReportStatsQueryKey,
   getGetReportQueryKey,
@@ -45,7 +46,35 @@ import {
   KeyRound,
   Power,
   History,
+  BarChart3,
+  FlaskConical,
+  Clock,
 } from "lucide-react";
+
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  dot,
+}: {
+  title: string;
+  value: number;
+  subtitle?: string;
+  icon: React.ElementType;
+  dot?: string;
+}) {
+  return (
+    <div className="bg-white rounded-2xl border border-[#F2F4F6] px-4 py-3">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[11px] font-medium text-[#8B95A1]">{title}</span>
+        {dot ? <span className={`w-2 h-2 rounded-full ${dot}`} /> : <Icon className="h-3.5 w-3.5 text-[#BEC5CC]" />}
+      </div>
+      <div className="text-[22px] font-bold text-[#191F28] tracking-tight leading-tight">{value}</div>
+      {subtitle && <div className="text-[10px] text-[#8B95A1] mt-0.5">{subtitle}</div>}
+    </div>
+  );
+}
 
 interface AuditLog {
   id: number;
@@ -166,6 +195,7 @@ export default function ManagePage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user: currentUser, logout } = useAuth();
+  const { data: stats } = useGetReportStats();
 
   useEffect(() => {
     _onUnauthorized = logout;
@@ -496,6 +526,47 @@ export default function ManagePage() {
             <h1 className="text-[20px] font-bold text-[#191F28]">관리자 패널</h1>
             <p className="text-[13px] text-[#8B95A1] mt-0.5">보고서 수정·삭제 및 RPA 동기화 실행</p>
           </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <StatCard
+            title="전체 보고서"
+            value={stats?.total ?? 0}
+            subtitle={`최근 7일 ${stats?.recentCount ?? 0}건`}
+            icon={BarChart3}
+          />
+          <StatCard
+            title="동기화 대기"
+            value={stats?.bySyncStatus.find((s) => s.label === "PENDING")?.count ?? 0}
+            icon={Clock}
+            dot="bg-amber-400"
+          />
+          <StatCard
+            title="동기화 실패"
+            value={stats?.bySyncStatus.find((s) => s.label === "FAILED")?.count ?? 0}
+            icon={XCircle}
+            dot="bg-red-400"
+          />
+          <StatCard
+            title="동기화 완료"
+            value={stats?.bySyncStatus.find((s) => s.label === "COMPLETED")?.count ?? 0}
+            icon={CheckCircle2}
+            dot="bg-emerald-400"
+          />
+          <StatCard
+            title="SLA 잠금"
+            value={stats?.lockedCount ?? 0}
+            icon={Lock}
+            dot="bg-slate-400"
+          />
+          <StatCard
+            title="연구소 대기"
+            value={stats?.pendingLabCount ?? 0}
+            subtitle="개발품 랩 통보 미완료"
+            icon={FlaskConical}
+            dot="bg-violet-400"
+          />
         </div>
 
         {/* User Management Section */}
