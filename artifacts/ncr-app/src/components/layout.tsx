@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, FileWarning, ClipboardList, Settings2, Download, Bell, X, LogOut, User } from "lucide-react";
+import { LayoutDashboard, FileWarning, ClipboardList, Settings2, Download, Bell, X, LogOut, User, BookOpen } from "lucide-react";
 import { usePWAInstall, useNotifications } from "@/hooks/usePWA";
 import { useAuth } from "@/contexts/auth";
 
@@ -39,18 +39,26 @@ export function Layout({ children }: { children: ReactNode }) {
   const navItems = user?.role === "admin"
     ? [
         { href: "/admin", label: "대시보드" },
+        { href: "/ledger", label: "관리대장" },
         { href: "/submit", label: "보고서 등록" },
         { href: "/manage", label: "관리자 패널" },
       ]
-    : [{ href: "/submit", label: "보고서 등록" }];
+    : [
+        { href: "/ledger", label: "관리대장" },
+        { href: "/submit", label: "보고서 등록" },
+      ];
 
   const mobileNavItems = user?.role === "admin"
     ? [
         { href: "/admin", label: "대시보드", Icon: LayoutDashboard },
+        { href: "/ledger", label: "관리대장", Icon: BookOpen },
         { href: "/submit", label: "보고서 등록", Icon: FileWarning },
         { href: "/manage", label: "관리자", Icon: Settings2 },
       ]
-    : [{ href: "/submit", label: "보고서 등록", Icon: FileWarning }];
+    : [
+        { href: "/ledger", label: "관리대장", Icon: BookOpen },
+        { href: "/submit", label: "보고서 등록", Icon: FileWarning },
+      ];
 
   return (
     <div

@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/auth";
 import NotFound from "@/pages/not-found";
 import AdminDashboard from "@/pages/admin";
+import LedgerPage from "@/pages/ledger";
 import SubmitReport from "@/pages/submit";
 import ManagePage from "@/pages/manage";
 import LoginPage from "@/pages/login";
@@ -45,6 +46,9 @@ function Router() {
       </Route>
       <Route path="/admin">
         <RequireAdmin><AdminDashboard /></RequireAdmin>
+      </Route>
+      <Route path="/ledger">
+        <RequireAuth><LedgerPage /></RequireAuth>
       </Route>
       <Route path="/submit">
         <RequireAuth><SubmitReport /></RequireAuth>
