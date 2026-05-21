@@ -54,6 +54,7 @@ export const ListReportsResponse = zod.object({
       id: zod.number(),
       reportDate: zod.coerce.date(),
       itemCode: zod.string(),
+      modelName: zod.string().nullish(),
       processName: zod.string(),
       defectType: zod.string(),
       description: zod.string(),
@@ -107,6 +108,7 @@ export const ListReportsResponse = zod.object({
 export const CreateReportBody = zod.object({
   reportDate: zod.coerce.date().optional(),
   itemCode: zod.string(),
+  modelName: zod.string().nullish(),
   processName: zod.string(),
   defectType: zod.string(),
   description: zod.string(),
@@ -162,6 +164,7 @@ export const ListPendingReportsResponseItem = zod.object({
   id: zod.number(),
   reportDate: zod.coerce.date(),
   itemCode: zod.string(),
+  modelName: zod.string().nullish(),
   processName: zod.string(),
   defectType: zod.string(),
   description: zod.string(),
@@ -216,6 +219,7 @@ export const UpdateReportParams = zod.object({
 
 export const UpdateReportBody = zod.object({
   itemCode: zod.string().optional(),
+  modelName: zod.string().nullish(),
   processName: zod.string().optional(),
   defectType: zod.string().optional(),
   description: zod.string().optional(),
@@ -241,6 +245,7 @@ export const UpdateReportResponse = zod.object({
   id: zod.number(),
   reportDate: zod.coerce.date(),
   itemCode: zod.string(),
+  modelName: zod.string().nullish(),
   processName: zod.string(),
   defectType: zod.string(),
   description: zod.string(),
@@ -301,6 +306,7 @@ export const GetReportResponse = zod.object({
   id: zod.number(),
   reportDate: zod.coerce.date(),
   itemCode: zod.string(),
+  modelName: zod.string().nullish(),
   processName: zod.string(),
   defectType: zod.string(),
   description: zod.string(),
@@ -363,6 +369,7 @@ export const UpdateReportSyncStatusResponse = zod.object({
   id: zod.number(),
   reportDate: zod.coerce.date(),
   itemCode: zod.string(),
+  modelName: zod.string().nullish(),
   processName: zod.string(),
   defectType: zod.string(),
   description: zod.string(),
@@ -423,6 +430,7 @@ export const SubmitQcActionResponse = zod.object({
   id: zod.number(),
   reportDate: zod.coerce.date(),
   itemCode: zod.string(),
+  modelName: zod.string().nullish(),
   processName: zod.string(),
   defectType: zod.string(),
   description: zod.string(),
@@ -479,6 +487,7 @@ export const TriggerRpaResponse = zod.object({
       id: zod.number(),
       reportDate: zod.coerce.date(),
       itemCode: zod.string(),
+      modelName: zod.string().nullish(),
       processName: zod.string(),
       defectType: zod.string(),
       description: zod.string(),
@@ -611,6 +620,143 @@ export const ListDepartmentsResponseItem = zod.object({
 export const ListDepartmentsResponse = zod.array(ListDepartmentsResponseItem);
 
 /**
+ * Returns all user accounts. Admin only.
+ * @summary List all user accounts
+ */
+export const ListUsersResponseItem = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  displayName: zod.string(),
+  role: zod.enum(["admin", "worker"]),
+  isActive: zod
+    .boolean()
+    .describe(
+      "Whether the account is active. Inactive accounts cannot log in and existing tokens are rejected.",
+    ),
+  deptCd: zod.string().nullish(),
+  factory: zod.string().nullish(),
+  plantCd: zod.string().nullish(),
+  processName: zod.string().nullish(),
+  processCd: zod.string().nullish(),
+});
+export const ListUsersResponse = zod.array(ListUsersResponseItem);
+
+/**
+ * Creates a new user account. Admin only.
+ * @summary Create a new user account
+ */
+export const createUserBodyUsernameMin = 2;
+
+export const createUserBodyPasswordMin = 4;
+
+export const createUserBodyRoleDefault = `worker`;
+
+export const CreateUserBody = zod.object({
+  username: zod.string().min(createUserBodyUsernameMin),
+  password: zod.string().min(createUserBodyPasswordMin),
+  displayName: zod.string().min(1),
+  role: zod.enum(["admin", "worker"]).default(createUserBodyRoleDefault),
+  deptCd: zod.string().optional(),
+  factory: zod.string().optional(),
+  plantCd: zod.string().optional(),
+  processName: zod.string().optional(),
+  processCd: zod.string().optional(),
+});
+
+/**
+ * Admins can update any user. Non-admins can only update their own profile (role change excluded).
+ * @summary Update a user account
+ */
+export const UpdateUserParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const updateUserBodyPasswordMin = 4;
+
+export const UpdateUserBody = zod.object({
+  displayName: zod.string().min(1).optional(),
+  password: zod.string().min(updateUserBodyPasswordMin).optional(),
+  role: zod.enum(["admin", "worker"]).optional(),
+  deptCd: zod.string().nullish(),
+  factory: zod.string().nullish(),
+  plantCd: zod.string().nullish(),
+  processName: zod.string().nullish(),
+  processCd: zod.string().nullish(),
+});
+
+export const UpdateUserResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  displayName: zod.string(),
+  role: zod.enum(["admin", "worker"]),
+  isActive: zod
+    .boolean()
+    .describe(
+      "Whether the account is active. Inactive accounts cannot log in and existing tokens are rejected.",
+    ),
+  deptCd: zod.string().nullish(),
+  factory: zod.string().nullish(),
+  plantCd: zod.string().nullish(),
+  processName: zod.string().nullish(),
+  processCd: zod.string().nullish(),
+});
+
+/**
+ * Permanently deletes a user account. Admin only. Cannot delete own account.
+ * @summary Delete a user account
+ */
+export const DeleteUserParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * Sets a new password for the specified user. Admin only.
+ * @summary Reset a user's password
+ */
+export const ResetUserPasswordParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const resetUserPasswordBodyPasswordMin = 4;
+
+export const ResetUserPasswordBody = zod.object({
+  password: zod.string().min(resetUserPasswordBodyPasswordMin),
+});
+
+export const ResetUserPasswordResponse = zod.object({
+  ok: zod.boolean().optional(),
+});
+
+/**
+ * Toggles the isActive status of a user account. Admin only. Cannot deactivate own account. Deactivated accounts cannot log in and existing tokens are immediately rejected.
+ * @summary Activate or deactivate a user account
+ */
+export const SetUserActiveParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SetUserActiveBody = zod.object({
+  isActive: zod.boolean(),
+});
+
+export const SetUserActiveResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  displayName: zod.string(),
+  role: zod.enum(["admin", "worker"]),
+  isActive: zod
+    .boolean()
+    .describe(
+      "Whether the account is active. Inactive accounts cannot log in and existing tokens are rejected.",
+    ),
+  deptCd: zod.string().nullish(),
+  factory: zod.string().nullish(),
+  plantCd: zod.string().nullish(),
+  processName: zod.string().nullish(),
+  processCd: zod.string().nullish(),
+});
+
+/**
  * @summary Login
  */
 export const LoginBody = zod.object({
@@ -625,6 +771,11 @@ export const LoginResponse = zod.object({
     username: zod.string(),
     displayName: zod.string(),
     role: zod.enum(["admin", "worker"]),
+    isActive: zod
+      .boolean()
+      .describe(
+        "Whether the account is active. Inactive accounts cannot log in and existing tokens are rejected.",
+      ),
     deptCd: zod.string().nullish(),
     factory: zod.string().nullish(),
     plantCd: zod.string().nullish(),
@@ -641,6 +792,11 @@ export const GetMeResponse = zod.object({
   username: zod.string(),
   displayName: zod.string(),
   role: zod.enum(["admin", "worker"]),
+  isActive: zod
+    .boolean()
+    .describe(
+      "Whether the account is active. Inactive accounts cannot log in and existing tokens are rejected.",
+    ),
   deptCd: zod.string().nullish(),
   factory: zod.string().nullish(),
   plantCd: zod.string().nullish(),

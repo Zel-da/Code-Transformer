@@ -67,6 +67,8 @@ export interface Report {
   id: number;
   reportDate: string;
   itemCode: string;
+  /** @nullable */
+  modelName?: string | null;
   processName: string;
   defectType: string;
   description: string;
@@ -161,6 +163,8 @@ export const CreateReportBodyProductType = {
 export interface CreateReportBody {
   reportDate?: string;
   itemCode: string;
+  /** @nullable */
+  modelName?: string | null;
   processName: string;
   defectType: string;
   description: string;
@@ -208,6 +212,8 @@ export const UpdateReportBodySyncStatus = {
 
 export interface UpdateReportBody {
   itemCode?: string;
+  /** @nullable */
+  modelName?: string | null;
   processName?: string;
   defectType?: string;
   description?: string;
@@ -306,6 +312,55 @@ export interface ErrorEnvelope {
   error: string;
 }
 
+export type CreateUserBodyRole =
+  (typeof CreateUserBodyRole)[keyof typeof CreateUserBodyRole];
+
+export const CreateUserBodyRole = {
+  admin: "admin",
+  worker: "worker",
+} as const;
+
+export interface CreateUserBody {
+  /** @minLength 2 */
+  username: string;
+  /** @minLength 4 */
+  password: string;
+  /** @minLength 1 */
+  displayName: string;
+  role?: CreateUserBodyRole;
+  deptCd?: string;
+  factory?: string;
+  plantCd?: string;
+  processName?: string;
+  processCd?: string;
+}
+
+export type UpdateUserBodyRole =
+  (typeof UpdateUserBodyRole)[keyof typeof UpdateUserBodyRole];
+
+export const UpdateUserBodyRole = {
+  admin: "admin",
+  worker: "worker",
+} as const;
+
+export interface UpdateUserBody {
+  /** @minLength 1 */
+  displayName?: string;
+  /** @minLength 4 */
+  password?: string;
+  role?: UpdateUserBodyRole;
+  /** @nullable */
+  deptCd?: string | null;
+  /** @nullable */
+  factory?: string | null;
+  /** @nullable */
+  plantCd?: string | null;
+  /** @nullable */
+  processName?: string | null;
+  /** @nullable */
+  processCd?: string | null;
+}
+
 export interface LoginBody {
   username: string;
   password: string;
@@ -324,6 +379,8 @@ export interface UserProfile {
   username: string;
   displayName: string;
   role: UserProfileRole;
+  /** Whether the account is active. Inactive accounts cannot log in and existing tokens are rejected. */
+  isActive: boolean;
   /** @nullable */
   deptCd?: string | null;
   /** @nullable */
@@ -361,4 +418,17 @@ export type ListProcessesParams = {
 
 export type ListDepartmentsParams = {
   search?: string;
+};
+
+export type ResetUserPasswordBody = {
+  /** @minLength 4 */
+  password: string;
+};
+
+export type ResetUserPassword200 = {
+  ok?: boolean;
+};
+
+export type SetUserActiveBody = {
+  isActive: boolean;
 };

@@ -858,6 +858,8 @@ components:
           format: date-time
         itemCode:
           type: string
+        modelName:
+          type: ["string", "null"]
         processName:
           type: string
         defectType:
@@ -978,6 +980,8 @@ components:
           format: date-time
         itemCode:
           type: string
+        modelName:
+          type: ["string", "null"]
         processName:
           type: string
         defectType:
@@ -1028,6 +1032,8 @@ components:
       properties:
         itemCode:
           type: string
+        modelName:
+          type: ["string", "null"]
         processName:
           type: string
         defectType:

@@ -81,6 +81,7 @@ router.post("/reports", async (req, res): Promise<void> => {
     .values({
       reportDate,
       itemCode: d.itemCode,
+      modelName: d.modelName ?? null,
       processName: d.processName,
       defectType: d.defectType,
       description: d.description,
@@ -332,6 +333,7 @@ router.put("/reports/:id", requireAuth, async (req, res): Promise<void> => {
 
   const updates: Record<string, unknown> = {};
   if (body.data.itemCode !== undefined) updates.itemCode = body.data.itemCode;
+  if (body.data.modelName !== undefined) updates.modelName = body.data.modelName;
   if (body.data.processName !== undefined) updates.processName = body.data.processName;
   if (body.data.defectType !== undefined) updates.defectType = body.data.defectType;
   if (body.data.description !== undefined) updates.description = body.data.description;

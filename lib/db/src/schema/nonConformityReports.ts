@@ -93,6 +93,7 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
   id: serial("id").primaryKey(),
   reportDate: timestamp("report_date", { withTimezone: true }).notNull().defaultNow(),
   itemCode: text("item_code").notNull(),
+  modelName: text("model_name"),
   processName: text("process_name").notNull(),
   defectType: text("defect_type").notNull(),
   description: text("description").notNull(),

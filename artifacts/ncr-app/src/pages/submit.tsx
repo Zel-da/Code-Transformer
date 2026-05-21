@@ -69,6 +69,7 @@ const formSchema = z.object({
   deptCd: z.string().optional(),
   ncrType: z.string().min(1, "부적합 구분을 선택해주세요"),
   itemCode: z.string().min(1, "제품코드를 선택해주세요"),
+  modelName: z.string().optional(),
   shipmentUnit: z.string().optional(),
   occurrenceDate: z.string().optional(),
   defectType: z.string().min(1, "불량유형을 선택해주세요"),
@@ -157,6 +158,7 @@ export default function SubmitReport() {
     deptCd: user?.deptCd ?? "",
     ncrType: "",
     itemCode: "",
+    modelName: "",
     shipmentUnit: "",
     occurrenceDate: todayStr(),
     defectType: "",
@@ -241,6 +243,7 @@ export default function SubmitReport() {
       await createReport.mutateAsync({
         data: {
           itemCode: values.itemCode,
+          modelName: values.modelName || null,
           processName: values.processName,
           defectType: values.defectType,
           description: values.description,
@@ -539,6 +542,20 @@ export default function SubmitReport() {
                         </div>
                       )}
                     </div>
+                </FieldRow>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="modelName"
+              render={({ field }) => (
+                <FieldRow label="모델명" optional>
+                  <input
+                    placeholder="모델명을 입력하세요"
+                    className="w-full text-[15px] text-[#191F28] placeholder-[#BEC5CC] outline-none bg-transparent font-medium"
+                    {...field}
+                  />
                 </FieldRow>
               )}
             />
