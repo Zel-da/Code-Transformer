@@ -550,9 +550,9 @@ export default function SubmitReport() {
               control={form.control}
               name="modelName"
               render={({ field }) => (
-                <FieldRow label="모델명" optional>
+                <FieldRow label="제품명" optional>
                   <input
-                    placeholder="모델명을 입력하세요"
+                    placeholder="제품명을 입력하세요"
                     className="w-full text-[15px] text-[#191F28] placeholder-[#BEC5CC] outline-none bg-transparent font-medium"
                     {...field}
                   />
