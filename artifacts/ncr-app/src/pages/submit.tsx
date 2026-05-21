@@ -51,7 +51,6 @@ const FACTORY_TO_PLANT_CD: Record<string, string> = {
 const NCR_TYPES = [
   { label: "공정", value: "QC" },
   { label: "출하", value: "QO" },
-  { label: "AS", value: "AS" },
 ] as const;
 
 const todayStr = () => new Date().toISOString().split("T")[0];
