@@ -1,0 +1,5 @@
+pywinauto==0.6.8
+pyperclip==1.9.0
+keyboard==0.13.5
+requests==2.32.3
+python-dotenv==1.0.1

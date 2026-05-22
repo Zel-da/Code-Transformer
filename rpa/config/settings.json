@@ -1,0 +1,36 @@
+{
+  "_comment": "캘리브레이션 완료 후 실제 값으로 채울 것. 단위: 기준 해상도(ref_w x ref_h) 기준 픽셀.",
+  "erp": {
+    "window_title_pattern": ".*TODO_ERP_TITLE.*",
+    "ref_w": 1920,
+    "ref_h": 1080
+  },
+  "api": {
+    "base_url": "http://localhost:3000",
+    "poll_interval_seconds": 60
+  },
+  "coords": {
+    "_comment": "기준 해상도(1920x1080)에서 측정한 창 상대 좌표",
+    "open_form":       [0, 0],
+    "new_record":      [0, 0],
+    "grid_first_cell": [0, 0],
+    "save_btn":        [0, 0]
+  },
+  "shortcuts": {
+    "open_menu": "{F3}",
+    "new_row":   "^{INSERT}",
+    "save":      "^s",
+    "close_mdi": "^{F4}"
+  },
+  "grid": {
+    "header_row_index": 0,
+    "data_start_row": 1,
+    "columns": []
+  },
+  "timing": {
+    "after_menu_open_sec": 0.6,
+    "after_form_load_sec": 1.0,
+    "after_save_sec": 0.5,
+    "popup_wait_sec": 0.3
+  }
+}

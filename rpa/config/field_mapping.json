@@ -1,0 +1,76 @@
+{
+  "_comment": "NCR 보고서 필드 → ERP 폼 필드 매핑. 폼 구조 확인 후 채울 것.",
+  "header_fields": [
+    {
+      "ncr_key":    "reportNo",
+      "label":      "보고서번호",
+      "tab_after":  1,
+      "method":     "type",
+      "erp_field":  "TODO"
+    },
+    {
+      "ncr_key":    "occurredAt",
+      "label":      "발생일",
+      "tab_after":  1,
+      "method":     "type",
+      "erp_field":  "TODO",
+      "format":     "YYYY-MM-DD"
+    },
+    {
+      "ncr_key":    "deptCd",
+      "label":      "발행팀",
+      "tab_after":  1,
+      "method":     "type",
+      "erp_field":  "TODO"
+    },
+    {
+      "ncr_key":    "processName",
+      "label":      "공정명",
+      "tab_after":  1,
+      "method":     "type",
+      "erp_field":  "TODO"
+    },
+    {
+      "ncr_key":    "modelName",
+      "label":      "제품명",
+      "tab_after":  1,
+      "method":     "type",
+      "erp_field":  "TODO"
+    },
+    {
+      "ncr_key":    "ncrType",
+      "label":      "부적합유형",
+      "tab_after":  1,
+      "method":     "type",
+      "erp_field":  "TODO"
+    },
+    {
+      "ncr_key":    "defectDesc",
+      "label":      "부적합내용",
+      "tab_after":  1,
+      "method":     "type",
+      "erp_field":  "TODO"
+    }
+  ],
+  "grid_columns": [
+    {
+      "ncr_key":   "itemCode",
+      "label":     "품목코드",
+      "col_index": null,
+      "keywords":  ["품목", "코드"]
+    },
+    {
+      "ncr_key":   "quantity",
+      "label":     "수량",
+      "col_index": null,
+      "keywords":  ["수량"]
+    }
+  ],
+  "ncrType_map": {
+    "_comment": "NCR 유형 코드 → ERP 드롭다운 값 매핑 (캘리브레이션 후 채울 것)",
+    "incoming":    "TODO",
+    "process":     "TODO",
+    "outsourcing": "TODO",
+    "etc":         "TODO"
+  }
+}

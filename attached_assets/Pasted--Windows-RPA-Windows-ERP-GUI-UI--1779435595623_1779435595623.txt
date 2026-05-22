@@ -1,0 +1,536 @@
+# Windows 데스크탑 RPA 개발 원리 정리
+
+이 문서는 Windows 레거시 데스크탑 애플리케이션(ERP, 회계, 인사 등 GUI 앱)에
+키보드·마우스·UI 자동화를 수행할 때의 핵심 문제와 해결 패턴을 추출한 것이다.
+특정 폼/필드 구조는 배제하고 원리만 담는다.
+
+**문서 범위 (Scope)**
+- ✅ Windows GUI 앱과의 상호작용 (창 연결, 좌표, 키 입력, 그리드, 팝업, 다이얼로그)
+- ✅ 자동화 안정성·속도·디버깅 패턴
+- ❌ 데이터 소스 처리 (파일/문서/네트워크/DB에서 어떻게 값을 얻는지는 별도 영역)
+- ❌ 특정 비즈니스 폼/필드 구조
+- ❌ 웹 UI / 브라우저 자동화 (Selenium/Playwright 등 다른 도메인)
+
+데이터를 어떻게 준비하느냐(파일 파싱, 외부 API, 사용자 입력 등)는 이 문서의 범위 밖이며,
+"이미 준비된 값들을 GUI 앱에 어떻게 정확하고 빠르게 넣느냐"에만 집중한다.
+
+대상 환경:
+- Windows 10/11
+- Python + pywinauto + pyperclip
+- 데스크탑 GUI 앱 (WPF, WinForms, MFC, Java Swing 등 — UIA 백엔드로 접근)
+
+---
+
+## 1. 라이브러리 선택
+
+### 1-1. UI Automation 백엔드 비교
+
+| 백엔드 | 용도 | 장단점 |
+|---|---|---|
+| `pywinauto`(uia) | Modern apps (WPF, UWP, .NET) | 구조 탐색 좋음, 느림 |
+| `pywinauto`(win32) | 레거시 (MFC, WinForms classic) | 빠름, 그러나 모던 컨트롤은 인식 못함 |
+| `pyautogui` | 좌표/이미지 기반 | 가장 단순, UI 인식 불가 |
+| `keyboard`(글로벌 키) | 단순 키 입력 | OS 전역 — 위험, 포커스 의존 |
+| Win32 API 직접 | 최후의 수단 | 안정적이나 복잡 |
+
+**원칙**: `pywinauto.uia`를 기본으로 두고, UIA로 안 잡히는 컨트롤은 좌표/이미지 매칭 + Win32 폴백으로 처리.
+
+### 1-2. 텍스트 입력
+
+| 방법 | 적합한 경우 | 주의 |
+|---|---|---|
+| `control.set_text()` | UIA가 인식한 컨트롤 | 일부 컨트롤은 이벤트 미발화 → 검증 필요 |
+| `keyboard.send_keys()` | 일반 키 입력 | 글로벌, 포커스 의존 |
+| `window.type_keys()` | 특정 윈도우 대상 | `set_foreground=True`로 포커스 강제 |
+| **클립보드(Ctrl+V)** | 한글/괄호/특수문자/긴 텍스트 | **가장 안정적**. `pyperclip.copy()` + `send_keys("^v")` |
+
+특수문자(괄호 등)는 `send_keys`의 이스케이프 규칙을 타기 때문에, 임의 텍스트는 클립보드 경로가 안전하다.
+
+---
+
+## 2. 윈도우 연결과 식별
+
+### 2-1. 연결 기준
+- **창 제목(window title)** 매칭이 가장 안정적 (정규식: `title_re=f".*{title}.*"`)
+- 프로세스명은 백그라운드 인스턴스 구별이 어려우니 보조 식별자로만 사용
+- 첫 매칭 후 `main_window.handle`을 캐싱해서 이후 호출에 사용
+
+```python
+app = Application(backend="uia").connect(title_re=".*UNIERP.*", timeout=10)
+main = app.window(title_re=".*UNIERP.*")
+main.wait("ready", timeout=10)
+hwnd = main.handle  # 이후 핸들 직접 사용
+```
+
+### 2-2. 연결 유지 체크
+- `main.exists()` — 가벼운 체크, 매 스텝 전에 호출 부담 적음
+- 매 스텝 무거운 재검색 금지
+
+---
+
+## 3. 좌표 처리 (가장 중요한 문제)
+
+### 3-1. 절대 좌표의 위험
+- 모니터/배율/창 위치/멀티 모니터에 따라 깨짐
+- 절대 좌표 하드코딩은 **금지**
+
+### 3-2. 윈도우 상대 + 비례 스케일링 패턴
+
+기준 해상도(예: 1920×1080)에서 측정한 좌표를 **현재 창 크기에 비례하여** 변환:
+
+```python
+def _window_relative_coords(ref_x, ref_y, ref_w, ref_h):
+    rect = main_window.rectangle()
+    win_w = rect.right - rect.left
+    win_h = rect.bottom - rect.top
+    abs_x = rect.left + int(win_w * ref_x / ref_w)
+    abs_y = rect.top + int(win_h * ref_y / ref_h)
+    return (abs_x, abs_y)
+```
+
+**왜 비례 스케일링인가**: 창 크기가 기준과 다를 때(다른 모니터, 부분 최대화) UI 레이아웃이 같은 비율로 늘어나면 비례 스케일링이 맞고, 아니면 어긋난다. 실제로는 비례가 맞는 경우가 더 흔하다 (반응형 레이아웃이 많음).
+
+대안: **윈도우 가장자리 기준 고정 오프셋** (`rect.right - 289` 같은 형태) — 우상단 도구바처럼 가장자리에 붙는 요소에 유리.
+
+### 3-3. 사전 조건
+- **항상 창 최대화 상태에서 캘리브레이션** — `main.maximize()` 호출 후 좌표 측정
+- 작업 시작 시 `ensure_maximized()`로 보장
+- DPI awareness 활성화 (`ctypes.windll.shcore.SetProcessDpiAwareness(2)`) — 좌표가 논리/물리 픽셀 단위로 일관되게
+
+### 3-4. 멀티 모니터
+- 모든 좌표를 창 기준 상대값으로 계산하면 모니터 위치 무관해짐
+- 다만 모니터마다 다른 배율(150%/100%)이면 보정 필요 — Per-Monitor DPI Awareness V2 필수
+
+---
+
+## 4. 키 입력 패턴
+
+### 4-1. 글로벌 vs 윈도우 타깃
+```python
+# 글로벌 (현재 포커스 윈도우로 감)
+keyboard.send_keys("{F3}")
+
+# 특정 윈도우로 강제 (포커스 안 맞아도 강제 전환 후 전송)
+main_window.type_keys("{F3}", set_foreground=True)
+```
+
+다중 윈도우/팝업 환경에선 `type_keys(set_foreground=True)`가 안전. 단, Windows 보안 정책상 다른 앱이 포그라운드를 잡고 있으면 강제 실패할 수 있음.
+
+### 4-2. 속도 최적화
+- 여러 키를 **하나의 문자열로 묶어** 한 번에 전송:
+  ```python
+  keyboard.send_keys("{TAB}{TAB}{TAB}{ENTER}", pause=0.0)
+  ```
+- `pause=0.0`으로 키 사이 지연 제거
+- 다회 호출(N번 `send_keys(key)`)보다 한 번 호출(`send_keys(key*N)`)이 압도적으로 빠름
+
+### 4-3. 그리드 셀 편집/포커스 모드 전환
+많은 그리드 컨트롤은 두 가지 상태가 있다:
+- **편집 모드(edit)**: 셀 내부 텍스트 커서 활성. Tab → 같은 셀 내 텍스트 이동
+- **포커스 모드(focus)**: 셀 단위 선택. Tab → 다음 셀로 이동
+
+전환 패턴: `{ESC}`로 편집 모드 → 포커스 모드. `{ENTER}` 또는 `F2`로 포커스 → 편집 모드.
+
+```python
+window.send_keys("{ESC}")  # 편집 모드 종료
+window.send_keys("{TAB}")  # 다음 셀로 이동 (포커스 모드)
+window.send_keys("{ENTER}")  # 편집 시작
+```
+
+---
+
+## 5. 그리드/표 입력 패턴
+
+### 5-1. 열 순서 자동 감지
+사용자/버전마다 열 순서가 다른 그리드는 헤더를 받아서 동적으로 처리:
+
+```python
+# 헤더 문자열을 탭/공백 구분으로 파싱
+columns = parse_headers(header_text)  # ["품목", "수량", "단가", ...]
+
+# 역할 매핑 (키워드 기반)
+roles = {
+    "item_code": find_index(columns, ["품목", "코드"]),
+    "quantity": find_index(columns, ["수량"]),
+    "price": find_index(columns, ["단가", "가격"]),
+}
+```
+
+이후 입력은 `roles[role]` 인덱스 기반 Tab 카운트로 이동.
+
+### 5-2. 클립보드 컬럼 페이스트
+한 셀씩 타이핑하는 대신, **한 열 전체를 클립보드에 줄바꿈으로 묶어 한 번에 페이스트**:
+
+```python
+text = "\n".join(values_for_column)  # 각 행의 값을 줄바꿈으로
+pyperclip.copy(text)
+window.send_keys("^v")
+```
+
+엑셀처럼 동작하는 그리드는 이걸 N행 입력으로 받아준다. **수십~수백 행을 1초 이내에 채울 수 있다**. 한 셀씩 타이핑하면 N배 느림.
+
+### 5-3. 열 처리 순서
+열 위치 오름차순으로 정렬 후 처리. 이전 작업 위치에서 다음 위치까지 Tab 차이만큼만 이동:
+
+```python
+ops.sort(key=lambda op: op.column)
+current_col = 1
+for op in ops:
+    diff = op.column - current_col
+    window.send_keys("{TAB}" * diff)
+    window.send_keys("{ESC}")  # 포커스 모드
+    op.execute()
+    current_col = op.column + (op.advances_cursor_by or 0)
+```
+
+### 5-4. 행 추가
+두 가지 방식:
+1. **컨텍스트 메뉴 + 행수 다이얼로그**: `우클릭 → "행추가" → 행수 입력 → Enter` — 한 번에 N행
+2. **단축키 반복**: `Ctrl+Insert` 같은 단축키를 N번 반복 — `send_keys("^{INSERT}" * N, pause=0.0)`로 일괄
+
+상황에 따라 선택. 다이얼로그가 있으면 1번이 안정적, 없거나 단축키만 있으면 2번.
+
+---
+
+## 6. 팝업/다이얼로그 처리
+
+### 6-1. 팝업 감지
+포그라운드 윈도우가 메인 ERP가 아니면 팝업으로 간주:
+
+```python
+def find_popup():
+    fg = user32.GetForegroundWindow()
+    if not fg or fg == main_hwnd:
+        return None
+    # UIA 핸들로 직접 래핑 (Desktop.windows()에 안 나오는 자식 윈도우 대응)
+    elem = iuia.iuia.ElementFromHandle(fg)
+    return UIAWrapper(UIAElementInfo(elem))
+```
+
+ERP 팝업은 보통 메인의 owned window — `pywinauto.Desktop().windows()`에는 안 나오므로 핸들 기반 직접 래핑이 필요.
+
+### 6-2. 에러 다이얼로그 자동 처리
+```python
+def dismiss_dialog_if_exists(timeout=0.3):
+    popup = wait_for_popup(timeout)
+    if popup and is_same_pid_or_safe(popup):
+        keyboard.send_keys("{ENTER}")  # 또는 Esc, 또는 OK 버튼 찾아 클릭
+        log_dismissed(popup.window_text())
+```
+
+**원칙**:
+- 같은 PID의 자식 창은 ERP 내부 에러 → 자동 dismiss
+- 다른 PID의 창이 떴다면 사용자 개입(브라우저 등 외부 활동) → **즉시 작업 중지** (FocusLostError)
+
+체크포인트마다 호출하여 에러가 누적되지 않도록.
+
+### 6-3. 입력 대화상자 (텍스트 + 결과 리스트)
+```python
+def popup_search_and_select(search_text):
+    popup = wait_for_popup(timeout=5)
+    pyperclip.copy(search_text)
+    keyboard.send_keys("^v{ENTER}")  # 검색
+    wait_for_result_list(popup)
+    double_click_first_result(popup)  # UIA descendants에서 첫 항목 더블클릭
+    wait_for_popup_close(popup)
+```
+
+---
+
+## 7. 메뉴/창 네비게이션
+
+### 7-1. 단축키 우선
+- 메뉴 진입은 가능하면 단축키(F3, Ctrl+M 등)를 사용
+- 좌표 클릭은 단축키 부재 시의 차선책
+
+### 7-2. 단축키의 함정: 두 번째 호출 포커스 이슈
+첫 호출 후 메뉴 화면이 열리면 그 자식 창에 포커스가 남아 두 번째 단축키가 안 먹히는 경우:
+
+**하이브리드 패턴**:
+1. 첫 호출: 단축키 → 팝업 열림 → **팝업 위치를 캐시**
+2. 두 번째 호출부터: 단축키 → **캐시된 위치 클릭**으로 포커스 강제
+3. 매 호출마다 새 팝업 위치로 캐시 갱신
+
+```python
+self._main_window.type_keys("{F3}", set_foreground=True)
+time.sleep(0.6)
+if self._menu_finder_pos:
+    pymouse.click(coords=self._menu_finder_pos)
+popup = self._find_popup_window()
+if popup:
+    rect = popup.rectangle()
+    self._menu_finder_pos = ((rect.left+rect.right)//2, rect.top+40)
+```
+
+### 7-3. MDI 자식 창 닫기
+- 표준: `Ctrl+F4`
+- 일부 앱은 자체 단축키 또는 X 버튼만 지원 → UIA로 Close 버튼 찾아 클릭
+
+---
+
+## 8. 실행 제어 (정지/일시정지)
+
+### 8-1. 스레드 안전 정지
+```python
+self.stop_event = threading.Event()
+
+def _is_stopped(self):
+    return self.stop_event.is_set()
+
+# 작업 루프 내부
+for step in steps:
+    if self._is_stopped():
+        return
+    step.execute()
+```
+
+매 스텝 시작 시점에 체크. 키 입력 중간에 강제 중단은 어려우니, 스텝 단위로 끊는다.
+
+### 8-2. 포커스 이탈 = 안전 중단
+RPA는 활성 윈도우에 키/마우스를 보내므로 사용자가 다른 창을 클릭하면 엉뚱한 곳에 입력된다.
+포커스 이탈을 감지하면 즉시 중단:
+
+```python
+class FocusLostError(Exception):
+    pass
+
+def check_focus():
+    fg = user32.GetForegroundWindow()
+    if fg not in (main_hwnd, *acceptable_popup_hwnds):
+        raise FocusLostError()
+```
+
+키 입력 직전마다 체크하면 사용자 안전성이 크게 올라간다.
+
+### 8-3. 일시정지
+```python
+self.paused = False
+while self.paused and not self.stop_event.is_set():
+    self.stop_event.wait(0.5)  # 폴링 간격
+```
+
+---
+
+## 9. 시퀀스/단계 모델
+
+### 9-1. Enum 기반 입력 단계
+```python
+class InputMethod(Enum):
+    SKIP = "skip"                    # Tab으로만 지나감
+    TYPE = "type"                    # 텍스트 입력
+    CLICK_AT = "click_at"            # 좌표 클릭
+    POPUP_SEARCH = "popup_search"    # 팝업에서 검색 후 선택
+    DROPDOWN_SELECT = "dropdown"     # 드롭다운 끝에서 N번째 선택
+    DISMISS_DIALOG = "dismiss"       # 에러 다이얼로그 처리
+    ...
+
+@dataclass
+class InputStep:
+    method: InputMethod
+    value: str = ""
+    tab_after: int = 1
+    delay: float = 0.0
+```
+
+### 9-2. 시퀀스 빌드 — 하드코딩 vs 설정 파일
+- **하드코딩 시퀀스**: 단계 추가/제거 시 코드 수정 필요. 그러나 흐름 가독성 최고. 안정적인 폼에 적합.
+- **설정 파일 기반(JSON)**: 비개발자도 수정 가능. 그러나 분기/조건 표현이 빈약.
+
+실무 권장: **시퀀스 자체는 하드코딩**, 값/매핑/좌표만 설정 파일로 분리.
+
+---
+
+## 10. 안정성 패턴
+
+### 10-1. 재시도 데코레이터
+```python
+def retry_on_failure(max_retries=3, delay=1.0):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except (TimeoutError, ElementNotFoundError) as e:
+                    if attempt == max_retries - 1:
+                        raise
+                    time.sleep(delay)
+        return wrapper
+    return decorator
+```
+
+UI 작업은 타이밍에 민감 → 일시적 실패가 흔함 → 재시도가 큰 효과.
+
+### 10-2. Wait 패턴
+- 절대 `time.sleep(고정값)`만 쓰지 말 것 (느림 + 불안정)
+- `wait_until(조건, timeout)` 폴링이 기본
+  ```python
+  def wait_for_popup(timeout=3.0):
+      end = time.time() + timeout
+      while time.time() < end:
+          p = _find_popup_window()
+          if p: return p
+          time.sleep(0.1)
+      return None
+  ```
+- 그래도 가끔 짧은 `sleep(0.1~0.3)`은 OS 이벤트 처리 여유로 필요
+
+### 10-3. 로그
+모든 단계의 입력 값, 좌표, 결과를 로깅. 실패 시점 추적의 유일한 방법.
+사용자 화면에도 실시간 로그 스트림 제공 (WebSocket 등)
+
+### 10-4. 에러 이벤트 수집
+자동 처리한 에러 다이얼로그를 단순 무시하지 말고 누적해서 보고:
+```python
+self._error_events.append({"context": context, "title": dialog_title, "time": ...})
+
+# 작업 종료 후
+if self._error_events:
+    log(f"자동 처리된 에러 {len(self._error_events)}건 — 다음 지점 확인 필요:")
+    for ev in self._error_events:
+        log(f"  - {ev['context']}: {ev['title']}")
+```
+
+---
+
+## 11. 일반적인 함정 모음
+
+| 함정 | 결과 | 회피 |
+|---|---|---|
+| 절대 좌표 하드코딩 | 모니터 바꾸면 작동 안 함 | 윈도우 상대 + 비례 스케일링 |
+| DPI awareness 미설정 | 좌표 어긋남 | `SetProcessDpiAwareness(2)` 호출 |
+| 창 최대화 안 한 채 좌표 측정 | 캘리브레이션 깨짐 | `maximize()` 후 측정 |
+| 한 셀씩 타이핑 | 수십 행에서 수 분 소요 | 클립보드 컬럼 페이스트 |
+| 키 사이 기본 pause | 5~10배 느림 | `pause=0.0` + 단일 문자열 묶음 |
+| 글로벌 `keyboard.send_keys` 남용 | 포커스 이탈 시 외부 입력 | `window.type_keys(set_foreground=True)` |
+| 에러 다이얼로그 무시 | 후속 입력이 잘못된 컨텍스트에서 실행 | 체크포인트마다 dismiss + 누적 |
+| 사용자 개입 무시 | 다른 창 클릭 시 엉뚱한 곳에 입력 | 포커스 검사 + FocusLostError |
+| 단축키 두 번째 호출 무응답 | 자동화 중단 | 좌표 캐싱 하이브리드 |
+| `set_text` 후 미저장 | 텍스트 들어갔지만 이벤트 미발화 | 클립보드 + Tab으로 변경 확정 |
+| time.sleep 남용 | 느림 + 불안정 | wait_until 폴링 |
+
+---
+
+## 12. 권장 디렉토리 구조
+
+```
+rpa_project/
+├── core/
+│   ├── window_controller.py   # 윈도우 연결, 좌표, 키 입력 저수준
+│   ├── popup_handler.py       # 팝업 감지/dismiss
+│   └── exceptions.py          # FocusLostError 등
+├── steps/
+│   ├── input_step.py          # InputStep / InputMethod 정의
+│   └── sequence_builder.py    # 시퀀스 생성
+├── workflows/
+│   └── <업무명>_workflow.py    # 비즈니스 흐름
+├── config/
+│   ├── settings.json          # 좌표, 그리드 헤더, 자격증명
+│   └── field_mapping.json     # 매핑 테이블
+└── main.py
+```
+
+분리 원칙:
+- **저수준 도구**(window_controller)는 비즈니스 무관, 어디서나 재사용
+- **시퀀스/스텝 모델**(InputStep)은 가독성 + 디버깅 가능
+- **워크플로**는 데이터 → 시퀀스 변환의 책임만
+
+---
+
+## 13. 디버깅 도구
+
+개발 중에 반드시 필요:
+- **윈도우 열거 API**: 현재 떠 있는 모든 윈도우의 제목/위치 조회
+- **UIA 인스펙터**: 컨트롤 트리 덤프 (`window.print_control_identifiers()` 또는 `accessibility insights`)
+- **스크린샷 캡처**: 실패 시점의 화면 저장
+- **좌표 오버레이**: 클릭 직전 좌표를 시각화 (개발 모드에서)
+
+배포 후에도 유지:
+- 로그에 모든 단계의 입력값/좌표 기록
+- 윈도우 구조 조회 API 엔드포인트(웹 RPA의 경우)
+
+---
+
+## 14. 캘리브레이션 워크플로
+
+새 ERP/앱에 RPA를 붙일 때 순서:
+
+1. **DPI awareness 설정 + 창 최대화 후 기준 해상도 결정** (보통 1920×1080)
+2. **UIA 인스펙터로 컨트롤 트리 덤프** — UIA 인식 가능한 컨트롤 파악
+3. **인식되는 컨트롤은 `control.set_text/click_input`으로 처리**
+4. **인식 안 되는 것은 좌표/이미지 매칭** — 기준 해상도에서 좌표 측정
+5. **전체 Tab 순서 시뮬레이션** — 폼 첫 칸 클릭 후 Tab만 눌러 도달 가능한지
+6. **각 필드별 시퀀스 정의** (InputStep 리스트)
+7. **에러 케이스별 다이얼로그 처리 추가**
+8. **재시도/타임아웃/포커스 체크 보강**
+
+---
+
+## 15. 측정 / 벤치마크
+
+성능 목표 예시 (참고용):
+- 폼 헤더 20개 필드 입력: 5초 이내
+- 그리드 30행 × 6열 입력: 10초 이내 (클립보드 페이스트 사용)
+- 메뉴 진입 + 폼 로딩: 3~5초 (앱 응답 속도에 의존)
+
+느린 경우 점검 순서:
+1. `pause=0.0` 적용 여부
+2. 클립보드 컬럼 페이스트 사용 여부
+3. 불필요한 `time.sleep` 제거
+4. UIA 호출 횟수 (UIA는 호출당 수십~수백 ms)
+5. 컨트롤 재탐색 — 한 번 찾으면 핸들 캐싱
+
+---
+
+## 부록: 핵심 코드 스니펫
+
+### 윈도우 상대 좌표 클릭
+```python
+import pywinauto.mouse as pymouse
+
+def click_relative(ref_x, ref_y, ref_w=1920, ref_h=1080):
+    rect = main_window.rectangle()
+    x = rect.left + int((rect.right-rect.left) * ref_x / ref_w)
+    y = rect.top + int((rect.bottom-rect.top) * ref_y / ref_h)
+    pymouse.click(coords=(x, y))
+```
+
+### 클립보드 컬럼 페이스트
+```python
+import pyperclip
+
+def paste_column(values: list[str]):
+    pyperclip.copy("\n".join(values))
+    keyboard.send_keys("^v")
+    time.sleep(0.2)
+```
+
+### 폴링 wait
+```python
+def wait_until(condition, timeout=5.0, interval=0.1):
+    end = time.time() + timeout
+    while time.time() < end:
+        result = condition()
+        if result:
+            return result
+        time.sleep(interval)
+    return None
+```
+
+### 안전한 다이얼로그 닫기
+```python
+def safe_dismiss(timeout=0.3):
+    popup = wait_until(lambda: find_popup(), timeout)
+    if not popup:
+        return False
+    pid = popup.process_id()
+    if pid != main_pid:
+        raise FocusLostError(f"외부 윈도우 감지: {popup.window_text()}")
+    keyboard.send_keys("{ENTER}")
+    error_events.append((current_context, popup.window_text()))
+    return True
+```
+
+---
+
+이 문서의 패턴은 실제 운용 중인 ERP 자동화 시스템에서 추출했다.
+새 프로젝트에 적용 시: §14 캘리브레이션 워크플로 → §11 함정 모음 → §10 안정성 패턴 순서로 작업하면 시행착오를 줄일 수 있다.
