@@ -1,36 +1,59 @@
 {
-  "_comment": "캘리브레이션 완료 후 실제 값으로 채울 것. 단위: 기준 해상도(ref_w x ref_h) 기준 픽셀.",
+  "_comment": "캘리브레이션 완료 후 실제 값으로 채울 것. 좌표 단위: 기준 해상도(ref_w x ref_h) 기준 픽셀.",
+
   "erp": {
-    "window_title_pattern": ".*TODO_ERP_TITLE.*",
+    "window_title_pattern": ".*UNIERP.*",
     "ref_w": 1920,
     "ref_h": 1080
   },
+
+  "launch": {
+    "_comment": "exe_path / username / password는 .env 파일(UNIERP_EXE_PATH 등)로도 지정 가능 (우선순위 높음)",
+    "exe_path":            "C:\\UNIERP\\UNIERP.exe",
+    "exe_name":            "UNIERP.exe",
+    "startup_timeout_sec": 20,
+    "login_window_title":  ".*로그인.*",
+    "username":            "",
+    "password":            ""
+  },
+
+  "login_coords": {
+    "_comment": "0,0 이면 Tab 방식 자동 사용. 캘리브레이션 후 실제 좌표로 교체하면 좌표 방식으로 전환됨.",
+    "id_field":    [0, 0],
+    "pw_field":    [0, 0],
+    "login_btn":   [0, 0]
+  },
+
   "api": {
-    "base_url": "http://localhost:3000",
+    "base_url":              "http://localhost:3000",
     "poll_interval_seconds": 60
   },
+
   "coords": {
-    "_comment": "기준 해상도(1920x1080)에서 측정한 창 상대 좌표",
+    "_comment": "기준 해상도(1920x1080)에서 측정한 창 상대 좌표 (메인 폼용)",
     "open_form":       [0, 0],
     "new_record":      [0, 0],
     "grid_first_cell": [0, 0],
     "save_btn":        [0, 0]
   },
+
   "shortcuts": {
     "open_menu": "{F3}",
     "new_row":   "^{INSERT}",
     "save":      "^s",
     "close_mdi": "^{F4}"
   },
+
   "grid": {
     "header_row_index": 0,
-    "data_start_row": 1,
-    "columns": []
+    "data_start_row":   1,
+    "columns":          []
   },
+
   "timing": {
     "after_menu_open_sec": 0.6,
     "after_form_load_sec": 1.0,
-    "after_save_sec": 0.5,
-    "popup_wait_sec": 0.3
+    "after_save_sec":      0.5,
+    "popup_wait_sec":      0.3
   }
 }

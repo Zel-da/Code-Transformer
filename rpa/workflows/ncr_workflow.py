@@ -71,9 +71,22 @@ class NcrWorkflow:
     # ------------------------------------------------------------------
 
     def connect(self) -> None:
+        """ERP 창에 직접 연결한다 (이미 로그인된 상태 가정)."""
         self._ctrl.connect(timeout=15)
         self._ctrl.ensure_maximized()
+        self._init_handlers()
+        logger.info("NcrWorkflow: ERP 연결 완료")
 
+    def connect_with_controller(self, ctrl: WindowController) -> None:
+        """
+        LoginWorkflow가 반환한 이미 연결된 WindowController를 주입한다.
+        별도 connect() 호출 불필요.
+        """
+        self._ctrl = ctrl
+        self._init_handlers()
+        logger.info("NcrWorkflow: 기존 컨트롤러 주입 완료")
+
+    def _init_handlers(self) -> None:
         pid = None
         try:
             pid = self._ctrl.main.process_id()  # type: ignore[union-attr]
@@ -90,7 +103,6 @@ class NcrWorkflow:
             stop_event=self._stop_event,
             on_step_complete=self._on_step_complete,
         )
-        logger.info("NcrWorkflow: ERP 연결 완료")
 
     def disconnect(self) -> None:
         logger.info("NcrWorkflow: 세션 종료")

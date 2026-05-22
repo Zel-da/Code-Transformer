@@ -81,8 +81,19 @@ def run_once(
             logger.info("  - #%s %s", r.get("id"), r.get("reportNo", ""))
         return {"processed": len(reports), "completed": 0, "failed": 0}
 
+    # UNIERP 실행 + 로그인
+    from workflows.login_workflow import LoginWorkflow
+    login = LoginWorkflow(settings)
+    try:
+        logger.info("UNIERP 실행 및 로그인 확인 중...")
+        ctrl = login.ensure_ready()
+        logger.info("UNIERP 준비 완료")
+    except Exception as e:
+        logger.error("UNIERP 로그인 실패: %s", e)
+        return {"processed": 0, "completed": 0, "failed": 0, "error": str(e)}
+
     wf = NcrWorkflow(stop_event=stop_event)
-    wf.connect()
+    wf.connect_with_controller(ctrl)
 
     completed = 0
     failed = 0

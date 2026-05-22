@@ -7,10 +7,13 @@
 """
 
 import ctypes
+import os
+import subprocess
 import time
 import logging
 from typing import Optional
 
+import psutil
 import pyperclip
 import pywinauto.mouse as pymouse
 import keyboard as kb
