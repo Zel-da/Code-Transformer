@@ -6,9 +6,7 @@ import * as z from "zod";
 import { useAuth } from "@/contexts/auth";
 import {
   useListItems,
-  useListFlawTypes,
   useListProcesses,
-  useListDepartments,
   useRequestUploadUrl,
   useCreateReport,
   getListReportsQueryKey,
@@ -20,13 +18,6 @@ import {
   Form,
   FormField,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
   Camera,
@@ -48,11 +39,6 @@ const FACTORY_TO_PLANT_CD: Record<string, string> = {
   화성: "SH00",
 };
 
-const NCR_TYPES = [
-  { label: "공정", value: "QC" },
-  { label: "출하", value: "QO" },
-] as const;
-
 const todayStr = () => new Date().toISOString().split("T")[0];
 
 const PRODUCT_TYPES = [
@@ -65,15 +51,10 @@ const formSchema = z.object({
   registrantName: z.string().min(1, "등록자명을 입력해주세요"),
   factory: z.string().min(1, "공장을 선택해주세요"),
   processName: z.string().min(1, "공정을 선택해주세요"),
-  issuingTeam: z.string().optional(),
-  deptCd: z.string().optional(),
-  ncrType: z.string().min(1, "부적합 구분을 선택해주세요"),
   itemCode: z.string().min(1, "제품코드를 선택해주세요"),
   modelName: z.string().optional(),
   shipmentUnit: z.string().optional(),
   occurrenceDate: z.string().optional(),
-  defectType: z.string().min(1, "불량유형을 선택해주세요"),
-  flawTypeCd: z.string().optional(),
   defectQty: z.preprocess(
     (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
     z.number().int().min(0).optional(),
@@ -139,8 +120,6 @@ export default function SubmitReport() {
   const { data: items = [], isFetching: itemsFetching } = useListItems(
     debouncedItemSearch.length >= 1 ? { search: debouncedItemSearch, limit: 20 } : { limit: 20 },
   );
-  const { data: flawTypes = [] } = useListFlawTypes();
-  const { data: departments = [] } = useListDepartments();
 
   const requestUploadUrl = useRequestUploadUrl();
   const createReport = useCreateReport();
@@ -150,17 +129,11 @@ export default function SubmitReport() {
     registrantName: user?.displayName ?? "",
     factory: user?.factory ?? "",
     processName: user?.processName ?? "",
-    issuingTeam: "",
-    deptCd: user?.deptCd ?? "",
-    ncrType: "",
     itemCode: "",
     modelName: "",
     shipmentUnit: "",
     occurrenceDate: todayStr(),
-    defectType: "",
-    flawTypeCd: "",
     defectQty: undefined as number | undefined,
-
     description: "",
   });
 
@@ -226,6 +199,12 @@ export default function SubmitReport() {
     return objectPath;
   };
 
+  const deriveIssuingTeam = (processName: string): string => {
+    if (processName.includes("1라인")) return "1라인";
+    if (processName.includes("2라인")) return "2라인";
+    return processName;
+  };
+
   const onSubmit = async (values: FormValues) => {
     setIsUploading(true);
     try {
@@ -233,33 +212,30 @@ export default function SubmitReport() {
       if (photo) objectPath = await uploadPhoto(photo);
 
       const selectedProcess = processes.find((p) => p.processNm === values.processName);
-      const selectedDept = departments.find((d) => d.deptCd === values.deptCd);
-      const ncrLabel = NCR_TYPES.find((t) => t.value === values.ncrType)?.label ?? values.ncrType;
 
       await createReport.mutateAsync({
         data: {
           itemCode: values.itemCode,
           modelName: values.modelName || null,
           processName: values.processName,
-          defectType: values.defectType,
+          defectType: null,
           description: values.description,
           reportDate: new Date().toISOString(),
           imageUrl: objectPath ? `/api/storage${objectPath}` : null,
           registrantName: values.registrantName || null,
-          ncrType: ncrLabel || null,
-          ncrGbnCd: values.ncrType || null,
+          ncrType: "공정",
+          ncrGbnCd: "QC",
           factory: values.factory || null,
           plantCd: selectedPlantCd || null,
           processCd: selectedProcess?.processCd ?? null,
           shipmentUnit: values.shipmentUnit || null,
-
           defectQty: values.defectQty != null ? Math.round(values.defectQty) : null,
           occurrenceDate: values.occurrenceDate
             ? new Date(values.occurrenceDate).toISOString()
             : null,
-          issuingTeam: selectedDept?.deptName ?? values.issuingTeam ?? null,
-          deptCd: values.deptCd || null,
-          flawTypeCd: values.flawTypeCd || null,
+          issuingTeam: deriveIssuingTeam(values.processName),
+          deptCd: null,
+          flawTypeCd: null,
           productType: values.productType,
         },
       });
@@ -413,10 +389,6 @@ export default function SubmitReport() {
                           type="button"
                           onClick={() => {
                             field.onChange(p.processNm);
-                            const matchedDept = departments.find((d) => d.deptName === p.processNm);
-                            if (matchedDept) {
-                              form.setValue("deptCd", matchedDept.deptCd);
-                            }
                           }}
                           className={`px-3.5 py-2 rounded-full text-[13px] border-2 transition-all ${field.value === p.processNm ? CHIP_SEL : CHIP_UNSEL}`}
                         >
@@ -433,53 +405,8 @@ export default function SubmitReport() {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="deptCd"
-              render={({ field }) => (
-                <FieldRow label="발행팀" optional>
-                  <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                      <SelectTrigger className="h-11 rounded-xl bg-[#F8F9FA] border-0 text-[14px] text-[#191F28] focus:ring-0">
-                        <SelectValue placeholder="팀을 선택하세요" />
-                      </SelectTrigger>
-                    <SelectContent className="rounded-xl max-h-60">
-                      {departments.map((dept) => (
-                        <SelectItem key={dept.deptCd} value={dept.deptCd}>
-                          <span className={dept.isFrequent ? "font-semibold" : ""}>{dept.deptName}</span>
-                          {dept.isFrequent && (
-                            <span className="ml-1.5 text-[10px] text-gray-500 bg-gray-100 rounded px-1">자주사용</span>
-                          )}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FieldRow>
-              )}
-            />
-
             {/* ── 부적합 기본 정보 ── */}
             <GroupDivider title="부적합 기본 정보" />
-
-            <FormField
-              control={form.control}
-              name="ncrType"
-              render={({ field }) => (
-                <FieldRow label="부적합 구분" error={form.formState.errors.ncrType?.message}>
-                  <div className="grid grid-cols-2 gap-2">
-                    {NCR_TYPES.map((t) => (
-                      <button
-                        key={t.value}
-                        type="button"
-                        onClick={() => field.onChange(t.value)}
-                        className={`py-3.5 rounded-xl text-[14px] font-bold transition-all ${field.value === t.value ? SEL : UNSEL}`}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                </FieldRow>
-              )}
-            />
 
             {/* 제품코드 — 검색 자동완성 */}
             <FormField
@@ -593,36 +520,6 @@ export default function SubmitReport() {
 
             {/* ── 불량 상세 ── */}
             <GroupDivider title="불량 상세" />
-
-            {/* 불량유형 — Select */}
-            <FormField
-              control={form.control}
-              name="defectType"
-              render={({ field }) => (
-                <FieldRow label="불량유형" error={form.formState.errors.defectType?.message}>
-                  <Select
-                    onValueChange={(val) => {
-                      const ft = flawTypes.find(f => f.typeNm === val);
-                      field.onChange(val);
-                      if (ft) form.setValue("flawTypeCd", ft.typeCd);
-                    }}
-                    value={field.value}
-                  >
-                      <SelectTrigger className="h-11 rounded-xl bg-[#F8F9FA] border-0 text-[14px] text-[#191F28] focus:ring-0">
-                        <SelectValue placeholder="불량유형을 선택하세요" />
-                      </SelectTrigger>
-                    <SelectContent className="rounded-xl max-h-64">
-                      {flawTypes.map((ft) => (
-                        <SelectItem key={ft.typeCd} value={ft.typeNm}>
-                          <span className="text-[14px]">{ft.typeNm}</span>
-                          <span className="text-[11px] text-[#8B95A1] ml-2">{ft.typeCd}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FieldRow>
-              )}
-            />
 
             <div className="px-5 py-4 border-b border-[#F2F4F6] grid grid-cols-2 gap-6">
               <FormField
