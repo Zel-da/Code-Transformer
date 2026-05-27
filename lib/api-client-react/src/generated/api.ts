@@ -41,6 +41,7 @@ import type {
   ResetUserPasswordBody,
   RpaRunResult,
   SetUserActiveBody,
+  UpdateDepartmentBody,
   UpdateReportBody,
   UpdateSyncStatusBody,
   UpdateUserBody,
@@ -1767,6 +1768,93 @@ export function useListDepartments<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Update department webhook URL (admin only)
+ */
+export const getUpdateDepartmentUrl = (deptCd: string) => {
+  return `/api/master/departments/${deptCd}`;
+};
+
+export const updateDepartment = async (
+  deptCd: string,
+  updateDepartmentBody: UpdateDepartmentBody,
+  options?: RequestInit,
+): Promise<DepartmentItem> => {
+  return customFetch<DepartmentItem>(getUpdateDepartmentUrl(deptCd), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateDepartmentBody),
+  });
+};
+
+export const getUpdateDepartmentMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateDepartment>>,
+    TError,
+    { deptCd: string; data: BodyType<UpdateDepartmentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateDepartment>>,
+  TError,
+  { deptCd: string; data: BodyType<UpdateDepartmentBody> },
+  TContext
+> => {
+  const mutationKey = ["updateDepartment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateDepartment>>,
+    { deptCd: string; data: BodyType<UpdateDepartmentBody> }
+  > = (props) => {
+    const { deptCd, data } = props ?? {};
+
+    return updateDepartment(deptCd, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateDepartmentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateDepartment>>
+>;
+export type UpdateDepartmentMutationBody = BodyType<UpdateDepartmentBody>;
+export type UpdateDepartmentMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Update department webhook URL (admin only)
+ */
+export const useUpdateDepartment = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateDepartment>>,
+    TError,
+    { deptCd: string; data: BodyType<UpdateDepartmentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateDepartment>>,
+  TError,
+  { deptCd: string; data: BodyType<UpdateDepartmentBody> },
+  TContext
+> => {
+  return useMutation(getUpdateDepartmentMutationOptions(options));
+};
 
 /**
  * Returns all user accounts. Admin only.

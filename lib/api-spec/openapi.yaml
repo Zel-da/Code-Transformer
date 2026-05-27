@@ -547,6 +547,39 @@ paths:
                 items:
                   $ref: "#/components/schemas/DepartmentItem"
 
+  /master/departments/{deptCd}:
+    patch:
+      operationId: updateDepartment
+      tags: [items]
+      summary: Update department webhook URL (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deptCd
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDepartmentBody"
+      responses:
+        "200":
+          description: Updated department
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepartmentItem"
+        "404":
+          description: Department not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /users:
     get:
       operationId: listUsers
@@ -887,6 +920,9 @@ components:
           type: string
         isFrequent:
           type: boolean
+        webhookUrl:
+          type: ["string", "null"]
+          description: "수산톡 부서 채널 Webhook URL"
       required:
         - deptCd
         - deptName
@@ -980,6 +1016,9 @@ components:
         qcSubmittedBy:
           type: ["integer", "null"]
           description: "QC 분석 제출자 userId"
+        actionDirection:
+          type: ["string", "null"]
+          description: "조치 방향 (업체 방문 수정/생산팀 자체 수정/업체 반출 및 수정 입고)"
         syncAttemptCount:
           type: integer
           description: "누적 RPA 동기화 시도 횟수"
@@ -1078,6 +1117,9 @@ components:
           type: string
           enum: ["양산", "개발"]
           description: "양산 or 개발"
+        actionDirection:
+          type: ["string", "null"]
+          description: "조치 방향"
       required:
         - itemCode
         - processName
@@ -1388,3 +1430,10 @@ components:
         - displayName
         - role
         - isActive
+
+    UpdateDepartmentBody:
+      type: object
+      properties:
+        webhookUrl:
+          type: ["string", "null"]
+          description: "수산톡 부서 채널 Webhook URL"

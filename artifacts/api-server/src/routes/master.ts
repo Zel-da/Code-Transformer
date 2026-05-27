@@ -8,6 +8,7 @@ import {
   departmentsTable,
 } from "@workspace/db";
 import { eq, asc, ilike, desc } from "drizzle-orm";
+import { requireAdmin } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
 
@@ -63,6 +64,30 @@ router.get("/master/departments", async (req, res): Promise<void> => {
         .from(departmentsTable)
         .orderBy(desc(departmentsTable.isFrequent), asc(departmentsTable.deptName));
   res.json(rows);
+});
+
+router.patch("/master/departments/:deptCd", requireAdmin, async (req, res): Promise<void> => {
+  const deptCd = String(req.params.deptCd);
+  const { webhookUrl } = req.body as { webhookUrl?: string | null };
+
+  const [existing] = await db
+    .select({ deptCd: departmentsTable.deptCd })
+    .from(departmentsTable)
+    .where(eq(departmentsTable.deptCd, deptCd));
+
+  if (!existing) {
+    res.status(404).json({ error: "Department not found" });
+    return;
+  }
+
+  const [updated] = await db
+    .update(departmentsTable)
+    .set({ webhookUrl: webhookUrl ?? null })
+    .where(eq(departmentsTable.deptCd, deptCd))
+    .returning();
+
+  req.log.info({ deptCd, hasWebhook: !!webhookUrl }, "Department webhook updated");
+  res.json(updated);
 });
 
 export default router;

@@ -38,6 +38,11 @@ export interface DepartmentItem {
   deptCd: string;
   deptName: string;
   isFrequent: boolean;
+  /**
+   * 수산톡 부서 채널 Webhook URL
+   * @nullable
+   */
+  webhookUrl?: string | null;
 }
 
 export type ReportSyncStatus =
@@ -146,6 +151,11 @@ export interface Report {
    * @nullable
    */
   qcSubmittedBy?: number | null;
+  /**
+   * 조치 방향 (업체 방문 수정/생산팀 자체 수정/업체 반출 및 수정 입고)
+   * @nullable
+   */
+  actionDirection?: string | null;
   /** 누적 RPA 동기화 시도 횟수 */
   syncAttemptCount: number;
   /**
@@ -218,6 +228,11 @@ export interface CreateReportBody {
   ncrGbnCd?: string | null;
   /** 양산 or 개발 */
   productType?: CreateReportBodyProductType;
+  /**
+   * 조치 방향
+   * @nullable
+   */
+  actionDirection?: string | null;
 }
 
 export type UpdateReportBodySyncStatus =
@@ -476,6 +491,14 @@ export interface UserProfile {
 export interface LoginResponse {
   token: string;
   user: UserProfile;
+}
+
+export interface UpdateDepartmentBody {
+  /**
+   * 수산톡 부서 채널 Webhook URL
+   * @nullable
+   */
+  webhookUrl?: string | null;
 }
 
 export type ListItemsParams = {

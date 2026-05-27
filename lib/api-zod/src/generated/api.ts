@@ -97,6 +97,12 @@ export const ListReportsResponse = zod.object({
         .nullish()
         .describe("QC 분석 최종 제출 일시"),
       qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
+      actionDirection: zod
+        .string()
+        .nullish()
+        .describe(
+          "조치 방향 (업체 방문 수정\/생산팀 자체 수정\/업체 반출 및 수정 입고)",
+        ),
       syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
       syncLastError: zod
         .string()
@@ -140,6 +146,7 @@ export const CreateReportBody = zod.object({
   deptCd: zod.string().nullish(),
   ncrGbnCd: zod.string().nullish(),
   productType: zod.enum(["양산", "개발"]).optional().describe("양산 or 개발"),
+  actionDirection: zod.string().nullish().describe("조치 방향"),
 });
 
 /**
@@ -214,6 +221,12 @@ export const ListPendingReportsResponseItem = zod.object({
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
+  actionDirection: zod
+    .string()
+    .nullish()
+    .describe(
+      "조치 방향 (업체 방문 수정\/생산팀 자체 수정\/업체 반출 및 수정 입고)",
+    ),
   syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
   syncLastError: zod
     .string()
@@ -302,6 +315,12 @@ export const UpdateReportResponse = zod.object({
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
+  actionDirection: zod
+    .string()
+    .nullish()
+    .describe(
+      "조치 방향 (업체 방문 수정\/생산팀 자체 수정\/업체 반출 및 수정 입고)",
+    ),
   syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
   syncLastError: zod
     .string()
@@ -370,6 +389,12 @@ export const GetReportResponse = zod.object({
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
+  actionDirection: zod
+    .string()
+    .nullish()
+    .describe(
+      "조치 방향 (업체 방문 수정\/생산팀 자체 수정\/업체 반출 및 수정 입고)",
+    ),
   syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
   syncLastError: zod
     .string()
@@ -440,6 +465,12 @@ export const UpdateReportSyncStatusResponse = zod.object({
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
+  actionDirection: zod
+    .string()
+    .nullish()
+    .describe(
+      "조치 방향 (업체 방문 수정\/생산팀 자체 수정\/업체 반출 및 수정 입고)",
+    ),
   syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
   syncLastError: zod
     .string()
@@ -518,6 +549,12 @@ export const UpdateReportQcResponse = zod.object({
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
+  actionDirection: zod
+    .string()
+    .nullish()
+    .describe(
+      "조치 방향 (업체 방문 수정\/생산팀 자체 수정\/업체 반출 및 수정 입고)",
+    ),
   syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
   syncLastError: zod
     .string()
@@ -586,6 +623,12 @@ export const SubmitQcActionResponse = zod.object({
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
+  actionDirection: zod
+    .string()
+    .nullish()
+    .describe(
+      "조치 방향 (업체 방문 수정\/생산팀 자체 수정\/업체 반출 및 수정 입고)",
+    ),
   syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
   syncLastError: zod
     .string()
@@ -656,6 +699,12 @@ export const TriggerRpaResponse = zod.object({
         .nullish()
         .describe("QC 분석 최종 제출 일시"),
       qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
+      actionDirection: zod
+        .string()
+        .nullish()
+        .describe(
+          "조치 방향 (업체 방문 수정\/생산팀 자체 수정\/업체 반출 및 수정 입고)",
+        ),
       syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
       syncLastError: zod
         .string()
@@ -755,8 +804,27 @@ export const ListDepartmentsResponseItem = zod.object({
   deptCd: zod.string(),
   deptName: zod.string(),
   isFrequent: zod.boolean(),
+  webhookUrl: zod.string().nullish().describe("수산톡 부서 채널 Webhook URL"),
 });
 export const ListDepartmentsResponse = zod.array(ListDepartmentsResponseItem);
+
+/**
+ * @summary Update department webhook URL (admin only)
+ */
+export const UpdateDepartmentParams = zod.object({
+  deptCd: zod.coerce.string(),
+});
+
+export const UpdateDepartmentBody = zod.object({
+  webhookUrl: zod.string().nullish().describe("수산톡 부서 채널 Webhook URL"),
+});
+
+export const UpdateDepartmentResponse = zod.object({
+  deptCd: zod.string(),
+  deptName: zod.string(),
+  isFrequent: zod.boolean(),
+  webhookUrl: zod.string().nullish().describe("수산톡 부서 채널 Webhook URL"),
+});
 
 /**
  * Returns all user accounts. Admin only.

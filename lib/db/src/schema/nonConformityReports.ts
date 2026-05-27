@@ -64,6 +64,7 @@ export const departmentsTable = pgTable("departments", {
   deptCd: text("dept_cd").primaryKey(),
   deptName: text("dept_name").notNull(),
   isFrequent: boolean("is_frequent").notNull().default(false),
+  webhookUrl: text("webhook_url"),
 });
 export type Department = typeof departmentsTable.$inferSelect;
 
@@ -124,6 +125,8 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
   qcAction: text("qc_action"),
   qcActionAt: timestamp("qc_action_at", { withTimezone: true }),
   qcActionedBy: integer("qc_actioned_by").references(() => usersTable.id, { onDelete: "set null" }),
+  // 조치 방향 (등록 시 필수 선택)
+  actionDirection: text("action_direction"),
   // QC 분석 전용 컬럼
   qcStatus: text("qc_status").default("접수"),
   qcCorrectiveResult: text("qc_corrective_result"),

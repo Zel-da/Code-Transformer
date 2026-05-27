@@ -46,11 +46,18 @@ const PRODUCT_TYPES = [
   { label: "개발", value: "개발" },
 ] as const;
 
+const ACTION_DIRECTIONS = [
+  "업체 방문 수정",
+  "생산팀 자체 수정",
+  "업체 반출 및 수정 입고",
+] as const;
+
 const formSchema = z.object({
   productType: z.enum(["양산", "개발"]).default("양산"),
   registrantName: z.string().min(1, "등록자명을 입력해주세요"),
   factory: z.string().min(1, "공장을 선택해주세요"),
   processName: z.string().min(1, "공정을 선택해주세요"),
+  actionDirection: z.enum(ACTION_DIRECTIONS, { errorMap: () => ({ message: "조치 방향을 선택해주세요" }) }),
   itemCode: z.string().min(1, "제품코드를 선택해주세요"),
   modelName: z.string().optional(),
   shipmentUnit: z.string().optional(),
@@ -129,6 +136,7 @@ export default function SubmitReport() {
     registrantName: user?.displayName ?? "",
     factory: user?.factory ?? "",
     processName: user?.processName ?? "",
+    actionDirection: undefined as (typeof ACTION_DIRECTIONS)[number] | undefined,
     itemCode: "",
     modelName: "",
     shipmentUnit: "",
@@ -218,7 +226,7 @@ export default function SubmitReport() {
           itemCode: values.itemCode,
           modelName: values.modelName || null,
           processName: values.processName,
-          defectType: null,
+          defectType: "",
           description: values.description,
           reportDate: new Date().toISOString(),
           imageUrl: objectPath ? `/api/storage${objectPath}` : null,
@@ -237,6 +245,7 @@ export default function SubmitReport() {
           deptCd: null,
           flawTypeCd: null,
           productType: values.productType,
+          actionDirection: values.actionDirection ?? null,
         },
       });
 
@@ -401,6 +410,28 @@ export default function SubmitReport() {
                       {selectedFactory ? "공정 로딩 중…" : "공장을 먼저 선택해주세요"}
                     </p>
                   )}
+                </FieldRow>
+              )}
+            />
+
+            {/* 조치 방향 */}
+            <FormField
+              control={form.control}
+              name="actionDirection"
+              render={({ field }) => (
+                <FieldRow label="조치 방향" error={form.formState.errors.actionDirection?.message}>
+                  <div className="flex flex-col gap-2">
+                    {ACTION_DIRECTIONS.map((dir) => (
+                      <button
+                        key={dir}
+                        type="button"
+                        onClick={() => field.onChange(dir)}
+                        className={`w-full text-left px-4 py-3 rounded-xl text-[14px] font-semibold border-2 transition-all ${field.value === dir ? "border-[#1A1A1A] bg-[#F2F4F6] text-[#1A1A1A]" : "border-[#E5E8EB] text-[#4E5968] hover:border-[#1A1A1A]/30"}`}
+                      >
+                        {dir}
+                      </button>
+                    ))}
+                  </div>
                 </FieldRow>
               )}
             />

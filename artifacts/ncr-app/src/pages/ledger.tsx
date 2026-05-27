@@ -126,6 +126,13 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
       <DetailRow label="공장" value={report.factory} />
       <DetailRow label="발행팀" value={report.issuingTeam} />
       <DetailRow label="부적합 구분" value={report.ncrType} />
+      {report.actionDirection && (
+        <DetailRow label="조치 방향" value={
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[12px] font-semibold">
+            {report.actionDirection}
+          </span>
+        } />
+      )}
       <DetailRow label="불량 유형" value={report.defectType} />
       {report.occurrenceDate && (
         <DetailRow label="발생일" value={format(new Date(report.occurrenceDate), "yyyy.MM.dd")} />

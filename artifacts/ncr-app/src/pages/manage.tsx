@@ -7,11 +7,13 @@ import {
   useListItems,
   useSubmitQcAction,
   useGetReportStats,
+  useListDepartments,
+  useUpdateDepartment,
   getListReportsQueryKey,
   getGetReportStatsQueryKey,
   getGetReportQueryKey,
 } from "@workspace/api-client-react";
-import type { Report, RpaRunResult, UpdateReportBodySyncStatus } from "@workspace/api-client-react";
+import type { Report, RpaRunResult, UpdateReportBodySyncStatus, DepartmentItem } from "@workspace/api-client-react";
 import { StatusBadge } from "@/components/status-badge";
 import { format } from "date-fns";
 import { useState, useEffect, useCallback } from "react";
@@ -49,6 +51,8 @@ import {
   BarChart3,
   FlaskConical,
   Clock,
+  Webhook,
+  Save,
 } from "lucide-react";
 
 function StatCard({
@@ -230,6 +234,36 @@ export default function ManagePage() {
 
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [auditLogsLoading, setAuditLogsLoading] = useState(false);
+
+  // 부서 webhook 관련 state
+  const [deptWebhooks, setDeptWebhooks] = useState<Record<string, string>>({});
+  const [deptSaving, setDeptSaving] = useState<Record<string, boolean>>({});
+
+  const departments = useListDepartments();
+  const updateDept = useUpdateDepartment();
+
+  useEffect(() => {
+    if (departments.data) {
+      const init: Record<string, string> = {};
+      for (const d of departments.data) {
+        init[d.deptCd] = d.webhookUrl ?? "";
+      }
+      setDeptWebhooks(init);
+    }
+  }, [departments.data]);
+
+  const handleSaveDeptWebhook = async (deptCd: string) => {
+    setDeptSaving((prev) => ({ ...prev, [deptCd]: true }));
+    try {
+      await updateDept.mutateAsync({ deptCd, data: { webhookUrl: deptWebhooks[deptCd] || null } });
+      departments.refetch();
+      toast({ title: "Webhook URL 저장 완료" });
+    } catch {
+      toast({ title: "저장 실패", variant: "destructive" });
+    } finally {
+      setDeptSaving((prev) => ({ ...prev, [deptCd]: false }));
+    }
+  };
 
   const fetchAuditLogs = useCallback(async () => {
     setAuditLogsLoading(true);
@@ -655,6 +689,51 @@ export default function ManagePage() {
                         </>
                       )}
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 부서 Webhook 설정 섹션 */}
+        <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+          <div className="px-5 py-4 flex items-center gap-3">
+            <div className="p-1.5 bg-[#F2F4F6] rounded-lg">
+              <Webhook className="h-4 w-4 text-[#4E5968]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-semibold text-[14px] text-[#191F28]">귀책 부서 알림 Webhook</h2>
+              <p className="text-[12px] text-[#8B95A1]">부서별 수산톡 채널 Webhook URL 설정 (부적합 접수 시 자동 알림)</p>
+            </div>
+          </div>
+          <div className="border-t border-[#F2F4F6]">
+            {departments.isLoading ? (
+              <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">불러오는 중...</div>
+            ) : !departments.data || departments.data.length === 0 ? (
+              <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">등록된 부서가 없습니다</div>
+            ) : (
+              <div className="divide-y divide-[#F2F4F6]">
+                {departments.data.map((dept: DepartmentItem) => (
+                  <div key={dept.deptCd} className="px-5 py-3 flex items-center gap-3">
+                    <div className="w-28 shrink-0">
+                      <p className="text-[13px] font-semibold text-[#191F28] truncate">{dept.deptName}</p>
+                      <p className="text-[11px] text-[#8B95A1]">{dept.deptCd}</p>
+                    </div>
+                    <Input
+                      className="flex-1 h-9 text-[12px] font-mono"
+                      placeholder="https://talk.ssusantalk.com/hooks/..."
+                      value={deptWebhooks[dept.deptCd] ?? ""}
+                      onChange={(e) => setDeptWebhooks((prev) => ({ ...prev, [dept.deptCd]: e.target.value }))}
+                    />
+                    <button
+                      onClick={() => handleSaveDeptWebhook(dept.deptCd)}
+                      disabled={deptSaving[dept.deptCd]}
+                      className={`${BTN_GHOST} flex items-center gap-1 text-[12px] px-3 py-2 shrink-0 ${deptSaving[dept.deptCd] ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      <Save className="h-3.5 w-3.5" />
+                      저장
+                    </button>
                   </div>
                 ))}
               </div>

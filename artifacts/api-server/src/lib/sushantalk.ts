@@ -16,7 +16,13 @@ export async function sendSushantalkMessage(
     logger.debug({ channel }, "Sushantalk webhook URL not configured, skipping");
     return;
   }
+  await sendSushantalkToUrl(url, text);
+}
 
+export async function sendSushantalkToUrl(
+  url: string,
+  text: string,
+): Promise<void> {
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
