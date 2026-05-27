@@ -715,9 +715,9 @@ export default function ManagePage() {
             ) : (
               <div className="divide-y divide-[#F2F4F6]">
                 {departments.data.map((dept: DepartmentItem) => (
-                  <div key={dept.deptCd} className="px-5 py-3 flex items-center gap-3">
-                    <div className="w-28 shrink-0">
-                      <p className="text-[13px] font-semibold text-[#191F28] truncate">{dept.deptName}</p>
+                  <div key={dept.deptCd} className="px-5 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                    <div className="w-full sm:w-28 sm:shrink-0">
+                      <p className="text-[13px] font-semibold text-[#191F28]">{dept.deptName}</p>
                       <p className="text-[11px] text-[#8B95A1]">{dept.deptCd}</p>
                     </div>
                     <Input
@@ -729,7 +729,7 @@ export default function ManagePage() {
                     <button
                       onClick={() => handleSaveDeptWebhook(dept.deptCd)}
                       disabled={deptSaving[dept.deptCd]}
-                      className={`${BTN_GHOST} flex items-center gap-1 text-[12px] px-3 py-2 shrink-0 ${deptSaving[dept.deptCd] ? "opacity-50 cursor-not-allowed" : ""}`}
+                      className={`${BTN_GHOST} flex items-center gap-1 text-[12px] px-3 py-2 self-start sm:self-auto shrink-0 ${deptSaving[dept.deptCd] ? "opacity-50 cursor-not-allowed" : ""}`}
                     >
                       <Save className="h-3.5 w-3.5" />
                       저장

@@ -7,7 +7,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/auth";
@@ -260,15 +259,15 @@ export default function LedgerPage() {
 
   return (
     <Layout>
-      <div className="max-w-[1400px] mx-auto px-5 py-5 space-y-5 pb-24">
+      <div className="max-w-[1400px] mx-auto px-5 py-5 pb-24">
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pt-1">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pt-1 mb-5">
           <h1 className="text-[20px] font-bold text-[#191F28]">관리대장</h1>
           <p className="text-[12px] text-[#8B95A1]">{format(new Date(), "yyyy년 MM월 dd일 HH:mm")}</p>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+        <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden mb-5">
           <div className="p-4 grid gap-3 grid-cols-1 md:grid-cols-3">
             <div className="space-y-1.5">
               <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">동기화 상태</p>
@@ -315,137 +314,155 @@ export default function LedgerPage() {
           </div>
         </div>
 
-        {/* Data Table */}
-        <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-[#F2F4F6] flex items-center justify-between">
-            <span className="text-[13px] font-semibold text-[#191F28]">보고서 목록</span>
-            {reportsData?.total !== undefined && (
-              <span className="text-[12px] text-[#8B95A1]">총 {reportsData.total}건</span>
-            )}
-          </div>
+        {/* 분할 레이아웃: 목록 + 상세 */}
+        <div className="md:flex md:gap-5 md:items-start">
 
-          {isLoadingReports ? (
-            <div className="h-56 flex flex-col items-center justify-center text-[#8B95A1] gap-3">
-              <RefreshCw className="h-5 w-5 animate-spin" />
-              <p className="text-[13px]">불러오는 중...</p>
-            </div>
-          ) : reports.length === 0 ? (
-            <div className="h-56 flex flex-col items-center justify-center text-[#BEC5CC] gap-3">
-              <Search className="h-8 w-8 opacity-40" />
-              <p className="text-[13px]">조건에 맞는 보고서가 없습니다.</p>
-            </div>
-          ) : isMobile ? (
-            <div className="divide-y divide-[#F2F4F6]">
-              {reports.map((report) => (
-                <div
-                  key={report.id}
-                  className="px-5 py-4 cursor-pointer active:bg-[#F8F9FA] transition-colors"
-                  onClick={() => setSelectedReportId(report.id)}
-                >
-                  <div className="flex justify-between items-start mb-1.5">
-                    <div>
-                      <span className="font-semibold text-[14px] text-[#191F28]">{report.itemCode}</span>
-                      <span className="text-[12px] text-[#8B95A1] ml-2">{report.processName}</span>
-                    </div>
-                    <StatusBadge status={report.syncStatus} />
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[13px] font-medium text-[#191F28]">{report.defectType}</span>
-                    <span className="text-[11px] text-[#8B95A1]">{format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}</span>
-                  </div>
+          {/* 목록 열 */}
+          <div className="flex-1 min-w-0">
+            <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-[#F2F4F6] flex items-center justify-between">
+                <span className="text-[13px] font-semibold text-[#191F28]">보고서 목록</span>
+                {reportsData?.total !== undefined && (
+                  <span className="text-[12px] text-[#8B95A1]">총 {reportsData.total}건</span>
+                )}
+              </div>
+
+              {isLoadingReports ? (
+                <div className="h-56 flex flex-col items-center justify-center text-[#8B95A1] gap-3">
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                  <p className="text-[13px]">불러오는 중...</p>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-[#F8F9FA] hover:bg-[#F8F9FA]">
-                    <TableHead className="h-10 text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[160px]">접수 일시</TableHead>
-                    <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[120px]">품목코드</TableHead>
-                    <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">공정명</TableHead>
-                    <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">불량 유형</TableHead>
-                    <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide text-center w-[120px]">상태</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              ) : reports.length === 0 ? (
+                <div className="h-56 flex flex-col items-center justify-center text-[#BEC5CC] gap-3">
+                  <Search className="h-8 w-8 opacity-40" />
+                  <p className="text-[13px]">조건에 맞는 보고서가 없습니다.</p>
+                </div>
+              ) : isMobile ? (
+                <div className="divide-y divide-[#F2F4F6]">
                   {reports.map((report) => (
-                    <TableRow
+                    <div
                       key={report.id}
-                      className="cursor-pointer hover:bg-[#F8F9FA] transition-colors border-[#F2F4F6]"
+                      className="px-5 py-4 cursor-pointer active:bg-[#F8F9FA] transition-colors"
                       onClick={() => setSelectedReportId(report.id)}
                     >
-                      <TableCell className="text-[12px] text-[#8B95A1]">
-                        {format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}
-                      </TableCell>
-                      <TableCell className="font-semibold text-[13px] text-[#191F28]">{report.itemCode}</TableCell>
-                      <TableCell className="text-[13px] text-[#8B95A1]">{report.processName}</TableCell>
-                      <TableCell className="text-[13px] font-medium text-[#191F28]">{report.defectType}</TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <StatusBadge status={report.syncStatus} />
-                          {report.qcStatus && (
-                            <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${QC_STATUS_BADGE[report.qcStatus]?.cls ?? "bg-[#F2F4F6] text-[#8B95A1]"}`}>
-                              {QC_STATUS_BADGE[report.qcStatus]?.label ?? report.qcStatus}
-                            </span>
-                          )}
+                      <div className="flex justify-between items-start mb-1.5">
+                        <div>
+                          <span className="font-semibold text-[14px] text-[#191F28]">{report.itemCode}</span>
+                          <span className="text-[12px] text-[#8B95A1] ml-2">{report.processName}</span>
                         </div>
-                      </TableCell>
-                    </TableRow>
+                        <StatusBadge status={report.syncStatus} />
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[13px] font-medium text-[#191F28]">{report.defectType}</span>
+                        <span className="text-[11px] text-[#8B95A1]">{format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}</span>
+                      </div>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-[#F8F9FA] hover:bg-[#F8F9FA]">
+                        <TableHead className="h-10 text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[140px]">접수 일시</TableHead>
+                        <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[110px]">품목코드</TableHead>
+                        <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">공정명</TableHead>
+                        <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide hidden lg:table-cell">불량 유형</TableHead>
+                        <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide text-center w-[110px]">상태</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {reports.map((report) => (
+                        <TableRow
+                          key={report.id}
+                          className={`cursor-pointer transition-colors border-[#F2F4F6] ${
+                            selectedReportId === report.id
+                              ? "bg-[#F2F4F6] hover:bg-[#F2F4F6]"
+                              : "hover:bg-[#F8F9FA]"
+                          }`}
+                          onClick={() => setSelectedReportId(report.id)}
+                        >
+                          <TableCell className="text-[12px] text-[#8B95A1]">
+                            {format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}
+                          </TableCell>
+                          <TableCell className="font-semibold text-[13px] text-[#191F28]">{report.itemCode}</TableCell>
+                          <TableCell className="text-[13px] text-[#8B95A1]">{report.processName}</TableCell>
+                          <TableCell className="text-[13px] font-medium text-[#191F28] hidden lg:table-cell">{report.defectType}</TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex flex-col items-center gap-1">
+                              <StatusBadge status={report.syncStatus} />
+                              {report.qcStatus && (
+                                <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${QC_STATUS_BADGE[report.qcStatus]?.cls ?? "bg-[#F2F4F6] text-[#8B95A1]"}`}>
+                                  {QC_STATUS_BADGE[report.qcStatus]?.label ?? report.qcStatus}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
 
-          {reportsData && reportsData.total > reportsData.pageSize && (
-            <div className="border-t border-[#F2F4F6] px-5 py-3 flex items-center justify-between">
-              <span className="text-[12px] text-[#8B95A1]">
-                {page} / {Math.ceil(reportsData.total / reportsData.pageSize)} 페이지
-              </span>
-              <div className="flex items-center gap-2">
+              {reportsData && reportsData.total > reportsData.pageSize && (
+                <div className="border-t border-[#F2F4F6] px-5 py-3 flex items-center justify-between">
+                  <span className="text-[12px] text-[#8B95A1]">
+                    {page} / {Math.ceil(reportsData.total / reportsData.pageSize)} 페이지
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center disabled:opacity-40"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button
+                      className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center disabled:opacity-40"
+                      onClick={() => setPage((p) => p + 1)}
+                      disabled={page >= Math.ceil(reportsData.total / reportsData.pageSize)}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 상세 패널: md+ 인라인 표시 */}
+          {selectedReportId && (
+            <div className="hidden md:flex flex-col w-[400px] xl:w-[440px] shrink-0 sticky top-[78px] bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden max-h-[calc(100vh-100px)]">
+              <div className="px-5 py-3.5 border-b border-[#F2F4F6] flex items-center justify-between shrink-0">
+                <h2 className="font-bold text-[17px] text-[#191F28]">보고서 상세</h2>
                 <button
-                  className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center disabled:opacity-40"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
+                  onClick={() => setSelectedReportId(null)}
+                  className="h-8 w-8 rounded-xl bg-[#F2F4F6] flex items-center justify-center text-[#4E5968] hover:bg-[#E5E8EB] transition-colors"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <X className="h-4 w-4" />
                 </button>
-                <button
-                  className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center disabled:opacity-40"
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={page >= Math.ceil(reportsData.total / reportsData.pageSize)}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-5 py-2">
+                <ReportDetail reportId={selectedReportId} onClose={() => setSelectedReportId(null)} />
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {isMobile ? (
-        <Drawer open={selectedReportId !== null} onOpenChange={(open) => !open && setSelectedReportId(null)}>
-          <DrawerContent className="bg-white rounded-t-3xl">
-            <div className="mx-auto w-full max-w-sm px-5 pt-3 pb-10 max-h-[85vh] overflow-y-auto">
-              <div className="w-10 h-1 bg-[#E5E8EB] rounded-full mx-auto mb-4"></div>
-              <DrawerHeader className="px-0 text-left pb-3 mb-1">
-                <DrawerTitle className="font-bold text-[17px] text-[#191F28]">보고서 상세</DrawerTitle>
-              </DrawerHeader>
-              {selectedReportId && <ReportDetail reportId={selectedReportId} onClose={() => setSelectedReportId(null)} />}
-            </div>
-          </DrawerContent>
-        </Drawer>
-      ) : (
-        <Sheet open={selectedReportId !== null} onOpenChange={(open) => !open && setSelectedReportId(null)}>
-          <SheetContent className="sm:max-w-md w-full overflow-y-auto bg-white border-l border-[#F2F4F6]">
-            <SheetHeader className="pb-4 mb-2 border-b border-[#F2F4F6]">
-              <SheetTitle className="font-bold text-[17px] text-[#191F28]">보고서 상세</SheetTitle>
-            </SheetHeader>
+      {/* 모바일 Drawer */}
+      <Drawer open={selectedReportId !== null && isMobile} onOpenChange={(open) => !open && setSelectedReportId(null)}>
+        <DrawerContent className="bg-white rounded-t-3xl">
+          <div className="mx-auto w-full max-w-sm px-5 pt-3 pb-10 max-h-[85vh] overflow-y-auto">
+            <div className="w-10 h-1 bg-[#E5E8EB] rounded-full mx-auto mb-4"></div>
+            <DrawerHeader className="px-0 text-left pb-3 mb-1">
+              <DrawerTitle className="font-bold text-[17px] text-[#191F28]">보고서 상세</DrawerTitle>
+            </DrawerHeader>
             {selectedReportId && <ReportDetail reportId={selectedReportId} onClose={() => setSelectedReportId(null)} />}
-          </SheetContent>
-        </Sheet>
-      )}
+          </div>
+        </DrawerContent>
+      </Drawer>
     </Layout>
   );
 }

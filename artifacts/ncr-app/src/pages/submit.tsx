@@ -303,7 +303,7 @@ export default function SubmitReport() {
 
   return (
     <Layout>
-      <div className="bg-white min-h-screen max-w-lg mx-auto" style={{ fontFamily: "'Pretendard', 'Apple SD Gothic Neo', sans-serif" }}>
+      <div className="bg-white min-h-screen max-w-lg md:max-w-2xl mx-auto" style={{ fontFamily: "'Pretendard', 'Apple SD Gothic Neo', sans-serif" }}>
 
         {/* 페이지 헤더 */}
         <div className="px-5 pt-5 pb-3 border-b border-[#F2F4F6]">
@@ -633,7 +633,7 @@ export default function SubmitReport() {
             </FieldRow>
 
             {/* 제출 버튼 */}
-            <div className="px-5 py-5 pb-10">
+            <div className="px-5 py-5 pb-28 md:pb-10">
               <button
                 type="submit"
                 disabled={isUploading || createReport.isPending}
