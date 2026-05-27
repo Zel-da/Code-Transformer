@@ -496,6 +496,20 @@ export const UpdateReportQcParams = zod.object({
 
 export const UpdateReportQcBody = zod.object({
   itemCode: zod.string().optional().describe("부품코드 (수정 가능)"),
+  modelName: zod.string().nullish().describe("모델명"),
+  processName: zod.string().nullish().describe("공정명 (원본 수정)"),
+  processCd: zod.string().nullish().describe("공정코드 (원본 수정)"),
+  plantCd: zod.string().nullish().describe("공장코드"),
+  factory: zod.string().nullish().describe("공장명"),
+  registrantName: zod.string().nullish().describe("등록자명"),
+  occurrenceDate: zod.coerce.date().nullish().describe("발생일"),
+  defectQty: zod.number().nullish().describe("불량 수량"),
+  description: zod.string().optional().describe("부적합 현상 상세"),
+  actionDirection: zod
+    .enum(["업체 방문 수정", "생산팀 자체 수정", "업체 반출 및 수정 입고"])
+    .nullish()
+    .describe("조치 방향"),
+  shipmentUnit: zod.string().nullish().describe("출하 단위"),
   flawTypeCd: zod.string().nullish().describe("불량유형 코드"),
   lostManHours: zod.number().nullish().describe("손실공수 (시간)"),
   qcCorrectiveResult: zod.string().nullish().describe("조치결과 상세 내용"),
@@ -503,8 +517,6 @@ export const UpdateReportQcBody = zod.object({
     .enum(["접수", "분석 중", "조치 완료", "종결"])
     .optional()
     .describe("QC 처리 상태"),
-  processName: zod.string().nullish().describe("공정명 (원본 수정)"),
-  processCd: zod.string().nullish().describe("공정코드 (원본 수정)"),
   deptCd: zod.string().nullish().describe("귀책부서 코드 (원본 수정)"),
   issuingTeam: zod.string().nullish().describe("귀책부서명 (원본 수정)"),
   ncrGbnCd: zod.string().nullish().describe("NCR 구분코드 (원본 수정)"),

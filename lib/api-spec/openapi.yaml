@@ -1178,6 +1178,41 @@ components:
         itemCode:
           type: string
           description: "부품코드 (수정 가능)"
+        modelName:
+          type: ["string", "null"]
+          description: "모델명"
+        processName:
+          type: ["string", "null"]
+          description: "공정명 (원본 수정)"
+        processCd:
+          type: ["string", "null"]
+          description: "공정코드 (원본 수정)"
+        plantCd:
+          type: ["string", "null"]
+          description: "공장코드"
+        factory:
+          type: ["string", "null"]
+          description: "공장명"
+        registrantName:
+          type: ["string", "null"]
+          description: "등록자명"
+        occurrenceDate:
+          type: ["string", "null"]
+          format: date-time
+          description: "발생일"
+        defectQty:
+          type: ["integer", "null"]
+          description: "불량 수량"
+        description:
+          type: string
+          description: "부적합 현상 상세"
+        actionDirection:
+          type: ["string", "null"]
+          description: "조치 방향"
+          enum: ["업체 방문 수정", "생산팀 자체 수정", "업체 반출 및 수정 입고"]
+        shipmentUnit:
+          type: ["string", "null"]
+          description: "출하 단위"
         flawTypeCd:
           type: ["string", "null"]
           description: "불량유형 코드"
@@ -1191,12 +1226,6 @@ components:
           type: string
           enum: ["접수", "분석 중", "조치 완료", "종결"]
           description: "QC 처리 상태"
-        processName:
-          type: ["string", "null"]
-          description: "공정명 (원본 수정)"
-        processCd:
-          type: ["string", "null"]
-          description: "공정코드 (원본 수정)"
         deptCd:
           type: ["string", "null"]
           description: "귀책부서 코드 (원본 수정)"

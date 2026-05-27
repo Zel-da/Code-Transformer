@@ -9,6 +9,8 @@ import {
   useListFlawTypes,
   useListItems,
   useListDepartments,
+  useListPlants,
+  useListProcesses,
   getListReportsQueryKey,
   getGetReportQueryKey,
 } from "@workspace/api-client-react";
@@ -21,10 +23,21 @@ import { format } from "date-fns";
 import { ChevronLeft, RefreshCw, Save } from "lucide-react";
 
 const QC_STATUSES = ["접수", "분석 중", "조치 완료", "종결"] as const;
+const ACTION_DIRECTIONS = ["업체 방문 수정", "생산팀 자체 수정", "업체 반출 및 수정 입고"] as const;
 
 const formSchema = z.object({
   itemCode: z.string().min(1, "부품코드를 입력해주세요"),
+  modelName: z.string().nullable().optional(),
+  registrantName: z.string().nullable().optional(),
+  plantCd: z.string().nullable().optional(),
+  factory: z.string().nullable().optional(),
   processName: z.string().min(1, "공정을 입력해주세요"),
+  processCd: z.string().nullable().optional(),
+  occurrenceDate: z.string().nullable().optional(),
+  defectQty: z.coerce.number().int().min(0).nullable().optional(),
+  shipmentUnit: z.string().nullable().optional(),
+  description: z.string().min(1, "부적합 현상을 입력해주세요"),
+  actionDirection: z.enum(ACTION_DIRECTIONS).nullable().optional(),
   deptCd: z.string().nullable().optional(),
   issuingTeam: z.string().nullable().optional(),
   flawTypeCd: z.string().nullable().optional(),
@@ -43,7 +56,17 @@ function GroupDivider({ title }: { title: string }) {
   );
 }
 
-function FieldRow({ label, children, optional }: { label: string; children: React.ReactNode; optional?: boolean }) {
+function FieldRow({
+  label,
+  children,
+  optional,
+  error,
+}: {
+  label: string;
+  children: React.ReactNode;
+  optional?: boolean;
+  error?: string;
+}) {
   return (
     <div className="py-3.5 border-b border-[#F2F4F6]">
       <div className="flex items-center gap-1.5 mb-2">
@@ -51,15 +74,7 @@ function FieldRow({ label, children, optional }: { label: string; children: Reac
         {optional && <span className="text-[10px] text-[#BEC5CC]">선택</span>}
       </div>
       {children}
-    </div>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex justify-between items-start gap-4 py-2.5 border-b border-[#F2F4F6]">
-      <span className="text-[12px] text-[#8B95A1] font-medium shrink-0">{label}</span>
-      <span className="text-[13px] font-medium text-[#191F28] text-right">{value || "—"}</span>
+      {error && <p className="mt-1 text-[11px] text-red-500">{error}</p>}
     </div>
   );
 }
@@ -70,6 +85,10 @@ const QC_STATUS_COLORS: Record<string, string> = {
   "조치 완료": "bg-green-50 text-green-700 border-green-200",
   "종결": "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]",
 };
+
+const INPUT_CLS = "w-full h-11 rounded-xl bg-[#F8F9FA] px-3.5 text-[14px] text-[#191F28] outline-none focus:ring-2 focus:ring-[#1A1A1A]/10";
+const CHIP_SEL = "border-[#1A1A1A] bg-[#F2F4F6] text-[#1A1A1A]";
+const CHIP_UNSEL = "border-[#E5E8EB] text-[#4E5968] hover:border-[#1A1A1A]/30";
 
 export default function QcPage() {
   const { reportId } = useParams<{ reportId: string }>();
@@ -82,13 +101,24 @@ export default function QcPage() {
   const { data: flawTypes = [] } = useListFlawTypes();
   const { data: itemsData = [] } = useListItems({ limit: 100 });
   const { data: departments = [] } = useListDepartments();
+  const { data: plants = [] } = useListPlants();
   const updateQc = useUpdateReportQc();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       itemCode: "",
+      modelName: null,
+      registrantName: null,
+      plantCd: null,
+      factory: null,
       processName: "",
+      processCd: null,
+      occurrenceDate: null,
+      defectQty: null,
+      shipmentUnit: null,
+      description: "",
+      actionDirection: null,
       deptCd: null,
       issuingTeam: null,
       flawTypeCd: null,
@@ -98,11 +128,28 @@ export default function QcPage() {
     },
   });
 
+  const selectedPlantCd = form.watch("plantCd");
+  const { data: processes = [] } = useListProcesses(
+    selectedPlantCd ? { plantCd: selectedPlantCd } : {}
+  );
+
   useEffect(() => {
     if (report) {
       form.reset({
         itemCode: report.itemCode ?? "",
+        modelName: report.modelName ?? null,
+        registrantName: report.registrantName ?? null,
+        plantCd: report.plantCd ?? null,
+        factory: report.factory ?? null,
         processName: report.processName ?? "",
+        processCd: report.processCd ?? null,
+        occurrenceDate: report.occurrenceDate
+          ? format(new Date(report.occurrenceDate), "yyyy-MM-dd")
+          : null,
+        defectQty: report.defectQty ?? null,
+        shipmentUnit: report.shipmentUnit ?? null,
+        description: report.description ?? "",
+        actionDirection: (report.actionDirection as (typeof ACTION_DIRECTIONS)[number]) ?? null,
         deptCd: report.deptCd ?? null,
         issuingTeam: report.issuingTeam ?? null,
         flawTypeCd: report.flawTypeCd ?? null,
@@ -120,7 +167,19 @@ export default function QcPage() {
         id,
         data: {
           itemCode: values.itemCode,
+          modelName: values.modelName || null,
+          registrantName: values.registrantName || null,
+          plantCd: values.plantCd || null,
+          factory: values.factory || null,
           processName: values.processName || null,
+          processCd: values.processCd || null,
+          occurrenceDate: values.occurrenceDate
+            ? new Date(values.occurrenceDate).toISOString()
+            : null,
+          defectQty: values.defectQty != null ? Math.round(values.defectQty) : null,
+          shipmentUnit: values.shipmentUnit || null,
+          description: values.description,
+          actionDirection: values.actionDirection || null,
           deptCd: values.deptCd || null,
           issuingTeam: selectedDept?.deptName ?? values.issuingTeam ?? null,
           flawTypeCd: values.flawTypeCd || null,
@@ -160,10 +219,12 @@ export default function QcPage() {
   }
 
   const currentStatus = form.watch("qcStatus");
+  const currentAction = form.watch("actionDirection");
 
   return (
     <Layout>
       <div className="max-w-lg mx-auto px-5 py-5 pb-32">
+        {/* 헤더 */}
         <div className="flex items-center gap-2 mb-5">
           <button
             onClick={() => navigate("/ledger")}
@@ -173,48 +234,110 @@ export default function QcPage() {
           </button>
           <div>
             <h1 className="text-[18px] font-bold text-[#191F28]">QC 분석 입력</h1>
-            <p className="text-[12px] text-[#8B95A1]">보고서 #{String(report.id).padStart(4, "0")}</p>
+            <p className="text-[12px] text-[#8B95A1]">보고서 #{String(report.id).padStart(4, "0")} · 접수 {format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}</p>
           </div>
         </div>
 
-        {/* 원본 보고서 요약 (읽기전용) */}
-        <div className="bg-white rounded-2xl border border-[#F2F4F6] p-4 mb-4">
-          <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide mb-2">접수 정보 (읽기전용)</p>
-          <InfoRow label="등록자" value={report.registrantName} />
-          <InfoRow label="공장" value={report.factory} />
-          <InfoRow label="발생일" value={report.occurrenceDate ? format(new Date(report.occurrenceDate), "yyyy.MM.dd") : null} />
-          <InfoRow label="불량 수량" value={report.defectQty != null ? `${report.defectQty}개` : null} />
-          <InfoRow label="상세 내용" value={
-            <span className="text-left block text-[13px] leading-relaxed text-[#191F28] whitespace-pre-wrap max-w-[220px]">
-              {report.description}
-            </span>
-          } />
-        </div>
-
-        {/* QC 입력 폼 */}
         <div className="bg-white rounded-2xl border border-[#F2F4F6] px-4">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
 
-              {/* ── 원본 보고서 수정 가능 필드 ── */}
-              <GroupDivider title="원본 정보 수정" />
+              {/* ── 접수 기본 정보 ── */}
+              <GroupDivider title="접수 기본 정보" />
+
+              {/* 등록자 */}
+              <FormField
+                control={form.control}
+                name="registrantName"
+                render={({ field }) => (
+                  <FieldRow label="등록자" optional>
+                    <FormItem>
+                      <FormControl>
+                        <input
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value || null)}
+                          className={INPUT_CLS}
+                          placeholder="등록자명"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  </FieldRow>
+                )}
+              />
+
+              {/* 공장 */}
+              <FormField
+                control={form.control}
+                name="plantCd"
+                render={({ field }) => (
+                  <FieldRow label="공장" optional>
+                    <FormItem>
+                      <Select
+                        onValueChange={(val) => {
+                          const chosen = val === "__none__" ? null : val;
+                          field.onChange(chosen);
+                          const plant = plants.find((p) => p.plantCd === chosen);
+                          form.setValue("factory", plant?.plantNm ?? null);
+                          form.setValue("processCd", null);
+                          form.setValue("processName", "");
+                        }}
+                        value={field.value ?? "__none__"}
+                      >
+                        <SelectTrigger className="h-11 rounded-xl bg-[#F8F9FA] border-0 text-[14px] text-[#191F28] focus:ring-0">
+                          <SelectValue placeholder="공장 선택" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl max-h-60">
+                          <SelectItem value="__none__">선택 안 함</SelectItem>
+                          {plants.map((p) => (
+                            <SelectItem key={p.plantCd} value={p.plantCd}>{p.plantNm}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  </FieldRow>
+                )}
+              />
+
+              {/* 발생일 */}
+              <FormField
+                control={form.control}
+                name="occurrenceDate"
+                render={({ field }) => (
+                  <FieldRow label="발생일" optional>
+                    <FormItem>
+                      <FormControl>
+                        <input
+                          type="date"
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value || null)}
+                          className={INPUT_CLS}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  </FieldRow>
+                )}
+              />
+
+              {/* ── 부적합 내용 ── */}
+              <GroupDivider title="부적합 내용" />
 
               {/* 부품코드 */}
               <FormField
                 control={form.control}
                 name="itemCode"
                 render={({ field }) => (
-                  <FieldRow label="부품코드">
+                  <FieldRow label="부품코드" error={form.formState.errors.itemCode?.message}>
                     <FormItem>
                       <FormControl>
                         <input
                           {...field}
-                          className="w-full h-11 rounded-xl bg-[#F8F9FA] px-3.5 text-[14px] text-[#191F28] outline-none focus:ring-2 focus:ring-[#1A1A1A]/10"
+                          className={INPUT_CLS}
                           placeholder="부품코드 입력"
-                          list="item-codes"
+                          list="item-codes-qc"
                         />
                       </FormControl>
-                      <datalist id="item-codes">
+                      <datalist id="item-codes-qc">
                         {itemsData.map((item) => (
                           <option key={item.code} value={item.code}>{item.name}</option>
                         ))}
@@ -225,18 +348,124 @@ export default function QcPage() {
                 )}
               />
 
-              {/* 공정 */}
+              {/* 모델명 */}
               <FormField
                 control={form.control}
-                name="processName"
+                name="modelName"
                 render={({ field }) => (
-                  <FieldRow label="공정">
+                  <FieldRow label="모델명" optional>
                     <FormItem>
                       <FormControl>
                         <input
                           {...field}
-                          className="w-full h-11 rounded-xl bg-[#F8F9FA] px-3.5 text-[14px] text-[#191F28] outline-none focus:ring-2 focus:ring-[#1A1A1A]/10"
-                          placeholder="공정명 입력"
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value || null)}
+                          className={INPUT_CLS}
+                          placeholder="모델명 (선택)"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  </FieldRow>
+                )}
+              />
+
+              {/* 공정 */}
+              <FormField
+                control={form.control}
+                name="processCd"
+                render={({ field }) => (
+                  <FieldRow label="공정" error={form.formState.errors.processName?.message}>
+                    <FormItem>
+                      {processes.length > 0 ? (
+                        <Select
+                          onValueChange={(val) => {
+                            const chosen = val === "__none__" ? null : val;
+                            field.onChange(chosen);
+                            const p = processes.find((pr) => pr.processCd === chosen);
+                            form.setValue("processName", p?.processNm ?? "");
+                          }}
+                          value={field.value ?? "__none__"}
+                        >
+                          <SelectTrigger className="h-11 rounded-xl bg-[#F8F9FA] border-0 text-[14px] text-[#191F28] focus:ring-0">
+                            <SelectValue placeholder="공정 선택" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl max-h-60">
+                            <SelectItem value="__none__">선택 안 함</SelectItem>
+                            {processes.map((p) => (
+                              <SelectItem key={p.processCd} value={p.processCd}>{p.processNm}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <input
+                          value={form.watch("processName") ?? ""}
+                          onChange={(e) => form.setValue("processName", e.target.value)}
+                          className={INPUT_CLS}
+                          placeholder="공정명 직접 입력"
+                        />
+                      )}
+                    </FormItem>
+                  </FieldRow>
+                )}
+              />
+
+              {/* 불량 수량 */}
+              <FormField
+                control={form.control}
+                name="defectQty"
+                render={({ field }) => (
+                  <FieldRow label="불량 수량" optional>
+                    <FormItem>
+                      <FormControl>
+                        <input
+                          type="number"
+                          min="0"
+                          className={INPUT_CLS}
+                          placeholder="수량 (개)"
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  </FieldRow>
+                )}
+              />
+
+              {/* 출하 단위 */}
+              <FormField
+                control={form.control}
+                name="shipmentUnit"
+                render={({ field }) => (
+                  <FieldRow label="출하 단위" optional>
+                    <FormItem>
+                      <FormControl>
+                        <input
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value || null)}
+                          className={INPUT_CLS}
+                          placeholder="출하 단위 (선택)"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  </FieldRow>
+                )}
+              />
+
+              {/* 부적합 현상 */}
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FieldRow label="부적합 현상" error={form.formState.errors.description?.message}>
+                    <FormItem>
+                      <FormControl>
+                        <textarea
+                          className="w-full rounded-xl bg-[#F8F9FA] px-3.5 py-3 text-[14px] text-[#191F28] outline-none focus:ring-2 focus:ring-[#1A1A1A]/10 resize-none"
+                          rows={4}
+                          placeholder="부적합 내용을 입력해주세요"
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value)}
                         />
                       </FormControl>
                       <FormMessage className="text-[12px]" />
@@ -244,6 +473,45 @@ export default function QcPage() {
                   </FieldRow>
                 )}
               />
+
+              {/* 조치 방향 */}
+              <FieldRow label="조치 방향" optional>
+                <div className="flex flex-col gap-2">
+                  {ACTION_DIRECTIONS.map((dir) => (
+                    <button
+                      key={dir}
+                      type="button"
+                      onClick={() => form.setValue("actionDirection", currentAction === dir ? null : dir)}
+                      className={`w-full text-left px-4 py-3 rounded-xl text-[14px] font-semibold border-2 transition-all ${currentAction === dir ? CHIP_SEL : CHIP_UNSEL}`}
+                    >
+                      {dir}
+                    </button>
+                  ))}
+                </div>
+              </FieldRow>
+
+              {/* ── QC 분석 내용 ── */}
+              <GroupDivider title="QC 분석 내용" />
+
+              {/* 처리 상태 */}
+              <FieldRow label="처리 상태">
+                <div className="flex flex-wrap gap-2">
+                  {QC_STATUSES.map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => form.setValue("qcStatus", status)}
+                      className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all ${
+                        currentStatus === status
+                          ? QC_STATUS_COLORS[status]
+                          : "bg-[#F8F9FA] text-[#8B95A1] border-transparent"
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </FieldRow>
 
               {/* 귀책부서 */}
               <FormField
@@ -275,29 +543,6 @@ export default function QcPage() {
                   </FieldRow>
                 )}
               />
-
-              {/* ── QC 분석 내용 ── */}
-              <GroupDivider title="QC 분석 내용" />
-
-              {/* 처리 상태 */}
-              <FieldRow label="처리 상태">
-                <div className="flex flex-wrap gap-2">
-                  {QC_STATUSES.map((status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => form.setValue("qcStatus", status)}
-                      className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all ${
-                        currentStatus === status
-                          ? QC_STATUS_COLORS[status]
-                          : "bg-[#F8F9FA] text-[#8B95A1] border-transparent"
-                      }`}
-                    >
-                      {status}
-                    </button>
-                  ))}
-                </div>
-              </FieldRow>
 
               {/* 불량유형 */}
               <FormField
@@ -337,7 +582,7 @@ export default function QcPage() {
                           type="number"
                           min="0"
                           step="0.5"
-                          className="w-full h-11 rounded-xl bg-[#F8F9FA] px-3.5 text-[14px] text-[#191F28] outline-none focus:ring-2 focus:ring-[#1A1A1A]/10"
+                          className={INPUT_CLS}
                           placeholder="예: 2.5"
                           value={field.value ?? ""}
                           onChange={(e) => field.onChange(e.target.value === "" ? null : Number(e.target.value))}

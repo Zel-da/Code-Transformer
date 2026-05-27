@@ -314,11 +314,20 @@ router.put("/reports/:id/qc", requireAdmin, async (req, res): Promise<void> => {
 
   const updates: Record<string, unknown> = {};
   if (body.data.itemCode !== undefined) updates.itemCode = body.data.itemCode;
+  if (body.data.modelName !== undefined) updates.modelName = body.data.modelName;
+  if (body.data.processName !== undefined) updates.processName = body.data.processName;
+  if (body.data.processCd !== undefined) updates.processCd = body.data.processCd;
+  if (body.data.plantCd !== undefined) updates.plantCd = body.data.plantCd;
+  if (body.data.factory !== undefined) updates.factory = body.data.factory;
+  if (body.data.registrantName !== undefined) updates.registrantName = body.data.registrantName;
+  if (body.data.occurrenceDate !== undefined) updates.occurrenceDate = body.data.occurrenceDate ? new Date(body.data.occurrenceDate) : null;
+  if (body.data.defectQty !== undefined) updates.defectQty = body.data.defectQty;
+  if (body.data.description !== undefined) updates.description = body.data.description;
+  if (body.data.actionDirection !== undefined) updates.actionDirection = body.data.actionDirection;
+  if (body.data.shipmentUnit !== undefined) updates.shipmentUnit = body.data.shipmentUnit;
   if (body.data.flawTypeCd !== undefined) updates.flawTypeCd = body.data.flawTypeCd;
   if (body.data.lostManHours !== undefined) updates.lostManHours = body.data.lostManHours;
   if (body.data.qcCorrectiveResult !== undefined) updates.qcCorrectiveResult = body.data.qcCorrectiveResult;
-  if (body.data.processName !== undefined) updates.processName = body.data.processName;
-  if (body.data.processCd !== undefined) updates.processCd = body.data.processCd;
   if (body.data.deptCd !== undefined) updates.deptCd = body.data.deptCd;
   if (body.data.issuingTeam !== undefined) updates.issuingTeam = body.data.issuingTeam;
   if (body.data.ncrGbnCd !== undefined) updates.ncrGbnCd = body.data.ncrGbnCd;

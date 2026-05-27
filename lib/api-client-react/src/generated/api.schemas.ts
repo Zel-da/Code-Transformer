@@ -291,6 +291,20 @@ export interface UpdateReportBody {
 }
 
 /**
+ * 조치 방향
+ * @nullable
+ */
+export type QcAnalysisBodyActionDirection =
+  | (typeof QcAnalysisBodyActionDirection)[keyof typeof QcAnalysisBodyActionDirection]
+  | null;
+
+export const QcAnalysisBodyActionDirection = {
+  업체_방문_수정: "업체 방문 수정",
+  생산팀_자체_수정: "생산팀 자체 수정",
+  업체_반출_및_수정_입고: "업체 반출 및 수정 입고",
+} as const;
+
+/**
  * QC 처리 상태
  */
 export type QcAnalysisBodyQcStatus =
@@ -306,6 +320,58 @@ export const QcAnalysisBodyQcStatus = {
 export interface QcAnalysisBody {
   /** 부품코드 (수정 가능) */
   itemCode?: string;
+  /**
+   * 모델명
+   * @nullable
+   */
+  modelName?: string | null;
+  /**
+   * 공정명 (원본 수정)
+   * @nullable
+   */
+  processName?: string | null;
+  /**
+   * 공정코드 (원본 수정)
+   * @nullable
+   */
+  processCd?: string | null;
+  /**
+   * 공장코드
+   * @nullable
+   */
+  plantCd?: string | null;
+  /**
+   * 공장명
+   * @nullable
+   */
+  factory?: string | null;
+  /**
+   * 등록자명
+   * @nullable
+   */
+  registrantName?: string | null;
+  /**
+   * 발생일
+   * @nullable
+   */
+  occurrenceDate?: string | null;
+  /**
+   * 불량 수량
+   * @nullable
+   */
+  defectQty?: number | null;
+  /** 부적합 현상 상세 */
+  description?: string;
+  /**
+   * 조치 방향
+   * @nullable
+   */
+  actionDirection?: QcAnalysisBodyActionDirection;
+  /**
+   * 출하 단위
+   * @nullable
+   */
+  shipmentUnit?: string | null;
   /**
    * 불량유형 코드
    * @nullable
@@ -323,16 +389,6 @@ export interface QcAnalysisBody {
   qcCorrectiveResult?: string | null;
   /** QC 처리 상태 */
   qcStatus?: QcAnalysisBodyQcStatus;
-  /**
-   * 공정명 (원본 수정)
-   * @nullable
-   */
-  processName?: string | null;
-  /**
-   * 공정코드 (원본 수정)
-   * @nullable
-   */
-  processCd?: string | null;
   /**
    * 귀책부서 코드 (원본 수정)
    * @nullable
