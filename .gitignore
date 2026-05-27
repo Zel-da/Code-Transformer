@@ -11,6 +11,10 @@ out-tsc
 # dependencies
 node_modules
 
+# Python
+__pycache__/
+*.pyc
+
 # IDEs and editors
 /.idea
 .project
@@ -47,3 +51,10 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Secrets / credentials — 절대 커밋 금지 (평문 DB 비밀번호 등)
+PRIVATE/
+.env
+*.env
+!*.env.example
+.venv/
