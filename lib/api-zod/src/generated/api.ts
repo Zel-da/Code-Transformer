@@ -84,6 +84,19 @@ export const ListReportsResponse = zod.object({
       qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
       qcActionAt: zod.coerce.date().nullish(),
       qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+      qcStatus: zod
+        .string()
+        .nullish()
+        .describe("QC 처리 상태 (접수\/분석 중\/조치 완료\/종결)"),
+      qcCorrectiveResult: zod
+        .string()
+        .nullish()
+        .describe("QC 조치결과 상세 내용"),
+      qcSubmittedAt: zod.coerce
+        .date()
+        .nullish()
+        .describe("QC 분석 최종 제출 일시"),
+      qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
       syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
       syncLastError: zod
         .string()
@@ -194,6 +207,13 @@ export const ListPendingReportsResponseItem = zod.object({
   qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
   qcActionAt: zod.coerce.date().nullish(),
   qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+  qcStatus: zod
+    .string()
+    .nullish()
+    .describe("QC 처리 상태 (접수\/분석 중\/조치 완료\/종결)"),
+  qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
+  qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
+  qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
   syncLastError: zod
     .string()
@@ -275,6 +295,13 @@ export const UpdateReportResponse = zod.object({
   qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
   qcActionAt: zod.coerce.date().nullish(),
   qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+  qcStatus: zod
+    .string()
+    .nullish()
+    .describe("QC 처리 상태 (접수\/분석 중\/조치 완료\/종결)"),
+  qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
+  qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
+  qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
   syncLastError: zod
     .string()
@@ -336,6 +363,13 @@ export const GetReportResponse = zod.object({
   qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
   qcActionAt: zod.coerce.date().nullish(),
   qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+  qcStatus: zod
+    .string()
+    .nullish()
+    .describe("QC 처리 상태 (접수\/분석 중\/조치 완료\/종결)"),
+  qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
+  qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
+  qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
   syncLastError: zod
     .string()
@@ -399,6 +433,86 @@ export const UpdateReportSyncStatusResponse = zod.object({
   qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
   qcActionAt: zod.coerce.date().nullish(),
   qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+  qcStatus: zod
+    .string()
+    .nullish()
+    .describe("QC 처리 상태 (접수\/분석 중\/조치 완료\/종결)"),
+  qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
+  qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
+  qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
+  syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
+  syncLastError: zod
+    .string()
+    .nullish()
+    .describe("마지막 동기화 실패 오류 메시지"),
+  syncNextRetryAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("다음 재시도 허용 시각"),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * QC 담당자가 현장 분석 후 조치 결과를 저장한다. isLocked 보고서도 저장 가능. 원본 보고서 일부 필드(itemCode, flawTypeCd, lostManHours)도 함께 수정 가능.
+ * @summary QC 분석 결과 저장 (admin 전용)
+ */
+export const UpdateReportQcParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateReportQcBody = zod.object({
+  itemCode: zod.string().optional().describe("부품코드 (수정 가능)"),
+  flawTypeCd: zod.string().nullish().describe("불량유형 코드"),
+  lostManHours: zod.number().nullish().describe("손실공수 (시간)"),
+  qcCorrectiveResult: zod.string().nullish().describe("조치결과 상세 내용"),
+  qcStatus: zod
+    .enum(["접수", "분석 중", "조치 완료", "종결"])
+    .optional()
+    .describe("QC 처리 상태"),
+});
+
+export const UpdateReportQcResponse = zod.object({
+  id: zod.number(),
+  reportDate: zod.coerce.date(),
+  itemCode: zod.string(),
+  modelName: zod.string().nullish(),
+  processName: zod.string(),
+  defectType: zod.string(),
+  description: zod.string(),
+  imageUrl: zod.string().nullable(),
+  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+  registrantName: zod.string().nullish(),
+  ncrType: zod.string().nullish(),
+  factory: zod.string().nullish(),
+  shipmentUnit: zod.string().nullish(),
+  lostManHours: zod.number().nullish(),
+  defectQty: zod.number().nullish(),
+  occurrenceDate: zod.coerce.date().nullish(),
+  issuingTeam: zod.string().nullish(),
+  plantCd: zod.string().nullish(),
+  processCd: zod.string().nullish(),
+  flawTypeCd: zod.string().nullish(),
+  deptCd: zod.string().nullish(),
+  ncrGbnCd: zod.string().nullish(),
+  productType: zod
+    .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
+    .nullish()
+    .describe("양산 or 개발"),
+  labNotifiedAt: zod.coerce.date().nullish(),
+  ssushanTalkSentAt: zod.coerce.date().nullish(),
+  slaDeadlineAt: zod.coerce.date().nullish(),
+  isLocked: zod.boolean().describe("SLA 초과 시 true로 설정, 수정 불가"),
+  qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
+  qcActionAt: zod.coerce.date().nullish(),
+  qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+  qcStatus: zod
+    .string()
+    .nullish()
+    .describe("QC 처리 상태 (접수\/분석 중\/조치 완료\/종결)"),
+  qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
+  qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
+  qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
   syncLastError: zod
     .string()
@@ -460,6 +574,13 @@ export const SubmitQcActionResponse = zod.object({
   qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
   qcActionAt: zod.coerce.date().nullish(),
   qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+  qcStatus: zod
+    .string()
+    .nullish()
+    .describe("QC 처리 상태 (접수\/분석 중\/조치 완료\/종결)"),
+  qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
+  qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
+  qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
   syncLastError: zod
     .string()
@@ -517,6 +638,19 @@ export const TriggerRpaResponse = zod.object({
       qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
       qcActionAt: zod.coerce.date().nullish(),
       qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+      qcStatus: zod
+        .string()
+        .nullish()
+        .describe("QC 처리 상태 (접수\/분석 중\/조치 완료\/종결)"),
+      qcCorrectiveResult: zod
+        .string()
+        .nullish()
+        .describe("QC 조치결과 상세 내용"),
+      qcSubmittedAt: zod.coerce
+        .date()
+        .nullish()
+        .describe("QC 분석 최종 제출 일시"),
+      qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
       syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
       syncLastError: zod
         .string()

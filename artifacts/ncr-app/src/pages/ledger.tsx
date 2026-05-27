@@ -10,7 +10,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Search, RefreshCw, X, XCircle, ChevronLeft, ChevronRight, ImageIcon, Lock } from "lucide-react";
+import { useAuth } from "@/contexts/auth";
+import { useLocation } from "wouter";
+import { Search, RefreshCw, X, XCircle, ChevronLeft, ChevronRight, ImageIcon, Lock, ClipboardCheck } from "lucide-react";
+
+const QC_STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+  "접수": { label: "QC 접수", cls: "bg-blue-50 text-blue-700 border border-blue-200" },
+  "분석 중": { label: "QC 분석 중", cls: "bg-amber-50 text-amber-700 border border-amber-200" },
+  "조치 완료": { label: "QC 완료", cls: "bg-green-50 text-green-700 border border-green-200" },
+  "종결": { label: "QC 종결", cls: "bg-[#F2F4F6] text-[#4E5968] border border-[#E5E8EB]" },
+};
 
 const SYNC_STATUSES = ["PENDING", "PROCESSING", "COMPLETED", "FAILED"];
 const SYNC_STATUS_LABELS: Record<string, string> = {
@@ -33,6 +42,8 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
   const { data: report, isLoading } = useGetReport(reportId);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [, navigate] = useLocation();
   const resetRetry = useUpdateReportSyncStatus();
 
   const handleResetRetry = async () => {
@@ -147,7 +158,48 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
         </div>
       )}
 
-      <div className="pt-4 md:hidden">
+      {/* QC 분석 결과 섹션 */}
+      {(report.qcStatus || report.qcCorrectiveResult || report.lostManHours != null || report.flawTypeCd) && (
+        <div className="mt-4 rounded-xl border border-[#F2F4F6] overflow-hidden">
+          <div className="bg-[#F8F9FA] px-3 py-2 flex items-center gap-2 border-b border-[#F2F4F6]">
+            <ClipboardCheck className="h-3.5 w-3.5 text-[#8B95A1]" />
+            <span className="text-[11px] font-semibold text-[#8B95A1]">QC 분석 결과</span>
+            {report.qcStatus && (
+              <span className={`ml-auto text-[10px] font-semibold rounded-full px-2 py-0.5 ${QC_STATUS_BADGE[report.qcStatus]?.cls ?? "bg-[#F2F4F6] text-[#8B95A1]"}`}>
+                {QC_STATUS_BADGE[report.qcStatus]?.label ?? report.qcStatus}
+              </span>
+            )}
+          </div>
+          <div className="px-3">
+            {report.flawTypeCd && <DetailRow label="불량유형" value={report.flawTypeCd} />}
+            {report.lostManHours != null && <DetailRow label="손실공수" value={`${report.lostManHours}h`} />}
+            {report.qcCorrectiveResult && (
+              <div className="py-3 border-b border-[#F2F4F6]">
+                <p className="text-[12px] text-[#8B95A1] font-medium mb-1.5">조치결과</p>
+                <p className="text-[13px] leading-relaxed text-[#191F28] whitespace-pre-wrap">{report.qcCorrectiveResult}</p>
+              </div>
+            )}
+            {report.qcSubmittedAt && (
+              <DetailRow label="QC 제출일시" value={format(new Date(report.qcSubmittedAt), "yyyy.MM.dd HH:mm")} />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Admin: QC 분석 입력 버튼 */}
+      {user?.role === "admin" && (
+        <div className="pt-4">
+          <button
+            onClick={() => { onClose(); navigate(`/qc/${report.id}`); }}
+            className="w-full bg-[#1A1A1A] text-white font-semibold text-[14px] rounded-2xl py-3.5 flex items-center justify-center gap-2"
+          >
+            <ClipboardCheck className="h-4 w-4" />
+            QC 분석 입력
+          </button>
+        </div>
+      )}
+
+      <div className="pt-3 md:hidden">
         <button
           onClick={onClose}
           className="w-full bg-[#F2F4F6] text-[#191F28] font-semibold text-[14px] rounded-2xl py-3.5"
@@ -323,7 +375,14 @@ export default function LedgerPage() {
                       <TableCell className="text-[13px] text-[#8B95A1]">{report.processName}</TableCell>
                       <TableCell className="text-[13px] font-medium text-[#191F28]">{report.defectType}</TableCell>
                       <TableCell className="text-center">
-                        <StatusBadge status={report.syncStatus} />
+                        <div className="flex flex-col items-center gap-1">
+                          <StatusBadge status={report.syncStatus} />
+                          {report.qcStatus && (
+                            <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${QC_STATUS_BADGE[report.qcStatus]?.cls ?? "bg-[#F2F4F6] text-[#8B95A1]"}`}>
+                              {QC_STATUS_BADGE[report.qcStatus]?.label ?? report.qcStatus}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

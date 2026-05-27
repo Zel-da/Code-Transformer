@@ -124,6 +124,11 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
   qcAction: text("qc_action"),
   qcActionAt: timestamp("qc_action_at", { withTimezone: true }),
   qcActionedBy: integer("qc_actioned_by").references(() => usersTable.id, { onDelete: "set null" }),
+  // QC 분석 전용 컬럼
+  qcStatus: text("qc_status").default("접수"),
+  qcCorrectiveResult: text("qc_corrective_result"),
+  qcSubmittedAt: timestamp("qc_submitted_at", { withTimezone: true }),
+  qcSubmittedBy: integer("qc_submitted_by").references(() => usersTable.id, { onDelete: "set null" }),
   // V2.0 RPA 재시도 관련 컬럼
   syncAttemptCount: integer("sync_attempt_count").notNull().default(0),
   syncLastError: text("sync_last_error"),

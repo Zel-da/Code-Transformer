@@ -12,6 +12,8 @@ import {
   DeleteReportParams,
   SubmitQcActionBody,
   SubmitQcActionParams,
+  UpdateReportQcBody,
+  UpdateReportQcParams,
 } from "@workspace/api-zod";
 import { requireAdmin, requireAuth } from "../middleware/requireAuth.js";
 import { sendSushantalkMessage } from "../lib/sushantalk.js";
@@ -263,6 +265,53 @@ router.patch("/reports/:id/sync-status", async (req, res): Promise<void> => {
 });
 
 // V2.0: QC 조치 결과 확정 (admin 전용)
+router.put("/reports/:id/qc", requireAdmin, async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const params = UpdateReportQcParams.safeParse({ id: raw });
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const body = UpdateReportQcBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [existing] = await db
+    .select({ id: nonConformityReportsTable.id })
+    .from(nonConformityReportsTable)
+    .where(eq(nonConformityReportsTable.id, params.data.id));
+
+  if (!existing) {
+    res.status(404).json({ error: "Report not found" });
+    return;
+  }
+
+  const updates: Record<string, unknown> = {};
+  if (body.data.itemCode !== undefined) updates.itemCode = body.data.itemCode;
+  if (body.data.flawTypeCd !== undefined) updates.flawTypeCd = body.data.flawTypeCd;
+  if (body.data.lostManHours !== undefined) updates.lostManHours = body.data.lostManHours;
+  if (body.data.qcCorrectiveResult !== undefined) updates.qcCorrectiveResult = body.data.qcCorrectiveResult;
+  if (body.data.qcStatus !== undefined) {
+    updates.qcStatus = body.data.qcStatus;
+    if (body.data.qcStatus === "종결" || body.data.qcStatus === "조치 완료") {
+      updates.qcSubmittedAt = new Date();
+      updates.qcSubmittedBy = req.auth!.userId;
+    }
+  }
+
+  const [report] = await db
+    .update(nonConformityReportsTable)
+    .set(updates)
+    .where(eq(nonConformityReportsTable.id, params.data.id))
+    .returning();
+
+  req.log.info({ reportId: report.id, qcStatus: report.qcStatus, by: req.auth!.userId }, "QC analysis saved");
+  res.json(report);
+});
+
 router.post("/reports/:id/qc-action", requireAdmin, async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = SubmitQcActionParams.safeParse({ id: raw });

@@ -33,6 +33,7 @@ import type {
   PlantItem,
   ProcessItem,
   QcActionBody,
+  QcAnalysisBody,
   Report,
   ReportListResponse,
   ReportStats,
@@ -903,6 +904,94 @@ export const useUpdateReportSyncStatus = <
   TContext
 > => {
   return useMutation(getUpdateReportSyncStatusMutationOptions(options));
+};
+
+/**
+ * QC 담당자가 현장 분석 후 조치 결과를 저장한다. isLocked 보고서도 저장 가능. 원본 보고서 일부 필드(itemCode, flawTypeCd, lostManHours)도 함께 수정 가능.
+ * @summary QC 분석 결과 저장 (admin 전용)
+ */
+export const getUpdateReportQcUrl = (id: number) => {
+  return `/api/reports/${id}/qc`;
+};
+
+export const updateReportQc = async (
+  id: number,
+  qcAnalysisBody: QcAnalysisBody,
+  options?: RequestInit,
+): Promise<Report> => {
+  return customFetch<Report>(getUpdateReportQcUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(qcAnalysisBody),
+  });
+};
+
+export const getUpdateReportQcMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateReportQc>>,
+    TError,
+    { id: number; data: BodyType<QcAnalysisBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateReportQc>>,
+  TError,
+  { id: number; data: BodyType<QcAnalysisBody> },
+  TContext
+> => {
+  const mutationKey = ["updateReportQc"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateReportQc>>,
+    { id: number; data: BodyType<QcAnalysisBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateReportQc(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateReportQcMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateReportQc>>
+>;
+export type UpdateReportQcMutationBody = BodyType<QcAnalysisBody>;
+export type UpdateReportQcMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary QC 분석 결과 저장 (admin 전용)
+ */
+export const useUpdateReportQc = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateReportQc>>,
+    TError,
+    { id: number; data: BodyType<QcAnalysisBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateReportQc>>,
+  TError,
+  { id: number; data: BodyType<QcAnalysisBody> },
+  TContext
+> => {
+  return useMutation(getUpdateReportQcMutationOptions(options));
 };
 
 /**

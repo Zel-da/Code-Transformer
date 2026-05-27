@@ -287,6 +287,50 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /reports/{id}/qc:
+    put:
+      operationId: updateReportQc
+      tags: [reports]
+      summary: QC 분석 결과 저장 (admin 전용)
+      description: QC 담당자가 현장 분석 후 조치 결과를 저장한다. isLocked 보고서도 저장 가능. 원본 보고서 일부 필드(itemCode, flawTypeCd, lostManHours)도 함께 수정 가능.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QcAnalysisBody"
+      responses:
+        "200":
+          description: QC analysis saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /reports/{id}/qc-action:
     post:
       operationId: submitQcAction
@@ -923,6 +967,19 @@ components:
         qcActionedBy:
           type: ["integer", "null"]
           description: "QC 조치 담당자 userId"
+        qcStatus:
+          type: ["string", "null"]
+          description: "QC 처리 상태 (접수/분석 중/조치 완료/종결)"
+        qcCorrectiveResult:
+          type: ["string", "null"]
+          description: "QC 조치결과 상세 내용"
+        qcSubmittedAt:
+          type: ["string", "null"]
+          format: date-time
+          description: "QC 분석 최종 제출 일시"
+        qcSubmittedBy:
+          type: ["integer", "null"]
+          description: "QC 분석 제출자 userId"
         syncAttemptCount:
           type: integer
           description: "누적 RPA 동기화 시도 횟수"
@@ -1070,6 +1127,26 @@ components:
           type: ["string", "null"]
         ncrGbnCd:
           type: ["string", "null"]
+
+    QcAnalysisBody:
+      type: object
+      properties:
+        itemCode:
+          type: string
+          description: "부품코드 (수정 가능)"
+        flawTypeCd:
+          type: ["string", "null"]
+          description: "불량유형 코드"
+        lostManHours:
+          type: ["number", "null"]
+          description: "손실공수 (시간)"
+        qcCorrectiveResult:
+          type: ["string", "null"]
+          description: "조치결과 상세 내용"
+        qcStatus:
+          type: string
+          enum: ["접수", "분석 중", "조치 완료", "종결"]
+          description: "QC 처리 상태"
 
     QcActionBody:
       type: object

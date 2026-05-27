@@ -126,6 +126,26 @@ export interface Report {
    * @nullable
    */
   qcActionedBy?: number | null;
+  /**
+   * QC 처리 상태 (접수/분석 중/조치 완료/종결)
+   * @nullable
+   */
+  qcStatus?: string | null;
+  /**
+   * QC 조치결과 상세 내용
+   * @nullable
+   */
+  qcCorrectiveResult?: string | null;
+  /**
+   * QC 분석 최종 제출 일시
+   * @nullable
+   */
+  qcSubmittedAt?: string | null;
+  /**
+   * QC 분석 제출자 userId
+   * @nullable
+   */
+  qcSubmittedBy?: number | null;
   /** 누적 RPA 동기화 시도 횟수 */
   syncAttemptCount: number;
   /**
@@ -244,6 +264,41 @@ export interface UpdateReportBody {
   deptCd?: string | null;
   /** @nullable */
   ncrGbnCd?: string | null;
+}
+
+/**
+ * QC 처리 상태
+ */
+export type QcAnalysisBodyQcStatus =
+  (typeof QcAnalysisBodyQcStatus)[keyof typeof QcAnalysisBodyQcStatus];
+
+export const QcAnalysisBodyQcStatus = {
+  접수: "접수",
+  분석_중: "분석 중",
+  조치_완료: "조치 완료",
+  종결: "종결",
+} as const;
+
+export interface QcAnalysisBody {
+  /** 부품코드 (수정 가능) */
+  itemCode?: string;
+  /**
+   * 불량유형 코드
+   * @nullable
+   */
+  flawTypeCd?: string | null;
+  /**
+   * 손실공수 (시간)
+   * @nullable
+   */
+  lostManHours?: number | null;
+  /**
+   * 조치결과 상세 내용
+   * @nullable
+   */
+  qcCorrectiveResult?: string | null;
+  /** QC 처리 상태 */
+  qcStatus?: QcAnalysisBodyQcStatus;
 }
 
 export interface QcActionBody {
