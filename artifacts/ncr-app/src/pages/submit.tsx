@@ -39,6 +39,31 @@ const FACTORY_TO_PLANT_CD: Record<string, string> = {
   화성: "SH00",
 };
 
+// ERP 조회 API 베이스 (이 PC에서 도는 FastAPI). 빌드 시 VITE_ERP_API_BASE로 주입.
+// 미설정이면 자동조회 비활성(수동 입력만).
+const ERP_API_BASE =
+  ((import.meta.env.VITE_ERP_API_BASE as string | undefined) ?? "").replace(/\/+$/, "");
+
+// 출하호기 자유문자열("365", "365호기", "LOT-365")에서 숫자만 추출
+function parseHogi(raw?: string): number | null {
+  if (!raw) return null;
+  const m = raw.match(/\d+/);
+  return m ? Number(m[0]) : null;
+}
+
+type ErpLookup = {
+  ok: boolean;
+  itemCode?: string;
+  modelName?: string;
+  itemGroup?: string;
+  itemGroupCd?: string;
+  factory?: string;
+  plantCd?: string;
+  orderCount?: number;
+  matchedOrders?: { PRODT_ORDER_NO: string; ORDER_STATUS: string; PLAN_START: string | null }[];
+  reason?: string;
+};
+
 const todayStr = () => new Date().toISOString().split("T")[0];
 
 const PRODUCT_TYPES = [
@@ -154,6 +179,11 @@ export default function SubmitReport() {
   const selectedFactory = form.watch("factory");
   const selectedPlantCd = FACTORY_TO_PLANT_CD[selectedFactory] ?? "";
 
+  const watchedItemCode = form.watch("itemCode");
+  const watchedShipmentUnit = form.watch("shipmentUnit");
+  const [erp, setErp] = useState<ErpLookup | null>(null);
+  const [erpLoading, setErpLoading] = useState(false);
+
   const { data: processes = [] } = useListProcesses(
     selectedPlantCd ? { plantCd: selectedPlantCd } : undefined,
     { query: { enabled: !!selectedPlantCd, queryKey: getListProcessesQueryKey(selectedPlantCd ? { plantCd: selectedPlantCd } : undefined) } },
@@ -173,6 +203,54 @@ export default function SubmitReport() {
       form.setValue("processName", "");
     }
   }, [selectedFactory]);
+
+  // 제품코드 + 출하호기 → ERP에서 제품명/품목그룹/공장 자동 조회 (디바운스 400ms)
+  useEffect(() => {
+    if (!ERP_API_BASE) return;
+    const itemCode = watchedItemCode?.trim();
+    if (!itemCode) {
+      setErp(null);
+      return;
+    }
+    const hogi = parseHogi(watchedShipmentUnit);
+    const ctrl = new AbortController();
+    const timer = setTimeout(async () => {
+      setErpLoading(true);
+      try {
+        const params = new URLSearchParams({ itemCode });
+        if (hogi != null) params.set("hogi", String(hogi));
+        const res = await fetch(`${ERP_API_BASE}/api/erp/input-data?${params.toString()}`, {
+          signal: ctrl.signal,
+        });
+        const data: ErpLookup = await res.json();
+        setErp(data);
+        // 비어 있는 칸만 자동 채움 (사용자 수정 보존)
+        if (data.ok) {
+          if (data.modelName && !form.getValues("modelName")) {
+            form.setValue("modelName", data.modelName, { shouldValidate: true });
+          }
+          if (data.factory && !form.getValues("factory")) {
+            form.setValue("factory", data.factory, { shouldValidate: true });
+          }
+        }
+      } catch (e) {
+        if (!(e instanceof DOMException && e.name === "AbortError")) setErp(null);
+      } finally {
+        setErpLoading(false);
+      }
+    }, 400);
+    return () => {
+      clearTimeout(timer);
+      ctrl.abort();
+    };
+  }, [watchedItemCode, watchedShipmentUnit]);
+
+  // ERP 조회값을 폼에 강제 반영 (덮어쓰기)
+  const applyErp = () => {
+    if (!erp?.ok) return;
+    if (erp.modelName) form.setValue("modelName", erp.modelName, { shouldValidate: true });
+    if (erp.factory) form.setValue("factory", erp.factory, { shouldValidate: true });
+  };
 
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -527,6 +605,60 @@ export default function SubmitReport() {
                 </FieldRow>
               )}
             />
+
+            {/* ERP 자동 조회 결과 (제품코드+출하호기 기반) */}
+            {(erpLoading || erp) && (
+              <div className="px-5 py-3 border-b border-[#F2F4F6]">
+                {erpLoading ? (
+                  <div className="flex items-center gap-2 text-[13px] text-[#8B95A1]">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> ERP 조회 중…
+                  </div>
+                ) : erp?.ok ? (
+                  <div className="rounded-xl bg-[#F1F8F4] border border-emerald-200 px-4 py-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[12px] font-bold text-emerald-700 flex items-center gap-1.5">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> ERP 자동 조회됨
+                      </span>
+                      <button
+                        type="button"
+                        onClick={applyErp}
+                        className="text-[11px] font-semibold text-emerald-700 underline underline-offset-2"
+                      >
+                        제품명·공장 다시 채우기
+                      </button>
+                    </div>
+                    <dl className="grid grid-cols-[64px_1fr] gap-y-1 text-[12px]">
+                      <dt className="text-[#8B95A1]">제품명</dt>
+                      <dd className="text-[#191F28] font-medium">{erp.modelName ?? "-"}</dd>
+                      <dt className="text-[#8B95A1]">품목그룹</dt>
+                      <dd className="text-[#191F28] font-medium">
+                        {erp.itemGroup ?? "-"}{erp.itemGroupCd ? ` (${erp.itemGroupCd})` : ""}
+                      </dd>
+                      <dt className="text-[#8B95A1]">공장</dt>
+                      <dd className="text-[#191F28] font-medium">
+                        {erp.factory ?? "-"}{erp.plantCd ? ` / ${erp.plantCd}` : ""}
+                      </dd>
+                      {erp.matchedOrders && erp.matchedOrders.length > 0 && (
+                        <>
+                          <dt className="text-[#8B95A1]">제조오더</dt>
+                          <dd className="text-[#191F28] font-medium">
+                            {erp.matchedOrders[0].PRODT_ORDER_NO}
+                            <span className="text-[#8B95A1]"> · {erp.matchedOrders[0].ORDER_STATUS}</span>
+                            {erp.orderCount && erp.orderCount > 1 ? (
+                              <span className="text-[#8B95A1]"> 외 {erp.orderCount - 1}건</span>
+                            ) : null}
+                          </dd>
+                        </>
+                      )}
+                    </dl>
+                  </div>
+                ) : (
+                  <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-2.5 text-[12px] text-amber-700">
+                    ERP에서 해당 제품/호기를 찾지 못했습니다. {erp?.reason ? `(${erp.reason})` : ""} 수동으로 입력해주세요.
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="px-5 py-4 border-b border-[#F2F4F6] grid grid-cols-2 gap-6">
               <FormField
