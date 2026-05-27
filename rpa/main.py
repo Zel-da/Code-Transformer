@@ -104,6 +104,12 @@ def run_once(
                 logger.info("중단 신호 — 남은 %d건 건너뜀", len(reports) - completed - failed)
                 break
 
+            # 상태 머신: PENDING → PROCESSING → COMPLETED/FAILED
+            try:
+                client.mark_processing(report["id"])
+            except Exception as e:
+                logger.warning("보고서 #%s PROCESSING 표시 실패 (계속 진행): %s", report["id"], e)
+
             result = wf.run_report(report)
 
             if result["ok"]:

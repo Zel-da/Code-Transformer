@@ -189,17 +189,19 @@ class NcrWorkflow:
         logger.info("[헤더 입력] 보고서 #%s", report.get("id"))
 
         # ----- 예시 시퀀스 (채울 것) -----
+        # 주의: report 키는 API 응답(GET /api/reports/:id) 및 config/field_mapping.json과
+        #       일치한다. (occurrenceDate/description 등 — defectDesc/occurredAt/reportNo 아님)
         steps: list[InputStep] = [
             dismiss_dialog("헤더 시작 전"),
 
-            # TODO: 아래 주석을 실제 필드로 교체
-            # type_text(report.get("reportNo", ""),       label="보고서번호",  tab_after=1),
-            # type_text(report.get("occurredAt", ""),     label="발생일",      tab_after=1),
-            # type_text(report.get("deptCd", ""),         label="발행팀",      tab_after=1),
-            # type_text(report.get("processName", ""),    label="공정명",      tab_after=1),
-            # type_text(report.get("modelName", ""),      label="제품명",      tab_after=1),
-            # type_text(report.get("ncrType", ""),        label="부적합유형",   tab_after=1),
-            # type_text(report.get("defectDesc", ""),     label="부적합내용",   tab_after=1),
+            # TODO: 아래 주석을 실제 폼 순서/필드로 교체
+            # type_text(str(report.get("id", "")),                  label="보고서번호",  tab_after=1),
+            # type_text(self._fmt_date(report.get("occurrenceDate")), label="발생일",     tab_after=1),
+            # type_text(report.get("deptCd", "") or "",             label="발행팀",      tab_after=1),
+            # type_text(report.get("processName", "") or "",        label="공정명",      tab_after=1),
+            # type_text(report.get("modelName", "") or "",          label="제품명",      tab_after=1),
+            # type_text(report.get("ncrType", "") or "",            label="부적합유형",   tab_after=1),
+            # type_text(report.get("description", "") or "",        label="부적합내용",   tab_after=1),
 
             dismiss_dialog("헤더 입력 완료 후"),
             wait_step(0.2, "헤더 안정화"),
@@ -257,3 +259,19 @@ class NcrWorkflow:
 
     def _on_step_complete(self, step: InputStep, index: int, total: int) -> None:
         logger.debug("  완료 [%d/%d] %s", index + 1, total, step.label or step.method.value)
+
+    # ------------------------------------------------------------------
+    # 유틸
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _fmt_date(value: Optional[str]) -> str:
+        """
+        API의 ISO8601 타임스탬프(예: '2026-05-22T00:00:00.000Z')를
+        ERP 입력용 'YYYY-MM-DD'로 변환한다. 값이 없으면 빈 문자열.
+        """
+        if not value:
+            return ""
+        s = str(value)
+        # ISO 타임스탬프면 'T' 앞 날짜 부분만 사용
+        return s.split("T", 1)[0]

@@ -1,27 +1,38 @@
 {
-  "_comment": "NCR 보고서 필드 → ERP 폼 필드 매핑. 폼 구조 확인 후 채울 것.",
+  "_comment": "NCR 보고서 필드 → ERP 폼 필드 매핑. ncr_key는 API 응답(GET /api/reports/:id) JSON 키와 일치해야 한다. erp_field는 ERP 폼 구조 확인(캘리브레이션) 후 채울 것.",
+
+  "_available_report_fields": [
+    "id", "reportDate", "itemCode", "modelName", "processName", "defectType",
+    "description", "imageUrl", "registrantName", "ncrType", "factory",
+    "shipmentUnit", "lostManHours", "defectQty", "occurrenceDate", "issuingTeam",
+    "plantCd", "processCd", "flawTypeCd", "deptCd", "ncrGbnCd", "productType"
+  ],
+
   "header_fields": [
     {
-      "ncr_key":    "reportNo",
+      "ncr_key":    "id",
       "label":      "보고서번호",
       "tab_after":  1,
       "method":     "type",
-      "erp_field":  "TODO"
+      "erp_field":  "TODO",
+      "_note":      "스키마에 별도 보고서번호 컬럼이 없어 PK(id) 사용"
     },
     {
-      "ncr_key":    "occurredAt",
+      "ncr_key":    "occurrenceDate",
       "label":      "발생일",
       "tab_after":  1,
       "method":     "type",
       "erp_field":  "TODO",
-      "format":     "YYYY-MM-DD"
+      "format":     "YYYY-MM-DD",
+      "_note":      "값이 없으면 reportDate로 폴백 고려"
     },
     {
       "ncr_key":    "deptCd",
       "label":      "발행팀",
       "tab_after":  1,
       "method":     "type",
-      "erp_field":  "TODO"
+      "erp_field":  "TODO",
+      "_note":      "발행팀명이 필요하면 issuingTeam 사용"
     },
     {
       "ncr_key":    "processName",
@@ -29,6 +40,14 @@
       "tab_after":  1,
       "method":     "type",
       "erp_field":  "TODO"
+    },
+    {
+      "ncr_key":    "itemCode",
+      "label":      "품목코드",
+      "tab_after":  1,
+      "method":     "popup_search",
+      "erp_field":  "TODO",
+      "_note":      "ERP에서 품목 검색 팝업이면 popup_search, 직접 입력이면 type"
     },
     {
       "ncr_key":    "modelName",
@@ -45,27 +64,32 @@
       "erp_field":  "TODO"
     },
     {
-      "ncr_key":    "defectDesc",
+      "ncr_key":    "defectType",
+      "label":      "불량유형",
+      "tab_after":  1,
+      "method":     "type",
+      "erp_field":  "TODO",
+      "_note":      "치수불량/외관불량/기능불량/재료불량/포장불량/기타"
+    },
+    {
+      "ncr_key":    "defectQty",
+      "label":      "불량수량",
+      "tab_after":  1,
+      "method":     "type",
+      "erp_field":  "TODO"
+    },
+    {
+      "ncr_key":    "description",
       "label":      "부적합내용",
       "tab_after":  1,
       "method":     "type",
       "erp_field":  "TODO"
     }
   ],
-  "grid_columns": [
-    {
-      "ncr_key":   "itemCode",
-      "label":     "품목코드",
-      "col_index": null,
-      "keywords":  ["품목", "코드"]
-    },
-    {
-      "ncr_key":   "quantity",
-      "label":     "수량",
-      "col_index": null,
-      "keywords":  ["수량"]
-    }
-  ],
+
+  "_grid_comment": "현재 DB 스키마(non_conformity_reports)는 보고서당 단일 품목/수량 구조라 라인아이템 배열(items[])이 없다. 그리드 입력이 필요한 ERP라면 위 itemCode/defectQty를 단일 행으로 처리하면 된다. 추후 다행 구조가 생기면 grid_columns를 채울 것.",
+  "grid_columns": [],
+
   "ncrType_map": {
     "_comment": "NCR 유형 코드 → ERP 드롭다운 값 매핑 (캘리브레이션 후 채울 것)",
     "incoming":    "TODO",

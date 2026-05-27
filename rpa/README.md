@@ -50,24 +50,27 @@ python main.py --dry-run --once
 ## 자동 실행·로그인 흐름
 
 ```
-웹 UI [RPA 실행] 버튼 클릭
+작업자(모바일/웹) 보고서 제출 → DB syncStatus=PENDING
         │
         ▼
-API 서버 POST /api/rpa/trigger
+Python RPA (폴링) — GET /api/reports/pending 로 PENDING 목록 조회
         │
-        ▼
-Python RPA (폴링 중) — PENDING 보고서 감지
+        ├─ 각 보고서: PATCH /api/reports/:id/sync-status {PROCESSING}
         │
         ├─ UNIERP 프로세스 확인
         │     ├─ 실행 중  → 기존 창에 연결
         │     └─ 미실행  → exe 실행 → 로그인 창 대기 → ID/PW 입력 → Enter
         │
         ▼
-  메인 창 로딩 확인
+  메인 창 로딩 확인 → 보고서 ERP 입력 (폼 순서는 캘리브레이션 후 구현)
         │
         ▼
-  보고서 ERP 입력 (폼 순서는 추후 구현)
+  성공 → PATCH .../sync-status {COMPLETED}
+  실패 → PATCH .../sync-status {FAILED}  (오류 상세는 rpa.log)
 ```
+
+> 참고: `POST /api/rpa/trigger` 엔드포인트는 서버 측 처리 시뮬레이션(목업)이라
+> 실제 RPA 클라이언트는 위의 `GET /reports/pending` + `PATCH .../sync-status`를 사용한다.
 
 ## 디렉터리 구조
 
