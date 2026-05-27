@@ -146,7 +146,9 @@ export const CreateReportBody = zod.object({
   deptCd: zod.string().nullish(),
   ncrGbnCd: zod.string().nullish(),
   productType: zod.enum(["양산", "개발"]).optional().describe("양산 or 개발"),
-  actionDirection: zod.string().nullish().describe("조치 방향"),
+  actionDirection: zod
+    .enum(["업체 방문 수정", "생산팀 자체 수정", "업체 반출 및 수정 입고"])
+    .describe("조치 방향"),
 });
 
 /**

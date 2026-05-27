@@ -117,7 +117,20 @@ router.post("/reports", async (req, res): Promise<void> => {
       const channel = report.productType === "개발" ? "lab" : "qc";
       const appUrl = process.env.APP_URL ?? "https://your-app.replit.app";
       const actionLine = report.actionDirection ? `\n조치 방향: ${report.actionDirection}` : "";
-      const deptLine = report.issuingTeam ? `\n귀책 부서: ${report.issuingTeam}` : "";
+
+      // 귀책 부서 조회 (QC 메시지 + 부서 알림 공통 사용)
+      let deptName: string | null = null;
+      let deptWebhookUrl: string | null = null;
+      if (report.deptCd) {
+        const [dept] = await db
+          .select({ webhookUrl: departmentsTable.webhookUrl, deptName: departmentsTable.deptName })
+          .from(departmentsTable)
+          .where(eq(departmentsTable.deptCd, report.deptCd));
+        deptName = dept?.deptName ?? null;
+        deptWebhookUrl = dept?.webhookUrl ?? null;
+      }
+
+      const deptLine = deptName ? `\n귀책 부서: ${deptName}` : "";
       const qcText = `부적합 보고서 접수\n품목: ${report.itemCode}${actionLine}${deptLine}\n링크: ${appUrl}/admin?reportId=${report.id}`;
       const sentAt = new Date();
       await sendSushantalkMessage(channel, qcText);
@@ -131,16 +144,10 @@ router.post("/reports", async (req, res): Promise<void> => {
       req.log.info({ reportId: report.id, channel }, "Sushantalk QC message sent");
 
       // 귀책 부서 채널 알림 (webhookUrl 설정된 경우만)
-      if (report.deptCd) {
-        const [dept] = await db
-          .select({ webhookUrl: departmentsTable.webhookUrl, deptName: departmentsTable.deptName })
-          .from(departmentsTable)
-          .where(eq(departmentsTable.deptCd, report.deptCd));
-        if (dept?.webhookUrl) {
-          const deptText = `[귀책 부서 알림] 부적합 보고서가 접수되었습니다.\n품목: ${report.itemCode}\n공정: ${report.processName}${actionLine}\n링크: ${appUrl}/admin?reportId=${report.id}`;
-          await sendSushantalkToUrl(dept.webhookUrl, deptText);
-          req.log.info({ reportId: report.id, deptCd: report.deptCd }, "Sushantalk dept message sent");
-        }
+      if (deptWebhookUrl) {
+        const deptText = `[귀책 부서 알림] 부적합 보고서가 접수되었습니다.\n품목: ${report.itemCode}\n공정: ${report.processName}${actionLine}\n링크: ${appUrl}/admin?reportId=${report.id}`;
+        await sendSushantalkToUrl(deptWebhookUrl, deptText);
+        req.log.info({ reportId: report.id, deptCd: report.deptCd }, "Sushantalk dept message sent");
       }
     } catch (err) {
       req.log.error({ err, reportId: report.id }, "Sushantalk webhook failed (non-fatal)");

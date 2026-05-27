@@ -34,7 +34,7 @@ function AuthGuard() {
       segments[0] === "(tabs)" || segments[0] === "report";
     if (!token && inProtected) {
       router.replace("/login");
-    } else if (token && (segments[0] === "login" || segments.length === 0)) {
+    } else if (token && (segments[0] === "login" || (segments.length as number) === 0)) {
       router.replace("/(tabs)");
     }
   }, [token, isLoading, segments]);

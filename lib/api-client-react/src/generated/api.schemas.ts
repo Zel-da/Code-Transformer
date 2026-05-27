@@ -190,6 +190,18 @@ export const CreateReportBodyProductType = {
   개발: "개발",
 } as const;
 
+/**
+ * 조치 방향
+ */
+export type CreateReportBodyActionDirection =
+  (typeof CreateReportBodyActionDirection)[keyof typeof CreateReportBodyActionDirection];
+
+export const CreateReportBodyActionDirection = {
+  업체_방문_수정: "업체 방문 수정",
+  생산팀_자체_수정: "생산팀 자체 수정",
+  업체_반출_및_수정_입고: "업체 반출 및 수정 입고",
+} as const;
+
 export interface CreateReportBody {
   reportDate?: string;
   itemCode: string;
@@ -228,11 +240,8 @@ export interface CreateReportBody {
   ncrGbnCd?: string | null;
   /** 양산 or 개발 */
   productType?: CreateReportBodyProductType;
-  /**
-   * 조치 방향
-   * @nullable
-   */
-  actionDirection?: string | null;
+  /** 조치 방향 */
+  actionDirection: CreateReportBodyActionDirection;
 }
 
 export type UpdateReportBodySyncStatus =

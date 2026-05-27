@@ -27,6 +27,13 @@ import { useAuth } from "@/contexts/auth";
 import { useColors } from "@/hooks/useColors";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 
+const ACTION_DIRECTIONS = [
+  "업체 방문 수정",
+  "생산팀 자체 수정",
+  "업체 반출 및 수정 입고",
+] as const;
+type ActionDirection = (typeof ACTION_DIRECTIONS)[number];
+
 interface FormState {
   itemCode: string;
   itemSearch: string;
@@ -35,6 +42,7 @@ interface FormState {
   processName: string;
   flawTypeCd: string;
   defectType: string;
+  actionDirection: ActionDirection | "";
   description: string;
   defectQty: string;
   imageUri: string | null;
@@ -49,6 +57,7 @@ const INITIAL_FORM: FormState = {
   processName: "",
   flawTypeCd: "",
   defectType: "",
+  actionDirection: "",
   description: "",
   defectQty: "",
   imageUri: null,
@@ -83,13 +92,13 @@ export default function SubmitScreen() {
 
   const uploadImage = useCallback(
     async (uri: string): Promise<string> => {
-      const filename = `ncr-${Date.now()}.jpg`;
+      const name = `ncr-${Date.now()}.jpg`;
+      const blob = await (await fetch(uri)).blob();
       const res = await requestUploadUrl.mutateAsync({
-        data: { filename, contentType: "image/jpeg" },
+        data: { name, contentType: "image/jpeg", size: blob.size },
       });
 
-      const blob = await (await fetch(uri)).blob();
-      const uploadRes = await fetch(res.uploadUrl, {
+      const uploadRes = await fetch(res.uploadURL, {
         method: "PUT",
         headers: { "Content-Type": "image/jpeg" },
         body: blob,
@@ -133,6 +142,7 @@ export default function SubmitScreen() {
     if (!form.plantCd) return "공장을 선택하세요.";
     if (!form.processCd) return "공정을 선택하세요.";
     if (!form.flawTypeCd) return "불량 유형을 선택하세요.";
+    if (!form.actionDirection) return "조치 방향을 선택하세요.";
     if (!form.description.trim()) return "설명을 입력하세요.";
     return null;
   };
@@ -163,6 +173,7 @@ export default function SubmitScreen() {
           flawTypeCd: form.flawTypeCd,
           defectQty: form.defectQty ? parseInt(form.defectQty, 10) : null,
           registrantName: user?.username ?? null,
+          actionDirection: form.actionDirection as ActionDirection,
         },
       });
 
@@ -360,6 +371,32 @@ export default function SubmitScreen() {
                 ]}
               >
                 {ft.typeNm}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <View style={s.section}>
+        <Text style={s.sectionLabel}>조치 방향 *</Text>
+        <View style={{ gap: 8 }}>
+          {ACTION_DIRECTIONS.map((dir) => (
+            <Pressable
+              key={dir}
+              style={[
+                s.chip,
+                { width: "100%", justifyContent: "flex-start", paddingHorizontal: 16, paddingVertical: 12 },
+                form.actionDirection === dir && s.chipActive,
+              ]}
+              onPress={() => setForm((f) => ({ ...f, actionDirection: dir }))}
+            >
+              <Text
+                style={[
+                  s.chipText,
+                  form.actionDirection === dir && s.chipTextActive,
+                ]}
+              >
+                {dir}
               </Text>
             </Pressable>
           ))}

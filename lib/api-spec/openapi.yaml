@@ -1118,13 +1118,15 @@ components:
           enum: ["양산", "개발"]
           description: "양산 or 개발"
         actionDirection:
-          type: ["string", "null"]
+          type: string
           description: "조치 방향"
+          enum: ["업체 방문 수정", "생산팀 자체 수정", "업체 반출 및 수정 입고"]
       required:
         - itemCode
         - processName
         - defectType
         - description
+        - actionDirection
 
     UpdateReportBody:
       type: object
