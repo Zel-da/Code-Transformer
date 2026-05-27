@@ -31,6 +31,27 @@ python fetch_input.py --item-cd T8NH-0000000-00 --hogi 365 --json   # 앱 연동
 - `factory`/`plantCd` ← 제조오더 `P_PRODUCTION_ORDER_HEADER.PLANT_CD` (SA00→아산, SH00→화성)
 - `matchedOrders` ← 품번+호기에 매칭되는 제조오더(번호/상태/일자)
 
+## API 서비스 (FastAPI) — 앱 연동용
+
+ERP DB는 이 PC 망에서만 접근 가능하므로, 조회 API도 이 PC에서 띄운다.
+
+```bash
+pip install -r requirements.txt
+uvicorn api:app --host 0.0.0.0 --port 8900     # 또는: python api.py
+# 문서: http://localhost:8900/docs
+```
+
+| 엔드포인트 | 설명 |
+|---|---|
+| `GET /health` | 서비스/DB 헬스체크 |
+| `GET /api/erp/input-data?product=T-380N&hogi=365` | 제품+출하호기 → NCR 자동입력 데이터(JSON) |
+| `GET /api/erp/input-data?itemCode=T8NH-0000000-00&hogi=365` | 품번 정확일치 버전 |
+| `GET /api/erp/orders?product=T-380N&hogi=365` | 제조오더 현황 목록 |
+
+응답 예(`/api/erp/input-data`): `{ "ok": true, "itemCode", "modelName", "itemGroup", "factory", "plantCd", "matchedOrders": [...] }`. 품목 후보가 여럿이면 `{ "ok": false, "candidates": [...] }` (프런트 선택지로 사용).
+
+인증(선택): `PRIVATE/erp_db.json`에 `"api_key"` 또는 환경변수 `ERP_API_KEY` 설정 시, 요청 헤더 `X-ERP-KEY`로 검증. 미설정이면 내부망 전용 오픈.
+
 ## 핵심 테이블
 - `P_PRODUCTION_ORDER_HEADER` — 제조오더(메뉴: 생산관리>제조오더관리>제조오더현황조회).
   품번 `ITEM_CD`, 호기 범위 `FROM_HOGI_KO368`~`TO_HOGI_KO368`(정수, **숫자 비교**), 공장 `PLANT_CD`.
