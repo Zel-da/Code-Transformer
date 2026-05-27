@@ -313,6 +313,8 @@ export default function SubmitReport() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
+            <div className="md:flex md:items-start md:divide-x md:divide-[#F2F4F6]">
+            <div className="md:flex-1">
 
             {/* ── 제품 구분 ── */}
             <FormField
@@ -399,7 +401,7 @@ export default function SubmitReport() {
                           onClick={() => {
                             field.onChange(p.processNm);
                           }}
-                          className={`px-3.5 py-2 rounded-full text-[13px] border-2 transition-all ${field.value === p.processNm ? CHIP_SEL : CHIP_UNSEL}`}
+                          className={`px-3.5 py-2 min-h-[44px] rounded-full text-[13px] border-2 transition-all flex items-center ${field.value === p.processNm ? CHIP_SEL : CHIP_UNSEL}`}
                         >
                           {p.processNm}
                         </button>
@@ -436,6 +438,8 @@ export default function SubmitReport() {
               )}
             />
 
+            </div>{/* END LEFT COL */}
+            <div className="md:flex-1 pb-40 md:pb-0">
             {/* ── 부적합 기본 정보 ── */}
             <GroupDivider title="부적합 기본 정보" />
 
@@ -632,8 +636,11 @@ export default function SubmitReport() {
               )}
             </FieldRow>
 
-            {/* 제출 버튼 */}
-            <div className="px-5 py-5 pb-28 md:pb-10">
+            </div>{/* END RIGHT COL */}
+            </div>{/* END FLEX */}
+
+            {/* 데스크탑 제출 버튼 */}
+            <div className="hidden md:block px-5 py-5 border-t border-[#F2F4F6]">
               <button
                 type="submit"
                 disabled={isUploading || createReport.isPending}
@@ -642,6 +649,24 @@ export default function SubmitReport() {
                 {isUploading || createReport.isPending ? (
                   <>
                     <Loader2 className="h-5 w-5 animate-spin" />
+                    제출 중...
+                  </>
+                ) : (
+                  "부적합 보고서 제출"
+                )}
+              </button>
+            </div>
+
+            {/* 모바일 고정 제출 버튼 (하단 nav 위) */}
+            <div className="fixed md:hidden bottom-16 inset-x-0 z-[60] bg-white/95 backdrop-blur-sm border-t border-[#F2F4F6] px-5 py-3">
+              <button
+                type="submit"
+                disabled={isUploading || createReport.isPending}
+                className="w-full bg-[#1A1A1A] text-white font-bold text-[15px] rounded-2xl min-h-[44px] disabled:opacity-50 active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+              >
+                {isUploading || createReport.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     제출 중...
                   </>
                 ) : (
