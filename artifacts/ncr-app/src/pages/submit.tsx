@@ -313,8 +313,6 @@ export default function SubmitReport() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
-            <div className="md:flex md:items-start md:divide-x md:divide-[#F2F4F6]">
-            <div className="md:flex-1">
 
             {/* ── 제품 구분 ── */}
             <FormField
@@ -438,8 +436,6 @@ export default function SubmitReport() {
               )}
             />
 
-            </div>{/* END LEFT COL */}
-            <div className="md:flex-1 pb-40 md:pb-0">
             {/* ── 부적합 기본 정보 ── */}
             <GroupDivider title="부적합 기본 정보" />
 
@@ -636,8 +632,8 @@ export default function SubmitReport() {
               )}
             </FieldRow>
 
-            </div>{/* END RIGHT COL */}
-            </div>{/* END FLEX */}
+            {/* 모바일: 고정 버튼 + nav 높이만큼 스페이서 */}
+            <div className="h-36 md:hidden" />
 
             {/* 데스크탑 제출 버튼 */}
             <div className="hidden md:block px-5 py-5 border-t border-[#F2F4F6]">
