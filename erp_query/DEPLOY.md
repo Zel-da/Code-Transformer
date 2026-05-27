@@ -8,9 +8,10 @@ python -m venv C:\Users\Administrator\Downloads\Code-Transformer\.venv
 C:\Users\Administrator\Downloads\Code-Transformer\.venv\Scripts\python.exe -m pip install -r erp_query\requirements.txt
 ```
 
-## 2. 자격증명 (PRIVATE/, gitignore)
+## 2. 자격증명 (PRIVATE/, gitignore — 평문 비번 커밋 금지)
 - `PRIVATE/erp_db.json` — ERP SQL Server (읽기전용)
-- `PRIVATE/app_db.json` — 앱 PostgreSQL: `{"database_url": "postgresql://postgres@127.0.0.1:5432/ncr"}`
+- `PRIVATE/app_db.json` — 앱 PostgreSQL(실제 운영 DB = **Neon 클라우드 `neondb`**):
+  `{"database_url": "postgresql://<user>:<pw>@<...>.neon.tech/neondb?sslmode=require"}`
 
 ## 3. 조회 API — 상시 서비스 (NSSM)
 서비스명 `ErpQueryApi`, 자동시작, 크래시 시 재시작, `0.0.0.0:8900`.
@@ -40,11 +41,10 @@ VITE_ERP_API_BASE=http://<이 PC 주소>:8900
 ```
 submit.tsx가 제품코드+출하호기 입력 시 `/api/erp/input-data`를 호출해 제품명·공장 자동채움.
 
-## ⚠ 앱 DB 연결 (남은 작업)
-현재 동기화 대상은 **로컬 `ncr` DB**이고, `item_codes` 테이블만 생성돼 있다.
-앱(api-server)이 이 데이터를 실제로 쓰려면:
-1. api-server의 `DATABASE_URL`을 `postgresql://postgres@127.0.0.1:5432/ncr`로 지정
-2. 전체 스키마 생성: `pnpm --filter @workspace/db run db:push` (item_codes 외 나머지 테이블)
+## 앱 DB 연결
+동기화 대상은 앱이 실제 사용하는 **Neon 클라우드 `neondb`**(전체 스키마 보유, 라이브 서비스 DB).
+`sync_items.py`가 `PRIVATE/app_db.json`의 `database_url`을 읽어 `item_codes`에 직접 upsert한다.
+(upsert-only, 삭제 없음 — 제거가 필요하면 `--prune` 추가 구현 또는 수동 정리.)
 
 ## 제거(롤백)
 ```powershell
