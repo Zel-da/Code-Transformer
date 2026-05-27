@@ -39,8 +39,9 @@ const FACTORY_TO_PLANT_CD: Record<string, string> = {
   화성: "SH00",
 };
 
-// ERP 조회 API 베이스 (이 PC에서 도는 FastAPI). 빌드 시 VITE_ERP_API_BASE로 주입.
-// 미설정이면 자동조회 비활성(수동 입력만).
+// ERP 조회 API 베이스. 기본(미설정)은 same-origin → 클라우드 api-server의
+// /api/erp/input-data (Neon 미러에서 조회). 직접 이 PC의 FastAPI를 부르려면
+// 빌드 시 VITE_ERP_API_BASE=http://<PC>:8900 주입.
 const ERP_API_BASE =
   ((import.meta.env.VITE_ERP_API_BASE as string | undefined) ?? "").replace(/\/+$/, "");
 
@@ -204,9 +205,9 @@ export default function SubmitReport() {
     }
   }, [selectedFactory]);
 
-  // 제품코드 + 출하호기 → ERP에서 제품명/품목그룹/공장 자동 조회 (디바운스 400ms)
+  // 제품코드 + 출하호기 → 제품명/품목그룹/공장 자동 조회 (디바운스 400ms)
+  // ERP_API_BASE 미설정 시 same-origin(클라우드 api-server /api/erp/input-data) 호출.
   useEffect(() => {
-    if (!ERP_API_BASE) return;
     const itemCode = watchedItemCode?.trim();
     if (!itemCode) {
       setErp(null);

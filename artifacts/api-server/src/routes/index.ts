@@ -7,6 +7,7 @@ import rpaRouter from "./rpa";
 import masterRouter from "./master";
 import authRouter from "./auth";
 import usersRouter from "./users";
+import erpRouter from "./erp";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(reportsRouter);
 router.use(itemsRouter);
 router.use(rpaRouter);
 router.use(masterRouter);
+router.use(erpRouter);
 
 export default router;
