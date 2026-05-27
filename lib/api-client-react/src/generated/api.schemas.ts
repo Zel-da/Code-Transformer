@@ -299,6 +299,31 @@ export interface QcAnalysisBody {
   qcCorrectiveResult?: string | null;
   /** QC 처리 상태 */
   qcStatus?: QcAnalysisBodyQcStatus;
+  /**
+   * 공정명 (원본 수정)
+   * @nullable
+   */
+  processName?: string | null;
+  /**
+   * 공정코드 (원본 수정)
+   * @nullable
+   */
+  processCd?: string | null;
+  /**
+   * 귀책부서 코드 (원본 수정)
+   * @nullable
+   */
+  deptCd?: string | null;
+  /**
+   * 귀책부서명 (원본 수정)
+   * @nullable
+   */
+  issuingTeam?: string | null;
+  /**
+   * NCR 구분코드 (원본 수정)
+   * @nullable
+   */
+  ncrGbnCd?: string | null;
 }
 
 export interface QcActionBody {

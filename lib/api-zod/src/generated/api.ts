@@ -470,6 +470,11 @@ export const UpdateReportQcBody = zod.object({
     .enum(["접수", "분석 중", "조치 완료", "종결"])
     .optional()
     .describe("QC 처리 상태"),
+  processName: zod.string().nullish().describe("공정명 (원본 수정)"),
+  processCd: zod.string().nullish().describe("공정코드 (원본 수정)"),
+  deptCd: zod.string().nullish().describe("귀책부서 코드 (원본 수정)"),
+  issuingTeam: zod.string().nullish().describe("귀책부서명 (원본 수정)"),
+  ncrGbnCd: zod.string().nullish().describe("NCR 구분코드 (원본 수정)"),
 });
 
 export const UpdateReportQcResponse = zod.object({

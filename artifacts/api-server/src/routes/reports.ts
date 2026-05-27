@@ -294,6 +294,11 @@ router.put("/reports/:id/qc", requireAdmin, async (req, res): Promise<void> => {
   if (body.data.flawTypeCd !== undefined) updates.flawTypeCd = body.data.flawTypeCd;
   if (body.data.lostManHours !== undefined) updates.lostManHours = body.data.lostManHours;
   if (body.data.qcCorrectiveResult !== undefined) updates.qcCorrectiveResult = body.data.qcCorrectiveResult;
+  if (body.data.processName !== undefined) updates.processName = body.data.processName;
+  if (body.data.processCd !== undefined) updates.processCd = body.data.processCd;
+  if (body.data.deptCd !== undefined) updates.deptCd = body.data.deptCd;
+  if (body.data.issuingTeam !== undefined) updates.issuingTeam = body.data.issuingTeam;
+  if (body.data.ncrGbnCd !== undefined) updates.ncrGbnCd = body.data.ncrGbnCd;
   if (body.data.qcStatus !== undefined) {
     updates.qcStatus = body.data.qcStatus;
     if (body.data.qcStatus === "종결" || body.data.qcStatus === "조치 완료") {

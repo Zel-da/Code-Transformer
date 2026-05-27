@@ -3,7 +3,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useEffect } from "react";
-import { useGetReport, useUpdateReportQc, useListFlawTypes, useListItems, getListReportsQueryKey, getGetReportQueryKey } from "@workspace/api-client-react";
+import {
+  useGetReport,
+  useUpdateReportQc,
+  useListFlawTypes,
+  useListItems,
+  useListDepartments,
+  getListReportsQueryKey,
+  getGetReportQueryKey,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/layout";
@@ -16,6 +24,9 @@ const QC_STATUSES = ["접수", "분석 중", "조치 완료", "종결"] as const
 
 const formSchema = z.object({
   itemCode: z.string().min(1, "부품코드를 입력해주세요"),
+  processName: z.string().min(1, "공정을 입력해주세요"),
+  deptCd: z.string().nullable().optional(),
+  issuingTeam: z.string().nullable().optional(),
   flawTypeCd: z.string().nullable().optional(),
   lostManHours: z.coerce.number().min(0).nullable().optional(),
   qcCorrectiveResult: z.string().nullable().optional(),
@@ -23,6 +34,14 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+function GroupDivider({ title }: { title: string }) {
+  return (
+    <div className="py-3 border-b border-[#F2F4F6]">
+      <p className="text-[11px] font-bold text-[#8B95A1] uppercase tracking-wide">{title}</p>
+    </div>
+  );
+}
 
 function FieldRow({ label, children, optional }: { label: string; children: React.ReactNode; optional?: boolean }) {
   return (
@@ -62,12 +81,16 @@ export default function QcPage() {
   const { data: report, isLoading } = useGetReport(id);
   const { data: flawTypes = [] } = useListFlawTypes();
   const { data: itemsData = [] } = useListItems({ limit: 100 });
+  const { data: departments = [] } = useListDepartments();
   const updateQc = useUpdateReportQc();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       itemCode: "",
+      processName: "",
+      deptCd: null,
+      issuingTeam: null,
       flawTypeCd: null,
       lostManHours: null,
       qcCorrectiveResult: null,
@@ -79,6 +102,9 @@ export default function QcPage() {
     if (report) {
       form.reset({
         itemCode: report.itemCode ?? "",
+        processName: report.processName ?? "",
+        deptCd: report.deptCd ?? null,
+        issuingTeam: report.issuingTeam ?? null,
         flawTypeCd: report.flawTypeCd ?? null,
         lostManHours: report.lostManHours ?? null,
         qcCorrectiveResult: report.qcCorrectiveResult ?? null,
@@ -89,13 +115,17 @@ export default function QcPage() {
 
   const onSubmit = async (values: FormValues) => {
     try {
+      const selectedDept = departments.find((d) => d.deptCd === values.deptCd);
       await updateQc.mutateAsync({
         id,
         data: {
           itemCode: values.itemCode,
-          flawTypeCd: values.flawTypeCd ?? null,
+          processName: values.processName || null,
+          deptCd: values.deptCd || null,
+          issuingTeam: selectedDept?.deptName ?? values.issuingTeam ?? null,
+          flawTypeCd: values.flawTypeCd || null,
           lostManHours: values.lostManHours ?? null,
-          qcCorrectiveResult: values.qcCorrectiveResult ?? null,
+          qcCorrectiveResult: values.qcCorrectiveResult || null,
           qcStatus: values.qcStatus,
         },
       });
@@ -147,12 +177,11 @@ export default function QcPage() {
           </div>
         </div>
 
-        {/* 원본 보고서 요약 */}
+        {/* 원본 보고서 요약 (읽기전용) */}
         <div className="bg-white rounded-2xl border border-[#F2F4F6] p-4 mb-4">
           <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide mb-2">접수 정보 (읽기전용)</p>
           <InfoRow label="등록자" value={report.registrantName} />
           <InfoRow label="공장" value={report.factory} />
-          <InfoRow label="공정" value={report.processName} />
           <InfoRow label="발생일" value={report.occurrenceDate ? format(new Date(report.occurrenceDate), "yyyy.MM.dd") : null} />
           <InfoRow label="불량 수량" value={report.defectQty != null ? `${report.defectQty}개` : null} />
           <InfoRow label="상세 내용" value={
@@ -164,31 +193,11 @@ export default function QcPage() {
 
         {/* QC 입력 폼 */}
         <div className="bg-white rounded-2xl border border-[#F2F4F6] px-4">
-          <div className="py-4 border-b border-[#F2F4F6]">
-            <p className="text-[13px] font-bold text-[#191F28]">QC 분석 내용</p>
-          </div>
-
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
-              {/* 처리 상태 */}
-              <FieldRow label="처리 상태">
-                <div className="flex flex-wrap gap-2">
-                  {QC_STATUSES.map((status) => (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => form.setValue("qcStatus", status)}
-                      className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all ${
-                        currentStatus === status
-                          ? QC_STATUS_COLORS[status]
-                          : "bg-[#F8F9FA] text-[#8B95A1] border-transparent"
-                      }`}
-                    >
-                      {status}
-                    </button>
-                  ))}
-                </div>
-              </FieldRow>
+
+              {/* ── 원본 보고서 수정 가능 필드 ── */}
+              <GroupDivider title="원본 정보 수정" />
 
               {/* 부품코드 */}
               <FormField
@@ -216,6 +225,80 @@ export default function QcPage() {
                 )}
               />
 
+              {/* 공정 */}
+              <FormField
+                control={form.control}
+                name="processName"
+                render={({ field }) => (
+                  <FieldRow label="공정">
+                    <FormItem>
+                      <FormControl>
+                        <input
+                          {...field}
+                          className="w-full h-11 rounded-xl bg-[#F8F9FA] px-3.5 text-[14px] text-[#191F28] outline-none focus:ring-2 focus:ring-[#1A1A1A]/10"
+                          placeholder="공정명 입력"
+                        />
+                      </FormControl>
+                      <FormMessage className="text-[12px]" />
+                    </FormItem>
+                  </FieldRow>
+                )}
+              />
+
+              {/* 귀책부서 */}
+              <FormField
+                control={form.control}
+                name="deptCd"
+                render={({ field }) => (
+                  <FieldRow label="귀책부서" optional>
+                    <FormItem>
+                      <Select
+                        onValueChange={(val) => field.onChange(val === "__none__" ? null : val)}
+                        value={field.value ?? "__none__"}
+                      >
+                        <SelectTrigger className="h-11 rounded-xl bg-[#F8F9FA] border-0 text-[14px] text-[#191F28] focus:ring-0">
+                          <SelectValue placeholder="부서 선택 (선택 안 함)" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl max-h-60">
+                          <SelectItem value="__none__">선택 안 함</SelectItem>
+                          {departments.map((dept) => (
+                            <SelectItem key={dept.deptCd} value={dept.deptCd}>
+                              <span className={dept.isFrequent ? "font-semibold" : ""}>{dept.deptName}</span>
+                              {dept.isFrequent && (
+                                <span className="ml-1.5 text-[10px] text-gray-500 bg-gray-100 rounded px-1">자주사용</span>
+                              )}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  </FieldRow>
+                )}
+              />
+
+              {/* ── QC 분석 내용 ── */}
+              <GroupDivider title="QC 분석 내용" />
+
+              {/* 처리 상태 */}
+              <FieldRow label="처리 상태">
+                <div className="flex flex-wrap gap-2">
+                  {QC_STATUSES.map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => form.setValue("qcStatus", status)}
+                      className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all ${
+                        currentStatus === status
+                          ? QC_STATUS_COLORS[status]
+                          : "bg-[#F8F9FA] text-[#8B95A1] border-transparent"
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </FieldRow>
+
               {/* 불량유형 */}
               <FormField
                 control={form.control}
@@ -223,12 +306,15 @@ export default function QcPage() {
                 render={({ field }) => (
                   <FieldRow label="불량유형" optional>
                     <FormItem>
-                      <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                      <Select
+                        onValueChange={(val) => field.onChange(val === "__none__" ? null : val)}
+                        value={field.value ?? "__none__"}
+                      >
                         <SelectTrigger className="h-11 rounded-xl bg-[#F8F9FA] border-0 text-[14px] text-[#191F28] focus:ring-0">
                           <SelectValue placeholder="불량유형 선택" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl max-h-60">
-                          <SelectItem value="none">선택 안 함</SelectItem>
+                          <SelectItem value="__none__">선택 안 함</SelectItem>
                           {flawTypes.map((ft) => (
                             <SelectItem key={ft.typeCd} value={ft.typeCd}>{ft.typeNm}</SelectItem>
                           ))}
@@ -289,7 +375,7 @@ export default function QcPage() {
                 <button
                   type="submit"
                   disabled={updateQc.isPending}
-                  className="w-full h-13 py-3.5 bg-[#1A1A1A] text-white font-bold text-[15px] rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50 transition-opacity"
+                  className="w-full py-3.5 bg-[#1A1A1A] text-white font-bold text-[15px] rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50 transition-opacity"
                 >
                   {updateQc.isPending ? (
                     <RefreshCw className="h-4 w-4 animate-spin" />

@@ -1147,6 +1147,21 @@ components:
           type: string
           enum: ["접수", "분석 중", "조치 완료", "종결"]
           description: "QC 처리 상태"
+        processName:
+          type: ["string", "null"]
+          description: "공정명 (원본 수정)"
+        processCd:
+          type: ["string", "null"]
+          description: "공정코드 (원본 수정)"
+        deptCd:
+          type: ["string", "null"]
+          description: "귀책부서 코드 (원본 수정)"
+        issuingTeam:
+          type: ["string", "null"]
+          description: "귀책부서명 (원본 수정)"
+        ncrGbnCd:
+          type: ["string", "null"]
+          description: "NCR 구분코드 (원본 수정)"
 
     QcActionBody:
       type: object
