@@ -1,0 +1,21 @@
+# 비밀 설정 (Neon DB URL 등)
+PRIVATE/
+
+# 로그
+logs/
+*.log
+
+# 빌드 산출물
+build/
+dist/
+*.spec.bak
+
+# 파이썬
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# 로컬 오버라이드 (실제 ERP 좌표/계정 등은 커밋하지 않음)
+config/settings.local.json

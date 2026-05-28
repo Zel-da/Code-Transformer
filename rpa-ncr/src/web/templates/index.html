@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- 설정 점검 배너 -->
+<section id="setupBanner" class="card banner hidden"></section>
+
+<div class="grid-2">
+    <!-- 왼쪽: 설정 -->
+    <div class="col">
+        <!-- 데이터 소스 -->
+        <section class="card">
+            <h2>데이터 소스</h2>
+            <div class="row">
+                <label><input type="radio" name="source" value="api"> 리플릿 API</label>
+                <label><input type="radio" name="source" value="db"> 공용 DB (Neon)</label>
+            </div>
+            <div class="row muted" id="sourceInfo">—</div>
+            <div class="row">
+                <button id="btnSourceSave" class="btn">소스 저장</button>
+                <button id="btnSourceTest" class="btn btn-secondary">연결 테스트</button>
+            </div>
+            <div id="sourceTestResult" class="result"></div>
+        </section>
+
+        <!-- ERP 설정 -->
+        <section class="card">
+            <h2>ERP 설정</h2>
+            <div class="field"><label>창 제목</label><input id="erpWindowTitle" type="text" placeholder="UNIERP"></div>
+            <div class="field"><label>실행 경로</label><input id="erpLaunchPath" type="text" placeholder=".appref-ms 또는 .exe"></div>
+            <div class="field"><label>로그인 비밀번호</label><input id="erpLoginPw" type="password"></div>
+            <div class="field"><label>대상 메뉴</label><input id="erpTargetMenu" type="text" placeholder="부적합보고서등록"></div>
+            <div class="field"><label>첫 필드 Tab 수</label><input id="erpFirstFieldTabs" type="number" min="0" value="2"></div>
+            <div class="field"><label>저장 단축키</label><input id="erpSaveShortcut" type="text" placeholder="예: ^s (비우면 버튼)"></div>
+            <div class="field"><label>그리드 열(선택)</label><input id="erpGridColumns" type="text" placeholder="다행 그리드면 헤더 붙여넣기"></div>
+            <button id="btnErpSettingsSave" class="btn">ERP 설정 저장</button>
+            <div id="erpSettingsResult" class="result"></div>
+        </section>
+    </div>
+
+    <!-- 오른쪽: 실행 + 큐 + 로그 -->
+    <div class="col">
+        <section class="card">
+            <h2>실행</h2>
+            <div class="row">
+                <button id="btnFetch" class="btn">PENDING 조회</button>
+                <button id="btnErpTest" class="btn btn-secondary">ERP 창 확인</button>
+            </div>
+            <div class="row">
+                <button id="btnStart" class="btn btn-primary">입력 시작</button>
+                <button id="btnPause" class="btn btn-secondary">일시정지/재개</button>
+                <button id="btnStop" class="btn btn-danger">중지</button>
+            </div>
+            <div id="runStatus" class="result"></div>
+        </section>
+
+        <section class="card">
+            <h2>큐 <span id="queueCount" class="muted"></span></h2>
+            <table class="queue">
+                <thead><tr><th>#</th><th>보고ID</th><th>품목</th><th>상태</th><th>진행</th></tr></thead>
+                <tbody id="queueBody"><tr><td colspan="5" class="muted">조회된 보고 없음</td></tr></tbody>
+            </table>
+        </section>
+
+        <section class="card">
+            <h2>실시간 로그</h2>
+            <div id="logPane" class="log-pane"></div>
+        </section>
+    </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/app.js"></script>
+{% endblock %}

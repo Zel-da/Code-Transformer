@@ -1,0 +1,41 @@
+{
+    "_comment": "NCR 부적합 보고 → UNIERP 부적합보고서 폼 필드 매핑. ncr_key는 데이터 소스(API camelCase / DB 별칭)의 키와 일치한다. erp_field/method/tab_after/맵은 실 ERP 폼 캘리브레이션 후 확정할 것(TODO).",
+
+    "_available_report_fields": [
+        "id", "reportDate", "itemCode", "modelName", "processName", "defectType",
+        "description", "imageUrl", "registrantName", "ncrType", "factory",
+        "shipmentUnit", "lostManHours", "defectQty", "occurrenceDate", "issuingTeam",
+        "plantCd", "processCd", "flawTypeCd", "deptCd", "ncrGbnCd", "productType"
+    ],
+
+    "_method_values": "type | popup_search | popup_search_enter | dropdown | skip | dismiss",
+
+    "header_fields": [
+        { "ncr_key": "id",             "label": "보고서번호", "method": "type",         "tab_after": 1, "erp_field": "TODO", "_note": "스키마에 별도 보고서번호 컬럼이 없어 PK(id) 사용" },
+        { "ncr_key": "occurrenceDate", "label": "발생일",     "method": "type",         "tab_after": 1, "format": "YYYYMMDD", "fallback_key": "reportDate", "erp_field": "TODO" },
+        { "ncr_key": "deptCd",         "label": "발행팀",     "method": "type",         "tab_after": 1, "erp_field": "TODO", "_note": "팀명이 필요하면 issuingTeam 사용" },
+        { "ncr_key": "processName",    "label": "공정명",     "method": "type",         "tab_after": 1, "erp_field": "TODO" },
+        { "ncr_key": "itemCode",       "label": "품목코드",   "method": "popup_search", "tab_after": 1, "erp_field": "TODO", "_note": "검색 팝업이면 popup_search, 직접 입력이면 type" },
+        { "ncr_key": "modelName",      "label": "제품명",     "method": "type",         "tab_after": 1, "erp_field": "TODO" },
+        { "ncr_key": "ncrType",        "label": "부적합유형", "method": "dropdown",     "tab_after": 1, "map_ref": "ncrType_map", "erp_field": "TODO" },
+        { "ncr_key": "defectType",     "label": "불량유형",   "method": "type",         "tab_after": 1, "erp_field": "TODO", "_note": "치수불량/외관불량/기능불량/재료불량/포장불량/기타" },
+        { "ncr_key": "defectQty",      "label": "불량수량",   "method": "type",         "tab_after": 1, "erp_field": "TODO" },
+        { "ncr_key": "description",    "label": "부적합내용", "method": "type",         "tab_after": 1, "erp_field": "TODO" }
+    ],
+
+    "_grid_comment": "현재 DB 스키마(non_conformity_reports)는 보고서당 단일 품목/수량 구조라 라인아이템 배열이 없다. 다행 그리드가 필요한 ERP라면 그리드 헤더 행을 복사해 grid_columns 문자열에 넣으면 GridLayout 자동감지가 활성화된다.",
+    "grid_columns": "",
+
+    "ncrType_map": {
+        "_comment": "NCR 유형 → ERP 드롭다운 아래방향키 횟수(정수) 매핑. 캘리브레이션 후 채울 것.",
+        "incoming": "TODO",
+        "process": "TODO",
+        "outsourcing": "TODO",
+        "etc": "TODO"
+    },
+
+    "actions": {
+        "_comment": "저장 동작. 버튼이면 control_type/auto_id/text 지정, 단축키면 settings.json erp.save_shortcut 사용.",
+        "save": { "control_type": "Button", "auto_id": "", "text": "저장" }
+    }
+}

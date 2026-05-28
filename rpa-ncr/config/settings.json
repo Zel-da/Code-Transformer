@@ -1,0 +1,44 @@
+{
+    "_comment": "rpa-ncr 설정. source로 데이터 출처 전환(api|db). erp.* 와 field_mapping.json은 실 UNIERP 캘리브레이션 후 채울 것(README 캘리브레이션 체크리스트 참고).",
+
+    "source": "api",
+
+    "api": {
+        "base_url": "http://localhost:3000",
+        "secret": "",
+        "timeout_seconds": 30,
+        "poll_interval_seconds": 60,
+        "reset_retry_on_processing": false
+    },
+
+    "db": {
+        "database_url": "",
+        "_comment": "비워두면 env DATABASE_URL → PRIVATE/app_db.json[database_url] 순으로 탐색 (erp_query 패턴과 동일)"
+    },
+
+    "erp": {
+        "window_title": "UNIERP",
+        "launch_path": "",
+        "login_id": "",
+        "login_pw": "",
+        "target_menu": "부적합보고서등록",
+        "first_field_tabs": 2,
+        "save_shortcut": "",
+        "grid_columns": "",
+        "input_delay": 0.3,
+        "retry_count": 3,
+        "retry_delay": 1.0,
+        "mode": "pywinauto"
+    },
+
+    "web": {
+        "host": "127.0.0.1",
+        "port": 8010
+    },
+
+    "logging": {
+        "level": "INFO",
+        "max_file_size_mb": 10,
+        "backup_count": 5
+    }
+}

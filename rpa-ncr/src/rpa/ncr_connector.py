@@ -1,0 +1,316 @@
+"""NCR → UNIERP 부적합보고서 자동 입력 오케스트레이터.
+
+OCR_EU의 erp_connector.ERPConnector 구조를 본떠 단일 보고(단일 품목) 입력에
+맞게 정리한 버전. 인보이스 라인아이템/불입예정 로직은 제거하고, 부적합보고서
+헤더 입력 + 저장 + 에러창 자동처리에 집중한다.
+"""
+import threading
+import time
+from typing import Any
+
+from src.data_source.report_model import NcrReport
+from src.rpa.fallback_controller import FallbackController
+from src.rpa.input_sequence import InputMethod, InputStep
+from src.rpa.ncr_field_map import NcrReportFieldMap
+from src.rpa.window_controller import FocusLostError, WindowController
+from src.utils.config_loader import ConfigLoader
+from src.utils.file_utils import get_config_dir
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+
+class NCRConnector:
+    """부적합 보고를 UNIERP 부적합보고서 폼에 Tab 기반으로 입력한다."""
+
+    def __init__(
+        self,
+        settings: dict[str, Any],
+        field_mapping: dict[str, Any] | None = None,
+        mode: str = "pywinauto",
+    ):
+        erp_cfg = settings.get("erp", {})
+        self._settings = erp_cfg
+        self._window_title = erp_cfg.get("window_title", "UNIERP")
+        self._input_delay = erp_cfg.get("input_delay", 0.3)
+        self._retry_count = erp_cfg.get("retry_count", 3)
+        self._retry_delay = erp_cfg.get("retry_delay", 1.0)
+        self._first_field_tabs = int(erp_cfg.get("first_field_tabs", 2))
+        self._save_shortcut = erp_cfg.get("save_shortcut", "")
+        self._mode = mode
+
+        if field_mapping is None:
+            field_mapping = ConfigLoader.load(
+                get_config_dir() / "field_mapping.json", use_cache=False
+            )
+        self._field_mapping = field_mapping
+        self._field_map = NcrReportFieldMap(field_mapping)
+
+        self._window_controller = WindowController(self._window_title, self._input_delay)
+        self._fallback_controller = FallbackController(self._input_delay)
+
+        self._connected = False
+        self._stop_event: threading.Event | None = None
+        self._log_callback: Any = None
+        self._error_events: list[str] = []
+        self._valid_items: set[str] | None = None
+
+    # ------------------------------------------------------------------
+    # 콜백 / 상태
+    # ------------------------------------------------------------------
+
+    def set_stop_event(self, event: threading.Event) -> None:
+        self._stop_event = event
+
+    def set_log_callback(self, callback: Any) -> None:
+        self._log_callback = callback
+
+    def _emit_log(self, msg: str) -> None:
+        logger.info(msg)
+        if self._log_callback:
+            self._log_callback(msg)
+
+    def _is_stopped(self) -> bool:
+        return self._stop_event is not None and self._stop_event.is_set()
+
+    # ------------------------------------------------------------------
+    # 연결 / 실행
+    # ------------------------------------------------------------------
+
+    def connect(self) -> bool:
+        """이미 실행 중인 ERP에 연결한다."""
+        if self._mode == "pywinauto":
+            self._connected = self._window_controller.connect()
+            if self._connected:
+                self._window_controller.bring_to_front()
+                return True
+            self._emit_log("pywinauto 연결 실패 → pyautogui 폴백 시도")
+        self._connected = self._fallback_controller.connect()
+        if self._connected:
+            self._mode = "pyautogui"
+        return self._connected
+
+    def launch_and_connect(self) -> bool:
+        """ERP 실행 + 로그인 후 연결한다."""
+        wc = self._window_controller
+        launch_path = self._settings.get("launch_path", "")
+        login_pw = self._settings.get("login_pw", "")
+
+        if not launch_path:
+            self._emit_log("ERP 실행 경로가 설정되지 않았습니다 (erp.launch_path)")
+            # 이미 떠 있는 창에 연결 시도
+            return self.connect()
+
+        self._emit_log("ERP 프로그램 실행 중...")
+        if not wc.launch_erp(launch_path, timeout=60):
+            self._emit_log("ERP 실행 실패")
+            return False
+        self._emit_log("ERP 윈도우 감지됨")
+
+        if login_pw:
+            self._emit_log("로그인 중...")
+            if wc.login(login_pw):
+                self._emit_log("로그인 완료")
+            else:
+                self._emit_log("로그인 실패 — 이미 로그인된 상태일 수 있음")
+
+        self._connected = wc.is_connected()
+        return self._connected
+
+    def is_connected(self) -> bool:
+        if self._mode == "pywinauto":
+            return self._window_controller.is_connected()
+        return self._fallback_controller.is_connected()
+
+    def disconnect(self) -> None:
+        self._connected = False
+        logger.info("ERP 연결 해제")
+
+    # ------------------------------------------------------------------
+    # 보고 입력 (메인 진입점)
+    # ------------------------------------------------------------------
+
+    def input_report(self, report: NcrReport) -> None:
+        """단일 부적합 보고를 ERP 폼에 입력한다.
+
+        실패 시 예외를 던진다 (FocusLostError는 호출자가 배치 중단 처리).
+        """
+        if not self._connected:
+            raise RuntimeError("ERP에 연결되지 않았습니다.")
+
+        target_menu = self._settings.get("target_menu", "부적합보고서등록")
+        wc = self._window_controller
+        self._error_events = []
+
+        self._emit_log(f"===== 보고 #{report.id} 입력 시작 =====")
+
+        # (선택) 품목 마스터 검증
+        self._validate_item(report)
+
+        # 좌표 클릭 정확도를 위해 최대화
+        if self._mode == "pywinauto" and not wc.ensure_maximized():
+            self._emit_log("⚠ ERP 윈도우 최대화 실패 — 좌표가 어긋날 수 있습니다")
+
+        # 메뉴 진입 (새 폼)
+        if self._mode == "pywinauto":
+            wc.navigate_to_menu(target_menu)
+            time.sleep(2)
+            wc.bring_to_front()
+
+        # 첫 입력 필드로 이동
+        self._emit_log(f"Tab×{self._first_field_tabs} → 첫 입력 필드로 이동")
+        for _ in range(self._first_field_tabs):
+            self._send_tab()
+
+        # 헤더 시퀀스 입력
+        sequence = self._field_map.build_sequence(report)
+        total = len(sequence.steps)
+        for i, step in enumerate(sequence.steps):
+            if self._is_stopped():
+                self._emit_log("중지 요청 감지 — 입력 중단")
+                return
+
+            if step.method == InputMethod.SKIP:
+                self._emit_log(f"[{i+1}/{total}] {step.field_name} → skip (Tab)")
+                if step.tab_after:
+                    self._send_tab()
+                continue
+
+            if step.method in (InputMethod.POPUP_SEARCH, InputMethod.POPUP_SEARCH_ENTER) and not step.value:
+                self._emit_log(f"[{i+1}/{total}] {step.field_name} → 빈 값, 팝업 건너뜀")
+                if step.tab_after:
+                    self._send_tab()
+                continue
+
+            self._emit_log(f"[{i+1}/{total}] {step.field_name} = '{step.value}' ({step.method.value})")
+            self._execute_step_tab_based(step)
+
+            if step.tab_after:
+                self._send_tab()
+
+        # 그리드(다행)는 단일 품목 스키마에서 미사용
+        if self._field_mapping.get("grid_columns"):
+            self._emit_log("⚠ grid_columns가 설정되어 있으나 그리드 입력은 아직 구현되지 않았습니다(단일 품목 모드).")
+
+        self._check_error_dialog("헤더 입력 후")
+
+        # 저장
+        self._save()
+        self._check_error_dialog("저장 후")
+
+        if self._error_events:
+            self._emit_log(f"⚠ 자동 처리된 에러 다이얼로그 {len(self._error_events)}건:")
+            for i, ev in enumerate(self._error_events, 1):
+                self._emit_log(f"  {i}. {ev}")
+
+        self._emit_log(f"===== 보고 #{report.id} 입력 완료 =====")
+
+    # ------------------------------------------------------------------
+    # 저장
+    # ------------------------------------------------------------------
+
+    def _save(self) -> None:
+        wc = self._window_controller
+        if self._save_shortcut:
+            self._emit_log(f"저장: 단축키 {self._save_shortcut}")
+            wc.send_keys(self._save_shortcut)
+            time.sleep(0.5)
+            return
+
+        save_action = self._field_mapping.get("actions", {}).get("save")
+        if save_action and (save_action.get("auto_id") or save_action.get("text")):
+            self._emit_log("저장: 버튼 클릭")
+            step = InputStep(
+                field_name="save", value="", method=InputMethod.CLICK,
+                control_type=save_action.get("control_type", "Button"),
+                auto_id=save_action.get("auto_id", ""),
+                erp_field_name=save_action.get("text", "저장"),
+            )
+            self._execute_with_retry(step)
+            time.sleep(0.5)
+            return
+
+        self._emit_log("⚠ 저장 방법 미설정 (erp.save_shortcut 또는 actions.save) — 저장 건너뜀")
+
+    # ------------------------------------------------------------------
+    # 스텝 실행
+    # ------------------------------------------------------------------
+
+    def _execute_step_tab_based(self, step: InputStep) -> None:
+        wc = self._window_controller
+        if step.method == InputMethod.TYPE_TEXT:
+            wc.type_into_focused(step.value, step.clear_before)
+            time.sleep(step.delay_after)
+        elif step.method == InputMethod.POPUP_SEARCH:
+            wc.popup_search_and_select(step.value, enter_confirm=False)
+        elif step.method == InputMethod.POPUP_SEARCH_ENTER:
+            wc.popup_search_and_select(step.value, enter_confirm=True)
+        elif step.method == InputMethod.DROPDOWN_SELECT:
+            wc.dropdown_select_down(int(step.value))
+        elif step.method == InputMethod.DISMISS_DIALOG:
+            wc.dismiss_dialog_if_exists(timeout=float(step.value) if step.value else 2.0)
+        elif step.method == InputMethod.CLICK:
+            self._execute_with_retry(step)
+        elif step.method == InputMethod.KEY_PRESS:
+            wc._key_press(step)
+
+    def _send_tab(self) -> None:
+        if self._mode == "pywinauto":
+            self._window_controller.send_tab()
+        else:
+            self._fallback_controller.execute_step(InputStep(
+                field_name="tab_next", value="tab",
+                method=InputMethod.KEY_PRESS, delay_after=0.1,
+            ))
+
+    def _execute_with_retry(self, step: InputStep) -> None:
+        last_error = None
+        for attempt in range(self._retry_count):
+            try:
+                if self._mode == "pywinauto":
+                    self._window_controller.execute_step(step)
+                else:
+                    self._fallback_controller.execute_step(step)
+                return
+            except FocusLostError:
+                raise
+            except Exception as e:
+                last_error = e
+                if attempt < self._retry_count - 1:
+                    logger.warning("입력 재시도 (%d/%d): %s - %s",
+                                   attempt + 1, self._retry_count, step.field_name, e)
+                    time.sleep(self._retry_delay)
+        raise RuntimeError(f"입력 실패 (최대 재시도 초과): {step.field_name} - {last_error}")
+
+    def _check_error_dialog(self, context: str = "") -> None:
+        """에러 다이얼로그가 떠 있으면 Enter로 닫고 발생 지점을 기록한다."""
+        try:
+            if self._window_controller.dismiss_dialog_if_exists(timeout=0.3):
+                self._error_events.append(context or "unknown")
+                self._emit_log(f"⚠ 에러 다이얼로그 자동 처리됨: {context}")
+        except Exception as e:
+            logger.debug("에러 다이얼로그 체크 무시: %s", e)
+
+    # ------------------------------------------------------------------
+    # 품목 검증 (선택)
+    # ------------------------------------------------------------------
+
+    def _validate_item(self, report: NcrReport) -> None:
+        if self._valid_items is None:
+            self._valid_items = self._load_valid_items()
+        if not self._valid_items:
+            return  # 마스터 없음 → 검증 비활성화
+        code = report.get_str("itemCode")
+        if code and code not in self._valid_items:
+            self._emit_log(f"⚠ 미등록 품목코드: '{code}' (검증 마스터 기준) — 입력은 계속합니다")
+
+    @staticmethod
+    def _load_valid_items() -> set[str]:
+        path = get_config_dir() / "valid_items.txt"
+        if not path.is_file():
+            return set()
+        try:
+            with open(path, encoding="utf-8") as f:
+                return {line.strip() for line in f if line.strip()}
+        except Exception:
+            return set()
