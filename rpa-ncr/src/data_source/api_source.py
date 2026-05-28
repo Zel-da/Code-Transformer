@@ -41,6 +41,8 @@ class ApiSource(DataSource):
         resp.raise_for_status()
         rows = resp.json()  # bare array
         reports = [NcrReport.from_api_dict(r) for r in rows]
+        for r in reports:
+            self._enrich(r)
         logger.info("PENDING 보고 %d건 조회 (API)", len(reports))
         return reports
 
@@ -49,7 +51,32 @@ class ApiSource(DataSource):
         if resp.status_code == 404:
             return None
         resp.raise_for_status()
-        return NcrReport.from_api_dict(resp.json())
+        report = NcrReport.from_api_dict(resp.json())
+        self._enrich(report)
+        return report
+
+    def _enrich(self, report: NcrReport) -> None:
+        """item_codes 마스터에서 itemGroup(category)/itemName을 보강한다.
+        UNIERP 부적합등록 폼의 품목그룹 필드용. DbSource는 SQL JOIN으로 보강한다.
+        """
+        code = report.get_str("itemCode")
+        if not code:
+            return
+        try:
+            resp = self._session.get(
+                f"{self._base}/api/items",
+                params={"search": code, "limit": 5},
+                timeout=self._timeout,
+            )
+            if not resp.ok:
+                return
+            items = resp.json() or []
+            picked = next((it for it in items if it.get("code") == code), None) or (items[0] if items else None)
+            if picked:
+                report.fields["itemGroup"] = picked.get("category")
+                report.fields["itemName"] = picked.get("name")
+        except Exception as e:
+            logger.warning("itemGroup 보강 실패 (#%s): %s", report.id, e)
 
     # ------------------------------------------------------------------
     # 상태 업데이트

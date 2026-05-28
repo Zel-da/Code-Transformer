@@ -18,6 +18,8 @@ CANONICAL_FIELDS: tuple[str, ...] = (
     "factory", "shipmentUnit", "lostManHours", "defectQty", "occurrenceDate",
     "issuingTeam", "plantCd", "processCd", "flawTypeCd", "deptCd",
     "ncrGbnCd", "productType",
+    # item_codes 마스터에서 보강되는 파생 필드 (DbSource는 JOIN, ApiSource는 /api/items 호출)
+    "itemGroup", "itemName",
 )
 
 

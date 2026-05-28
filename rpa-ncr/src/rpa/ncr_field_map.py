@@ -56,11 +56,14 @@ class NcrReportFieldMap:
                 ))
                 continue
 
-            # 값 계산 (fallback_key + format)
-            value = self._resolve_value(report, spec)
+            # 값 계산: literal 우선(고정값) → 아니면 report에서 lookup
+            if "literal" in spec:
+                value = str(spec["literal"])
+            else:
+                value = self._resolve_value(report, spec)
 
-            # 드롭다운: 코드맵으로 아래방향키 횟수 산출
-            if method == InputMethod.DROPDOWN_SELECT:
+            # 드롭다운: 값이 이미 숫자(literal 횟수)면 그대로, 아니면 map_ref로 변환
+            if method == InputMethod.DROPDOWN_SELECT and not value.isdigit():
                 value = self._resolve_dropdown(spec, value)
 
             # 빈 값은 SKIP으로 (Tab 순서 유지, 기존 값 보존)

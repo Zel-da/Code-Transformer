@@ -79,9 +79,18 @@ class AppState:
                 self._erp_clients.remove(ws)
 
     def broadcast_progress_sync(self, loop: asyncio.AbstractEventLoop, data: dict) -> None:
-        """동기 스레드에서 진행률을 브로드캐스트한다."""
-        asyncio.run_coroutine_threadsafe(self.broadcast_progress(data), loop)
+        """동기 스레드에서 진행률을 브로드캐스트한다.
+
+        loop가 이미 닫혔으면(테스트 종료/uvicorn 셧다운 경계) 조용히 무시한다.
+        """
+        try:
+            asyncio.run_coroutine_threadsafe(self.broadcast_progress(data), loop)
+        except RuntimeError:
+            pass
 
     def broadcast_erp_sync(self, loop: asyncio.AbstractEventLoop, data: dict) -> None:
-        """동기 스레드에서 ERP 로그를 브로드캐스트한다."""
-        asyncio.run_coroutine_threadsafe(self.broadcast_erp(data), loop)
+        """동기 스레드에서 ERP 로그를 브로드캐스트한다 (loop 닫힘 안전)."""
+        try:
+            asyncio.run_coroutine_threadsafe(self.broadcast_erp(data), loop)
+        except RuntimeError:
+            pass

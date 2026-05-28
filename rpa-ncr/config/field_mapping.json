@@ -1,41 +1,55 @@
 {
-    "_comment": "NCR 부적합 보고 → UNIERP 부적합보고서 폼 필드 매핑. ncr_key는 데이터 소스(API camelCase / DB 별칭)의 키와 일치한다. erp_field/method/tab_after/맵은 실 ERP 폼 캘리브레이션 후 확정할 것(TODO).",
+    "_comment": "UNIERP 부적합등록(S)(QD211MA1_CKO063) 매핑. 메뉴 진입 후 Tab×10으로 첫 입력 필드 도달, 이후 아래 13단계 순서대로. literal=고정값, ncr_key=보고서 필드, map_ref=드롭다운 ↓횟수 맵.",
 
     "_available_report_fields": [
         "id", "reportDate", "itemCode", "modelName", "processName", "defectType",
         "description", "imageUrl", "registrantName", "ncrType", "factory",
         "shipmentUnit", "lostManHours", "defectQty", "occurrenceDate", "issuingTeam",
-        "plantCd", "processCd", "flawTypeCd", "deptCd", "ncrGbnCd", "productType"
+        "plantCd", "processCd", "flawTypeCd", "deptCd", "ncrGbnCd", "productType",
+        "itemGroup", "itemName"
     ],
 
     "_method_values": "type | popup_search | popup_search_enter | dropdown | skip | dismiss",
 
     "header_fields": [
-        { "ncr_key": "id",             "label": "보고서번호", "method": "type",         "tab_after": 1, "erp_field": "TODO", "_note": "스키마에 별도 보고서번호 컬럼이 없어 PK(id) 사용" },
-        { "ncr_key": "occurrenceDate", "label": "발생일",     "method": "type",         "tab_after": 1, "format": "YYYYMMDD", "fallback_key": "reportDate", "erp_field": "TODO" },
-        { "ncr_key": "deptCd",         "label": "발행팀",     "method": "type",         "tab_after": 1, "erp_field": "TODO", "_note": "팀명이 필요하면 issuingTeam 사용" },
-        { "ncr_key": "processName",    "label": "공정명",     "method": "type",         "tab_after": 1, "erp_field": "TODO" },
-        { "ncr_key": "itemCode",       "label": "품목코드",   "method": "popup_search", "tab_after": 1, "erp_field": "TODO", "_note": "검색 팝업이면 popup_search, 직접 입력이면 type" },
-        { "ncr_key": "modelName",      "label": "제품명",     "method": "type",         "tab_after": 1, "erp_field": "TODO" },
-        { "ncr_key": "ncrType",        "label": "부적합유형", "method": "dropdown",     "tab_after": 1, "map_ref": "ncrType_map", "erp_field": "TODO" },
-        { "ncr_key": "defectType",     "label": "불량유형",   "method": "type",         "tab_after": 1, "erp_field": "TODO", "_note": "치수불량/외관불량/기능불량/재료불량/포장불량/기타" },
-        { "ncr_key": "defectQty",      "label": "불량수량",   "method": "type",         "tab_after": 1, "erp_field": "TODO" },
-        { "ncr_key": "description",    "label": "부적합내용", "method": "type",         "tab_after": 1, "erp_field": "TODO" }
+        { "label": "발행팀코드", "method": "type",     "literal": "SH11610100",                                                           "tab_after": 1, "_note": "고정값" },
+        { "label": "구분드롭다운","method": "dropdown", "literal": "3",                                                                     "tab_after": 1, "_note": "고정 ↓×3" },
+        { "label": "발생일",     "method": "type",     "ncr_key": "occurrenceDate", "format": "YYYYMMDD", "fallback_key": "reportDate",  "tab_after": 1 },
+        { "label": "공장",       "method": "type",     "literal": "SH00",                                                                  "tab_after": 1, "_note": "고정값 (화성)" },
+        { "label": "입력일",     "method": "type",     "ncr_key": "reportDate",     "format": "YYYYMMDD",                                  "tab_after": 1 },
+        { "label": "부품코드",   "method": "type",     "ncr_key": "itemCode",                                                              "tab_after": 1, "_note": "보고서의 SKU (item_codes.code)" },
+        { "label": "공정",       "method": "type",     "ncr_key": "processName",                                                           "tab_after": 1 },
+        { "label": "불량수량",   "method": "type",     "ncr_key": "defectQty",                                                             "tab_after": 1 },
+        { "label": "품목그룹",   "method": "type",     "ncr_key": "itemGroup",                                                             "tab_after": 1, "_note": "item_codes.category 자동 조회 (DbSource: JOIN, ApiSource: /api/items?search)" },
+        { "label": "불량유형",   "method": "dropdown", "ncr_key": "flawTypeCd",     "map_ref": "flawType_map",                             "tab_after": 1, "_note": "flaw_types.sort_index + 1 = ↓ 횟수" },
+        { "label": "거래처",     "method": "skip",                                                                                         "tab_after": 1, "_TODO": "보고 스키마에 거래처 필드 없음 — 추후 submit 폼/non_conformity_reports에 vendor_cd 컬럼 추가 후 ncr_key 지정" },
+        { "label": "손실공수",   "method": "type",     "ncr_key": "lostManHours",                                                          "tab_after": 1 },
+        { "label": "제품코드",   "method": "type",     "ncr_key": "itemCode",                                                              "tab_after": 1, "_note": "부품코드와 동일한 itemCode 사용 — UNIERP에서 다르게 받아야 한다면 별도 필드 필요" }
     ],
 
-    "_grid_comment": "현재 DB 스키마(non_conformity_reports)는 보고서당 단일 품목/수량 구조라 라인아이템 배열이 없다. 다행 그리드가 필요한 ERP라면 그리드 헤더 행을 복사해 grid_columns 문자열에 넣으면 GridLayout 자동감지가 활성화된다.",
     "grid_columns": "",
 
-    "ncrType_map": {
-        "_comment": "NCR 유형 → ERP 드롭다운 아래방향키 횟수(정수) 매핑. 캘리브레이션 후 채울 것.",
-        "incoming": "TODO",
-        "process": "TODO",
-        "outsourcing": "TODO",
-        "etc": "TODO"
+    "flawType_map": {
+        "_comment": "flaw_types.type_cd → ↓ 횟수. sort_index + 1 (DB 기준 15종 전수검증 완료, 사용자 확인: 가공=1, 전기=4).",
+        "A": 1,  "_A": "가공",
+        "B": 2,  "_B": "용접/제관",
+        "D": 3,  "_D": "유/공압",
+        "E": 4,  "_E": "전기",
+        "F": 5,  "_F": "공압",
+        "H": 6,  "_H": "도장/도금",
+        "I": 7,  "_I": "외관",
+        "K": 8,  "_K": "동력장치",
+        "M": 9,  "_M": "BOM/REV",
+        "N": 10, "_N": "소재",
+        "O": 11, "_O": "조립",
+        "P": 12, "_P": "설계개선",
+        "Q": 13, "_Q": "설계불량",
+        "Y": 14, "_Y": "합격(출하)",
+        "Z": 15, "_Z": "기타"
     },
 
     "actions": {
-        "_comment": "저장 동작. 버튼이면 control_type/auto_id/text 지정, 단축키면 settings.json erp.save_shortcut 사용.",
+        "_comment": "저장은 settings.json erp.save_shortcut (^s) 사용.",
         "save": { "control_type": "Button", "auto_id": "", "text": "저장" }
     }
 }
