@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   X,
   Plus,
+  Search,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -37,6 +38,31 @@ const FACTORY_TO_PLANT_CD: Record<string, string> = {
   화성: "SH00",
 };
 
+const ERP_API_BASE =
+  ((import.meta.env.VITE_ERP_API_BASE as string | undefined) ?? "").replace(/\/+$/, "");
+
+function parseHogi(raw?: string): number | null {
+  if (!raw) return null;
+  const m = raw.match(/\d+/);
+  return m ? Number(m[0]) : null;
+}
+
+type ErpCandidate = { code: string; name: string; category: string; id: number; createdAt: string };
+
+type ErpLookup = {
+  ok: boolean;
+  itemCode?: string;
+  modelName?: string;
+  itemGroup?: string;
+  itemGroupCd?: string;
+  factory?: string;
+  plantCd?: string;
+  shipmentUnit?: string;
+  orderCount?: number;
+  matchedOrders?: { PRODT_ORDER_NO: string; ORDER_STATUS: string; PLAN_START: string | null }[];
+  reason?: string;
+  candidates?: ErpCandidate[];
+};
 
 const todayStr = () => new Date().toISOString().split("T")[0];
 
@@ -114,6 +140,11 @@ export default function SubmitReport() {
 
   const skipFactoryClearRef = useRef(false);
 
+  const [erpSearchProduct, setErpSearchProduct] = useState("");
+  const [erpSearchHogi, setErpSearchHogi] = useState("");
+  const [erpSearchResult, setErpSearchResult] = useState<ErpLookup | null>(null);
+  const [erpSearchLoading, setErpSearchLoading] = useState(false);
+
   const requestUploadUrl = useRequestUploadUrl();
   const createReport = useCreateReport();
 
@@ -161,6 +192,46 @@ export default function SubmitReport() {
     }
   }, [selectedFactory]);
 
+
+  // 제품명+호기 → ERP 검색
+  const searchErpByProduct = async () => {
+    const product = erpSearchProduct.trim();
+    if (!product) return;
+    setErpSearchLoading(true);
+    setErpSearchResult(null);
+    try {
+      const params = new URLSearchParams({ product });
+      const hogi = parseHogi(erpSearchHogi);
+      if (hogi != null) params.set("hogi", String(hogi));
+      const res = await fetch(`${ERP_API_BASE}/api/erp/input-data?${params}`);
+      setErpSearchResult(await res.json());
+    } catch {
+      setErpSearchResult({ ok: false, reason: "네트워크 오류가 발생했습니다." });
+    } finally {
+      setErpSearchLoading(false);
+    }
+  };
+
+  // ERP 결과(또는 후보)로 폼 필드 자동 입력
+  const fillFromErp = (result: ErpLookup | ErpCandidate) => {
+    const isCandidate = "code" in result;
+    const itemCode = isCandidate ? result.code : result.itemCode;
+    const modelName = isCandidate ? result.name : result.modelName;
+    const factory = isCandidate ? undefined : result.factory;
+    const shipmentUnit = isCandidate ? undefined : result.shipmentUnit;
+
+    if (itemCode) form.setValue("itemCode", itemCode, { shouldValidate: true });
+    if (modelName) form.setValue("modelName", modelName, { shouldValidate: true });
+    if (factory) {
+      skipFactoryClearRef.current = true;
+      form.setValue("factory", factory, { shouldValidate: true });
+      setTimeout(() => { skipFactoryClearRef.current = false; }, 0);
+    }
+    if (shipmentUnit) form.setValue("shipmentUnit", shipmentUnit, { shouldValidate: true });
+    setErpSearchResult(null);
+    setErpSearchProduct("");
+    setErpSearchHogi("");
+  };
 
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -426,6 +497,102 @@ export default function SubmitReport() {
 
             {/* ── 부적합 기본 정보 ── */}
             <GroupDivider title="부적합 기본 정보" />
+
+            {/* ERP 제품 검색 */}
+            <div className="px-5 py-4 border-b border-[#F2F4F6]">
+              <div className="mb-3">
+                <p className="text-[13px] font-semibold text-[#191F28] mb-0.5">ERP 제품 조회</p>
+                <p className="text-[11px] text-[#8B95A1]">제품명 또는 품번으로 검색하면 제품코드·공장이 자동 입력됩니다</p>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={erpSearchProduct}
+                  onChange={e => setErpSearchProduct(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && searchErpByProduct()}
+                  placeholder="제품명 또는 품번"
+                  className="flex-1 h-11 rounded-xl bg-[#F8F9FA] px-3 text-[14px] outline-none text-[#191F28] placeholder-[#BEC5CC] border-2 border-transparent focus:border-[#1A1A1A]"
+                />
+                <input
+                  type="text"
+                  value={erpSearchHogi}
+                  onChange={e => setErpSearchHogi(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && searchErpByProduct()}
+                  placeholder="호기"
+                  className="w-20 h-11 rounded-xl bg-[#F8F9FA] px-3 text-[14px] outline-none text-[#191F28] placeholder-[#BEC5CC] border-2 border-transparent focus:border-[#1A1A1A] text-center"
+                />
+                <button
+                  type="button"
+                  onClick={searchErpByProduct}
+                  disabled={erpSearchLoading || !erpSearchProduct.trim()}
+                  className="h-11 px-4 rounded-xl bg-[#1A1A1A] text-white text-[13px] font-semibold flex items-center gap-1.5 disabled:opacity-40 shrink-0"
+                >
+                  {erpSearchLoading
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Search className="h-4 w-4" />
+                  }
+                  조회
+                </button>
+              </div>
+
+              {erpSearchResult && (
+                <div className="mt-3">
+                  {erpSearchResult.ok ? (
+                    <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-[14px] text-[#191F28] truncate">{erpSearchResult.itemCode}</p>
+                        <p className="text-[12px] text-[#4E5968] mt-0.5 truncate">{erpSearchResult.modelName}</p>
+                        <div className="flex gap-3 mt-1 flex-wrap">
+                          {erpSearchResult.itemGroup && (
+                            <span className="text-[11px] text-[#8B95A1]">품목그룹 {erpSearchResult.itemGroup}</span>
+                          )}
+                          {erpSearchResult.factory && (
+                            <span className="text-[11px] text-[#8B95A1]">공장 {erpSearchResult.factory}</span>
+                          )}
+                          {erpSearchResult.shipmentUnit && (
+                            <span className="text-[11px] text-[#8B95A1]">호기 {erpSearchResult.shipmentUnit}</span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => fillFromErp(erpSearchResult!)}
+                        className="shrink-0 px-3 py-2 bg-[#1A1A1A] text-white text-[12px] font-bold rounded-xl min-h-[44px]"
+                      >
+                        이대로<br/>입력
+                      </button>
+                    </div>
+                  ) : erpSearchResult.candidates && erpSearchResult.candidates.length > 0 ? (
+                    <div className="rounded-xl border border-[#E5E8EB] overflow-hidden">
+                      <div className="px-3 py-2 bg-[#F8F9FA] flex items-center justify-between">
+                        <span className="text-[12px] font-semibold text-[#4E5968]">
+                          {erpSearchResult.candidates.length}건 검색됨
+                        </span>
+                        <span className="text-[11px] text-[#8B95A1]">항목을 선택하면 자동 입력됩니다</span>
+                      </div>
+                      <div className="max-h-52 overflow-y-auto divide-y divide-[#F2F4F6]">
+                        {erpSearchResult.candidates.map(c => (
+                          <button
+                            key={c.code}
+                            type="button"
+                            onClick={() => fillFromErp(c)}
+                            className="w-full px-3 py-3 text-left hover:bg-[#F8F9FA] active:bg-[#F2F4F6] transition-colors"
+                          >
+                            <span className="font-semibold text-[13px] text-[#191F28] block">{c.code}</span>
+                            <span className="text-[12px] text-[#8B95A1] block truncate">{c.name}</span>
+                            <span className="text-[11px] text-[#BEC5CC]">{c.category}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5 text-[12px] text-amber-700">
+                      {erpSearchResult.reason ?? "검색 결과가 없습니다. 직접 입력해주세요."}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* 제품코드 */}
             <FormField
