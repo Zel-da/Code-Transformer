@@ -28,6 +28,7 @@ import type {
   ListItemsParams,
   ListProcessesParams,
   ListReportsParams,
+  ListVendorsParams,
   LoginBody,
   LoginResponse,
   PlantItem,
@@ -48,6 +49,7 @@ import type {
   UploadUrlRequest,
   UploadUrlResponse,
   UserProfile,
+  Vendor,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -222,6 +224,101 @@ export function useListItems<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListItemsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns vendors for submit form autocomplete. Searches vendor_cd, vendor_nm, and tax_no.
+ * @summary List ERP vendors (거래처 마스터)
+ */
+export const getListVendorsUrl = (params?: ListVendorsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/vendors?${stringifiedParams}`
+    : `/api/vendors`;
+};
+
+export const listVendors = async (
+  params?: ListVendorsParams,
+  options?: RequestInit,
+): Promise<Vendor[]> => {
+  return customFetch<Vendor[]>(getListVendorsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListVendorsQueryKey = (params?: ListVendorsParams) => {
+  return [`/api/vendors`, ...(params ? [params] : [])] as const;
+};
+
+export const getListVendorsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listVendors>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListVendorsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listVendors>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListVendorsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listVendors>>> = ({
+    signal,
+  }) => listVendors(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listVendors>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListVendorsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listVendors>>
+>;
+export type ListVendorsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List ERP vendors (거래처 마스터)
+ */
+
+export function useListVendors<
+  TData = Awaited<ReturnType<typeof listVendors>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListVendorsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listVendors>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListVendorsQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

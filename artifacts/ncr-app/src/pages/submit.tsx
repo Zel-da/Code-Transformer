@@ -8,9 +8,11 @@ import {
   useListProcesses,
   useRequestUploadUrl,
   useCreateReport,
+  useListVendors,
   getListReportsQueryKey,
   getGetReportStatsQueryKey,
   getListProcessesQueryKey,
+  getListVendorsQueryKey,
 } from "@workspace/api-client-react";
 import { compressImage } from "@/lib/image-compression";
 import {
@@ -92,6 +94,8 @@ const formSchema = z.object({
     z.number().int().min(0).optional(),
   ),
   description: z.string().min(1, "부적합 현상을 입력해주세요"),
+  vendorCd: z.string().optional(),
+  vendorNm: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -115,6 +119,86 @@ function FieldRow({
       </div>
       {children}
       {error && <p className="text-[11px] text-red-500 mt-1.5">{error}</p>}
+    </div>
+  );
+}
+
+function VendorPicker({ form }: { form: ReturnType<typeof useForm<FormValues>> }) {
+  const [query, setQuery] = useState("");
+  const vendorCd = form.watch("vendorCd");
+  const vendorNm = form.watch("vendorNm");
+
+  const vendorParams = { search: query, limit: 8 };
+  const { data: vendors = [] } = useListVendors(
+    vendorParams,
+    { query: { enabled: query.trim().length >= 2, queryKey: getListVendorsQueryKey(vendorParams) } },
+  );
+
+  const select = (cd: string, nm: string) => {
+    form.setValue("vendorCd", cd, { shouldValidate: true });
+    form.setValue("vendorNm", nm, { shouldValidate: true });
+    setQuery("");
+  };
+
+  const clear = () => {
+    form.setValue("vendorCd", "", { shouldValidate: true });
+    form.setValue("vendorNm", "", { shouldValidate: true });
+    setQuery("");
+  };
+
+  return (
+    <div className="px-5 py-4 border-b border-[#F2F4F6]">
+      <div className="flex items-center justify-between mb-2.5">
+        <span className="text-[13px] font-semibold text-[#191F28]">거래처</span>
+        <span className="text-[11px] text-[#BEC5CC]">선택</span>
+      </div>
+      {vendorCd ? (
+        <div className="flex items-center justify-between bg-[#F8F9FA] rounded-xl px-3 py-2.5">
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-[14px] text-[#191F28] truncate">{vendorCd}</p>
+            <p className="text-[12px] text-[#4E5968] mt-0.5 truncate">{vendorNm || ""}</p>
+          </div>
+          <button
+            type="button"
+            onClick={clear}
+            className="ml-2 text-[12px] text-[#4E5968] underline"
+          >
+            변경
+          </button>
+        </div>
+      ) : (
+        <div className="relative">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="거래처명/코드/사업자번호로 검색 (2자 이상)"
+            className="w-full text-[15px] text-[#191F28] placeholder-[#BEC5CC] outline-none bg-transparent font-medium"
+          />
+          {query.trim().length >= 2 && vendors.length > 0 && (
+            <div className="absolute left-0 right-0 top-full mt-2 z-10 bg-white border border-[#E5E8EB] rounded-xl shadow-md max-h-64 overflow-y-auto">
+              {vendors.map((v) => (
+                <button
+                  key={v.vendorCd}
+                  type="button"
+                  onClick={() => select(v.vendorCd, v.vendorNm)}
+                  className="w-full text-left px-3 py-2 hover:bg-[#F8F9FA] border-b border-[#F2F4F6] last:border-0"
+                >
+                  <p className="font-bold text-[13px] text-[#191F28] truncate">
+                    {v.vendorCd} · {v.vendorNm}
+                  </p>
+                  {v.taxNo && (
+                    <p className="text-[11px] text-[#8B95A1] mt-0.5">사업자: {v.taxNo}</p>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+          {query.trim().length >= 2 && vendors.length === 0 && (
+            <p className="text-[11px] text-[#8B95A1] mt-2">검색 결과 없음</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -313,6 +397,8 @@ export default function SubmitReport() {
           flawTypeCd: null,
           productType: values.productType,
           actionDirection: values.actionDirection ?? null,
+          vendorCd: values.vendorCd?.trim() || null,
+          vendorNm: values.vendorNm?.trim() || null,
         },
       });
 
@@ -646,6 +732,7 @@ export default function SubmitReport() {
               )}
             />
 
+            <VendorPicker form={form} />
 
             <div className="px-5 py-4 border-b border-[#F2F4F6] grid grid-cols-2 gap-6">
               <FormField

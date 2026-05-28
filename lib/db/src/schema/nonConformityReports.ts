@@ -68,6 +68,15 @@ export const departmentsTable = pgTable("departments", {
 });
 export type Department = typeof departmentsTable.$inferSelect;
 
+export const vendorsTable = pgTable("vendors", {
+  vendorCd: text("vendor_cd").primaryKey(),
+  vendorNm: text("vendor_nm").notNull(),
+  taxNo: text("tax_no"), // 사업자번호 (10자리, 있으면)
+  validFlg: boolean("valid_flg").notNull().default(true),
+  syncedAt: timestamp("synced_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type Vendor = typeof vendorsTable.$inferSelect;
+
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -116,6 +125,10 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
   flawTypeCd: text("flaw_type_cd"),
   deptCd: text("dept_cd"),
   ncrGbnCd: text("ncr_gbn_cd"),
+  // 거래처(협력사). vendor_cd는 vendors.vendor_cd 또는 사업자번호(둘 다 허용).
+  // vendor_nm은 보고 시점의 거래처명을 그대로 보관(감사용).
+  vendorCd: text("vendor_cd"),
+  vendorNm: text("vendor_nm"),
   // V2.0 columns
   productType: productTypeEnum("product_type"),
   labNotifiedAt: timestamp("lab_notified_at", { withTimezone: true }),

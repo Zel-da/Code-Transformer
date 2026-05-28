@@ -102,6 +102,8 @@ router.post("/reports", async (req, res): Promise<void> => {
       flawTypeCd: d.flawTypeCd ?? null,
       deptCd: d.deptCd ?? null,
       ncrGbnCd: d.ncrGbnCd ?? null,
+      vendorCd: d.vendorCd ?? null,
+      vendorNm: d.vendorNm ?? null,
       productType: d.productType ?? null,
       actionDirection: d.actionDirection ?? null,
       slaDeadlineAt,
@@ -437,6 +439,8 @@ router.put("/reports/:id", requireAuth, async (req, res): Promise<void> => {
   if (body.data.flawTypeCd !== undefined) updates.flawTypeCd = body.data.flawTypeCd;
   if (body.data.deptCd !== undefined) updates.deptCd = body.data.deptCd;
   if (body.data.ncrGbnCd !== undefined) updates.ncrGbnCd = body.data.ncrGbnCd;
+  if (body.data.vendorCd !== undefined) updates.vendorCd = body.data.vendorCd;
+  if (body.data.vendorNm !== undefined) updates.vendorNm = body.data.vendorNm;
 
   const [report] = await db
     .update(nonConformityReportsTable)

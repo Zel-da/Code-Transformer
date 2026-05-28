@@ -44,6 +44,8 @@ _SELECT_COLUMNS = """
     r.dept_cd          AS "deptCd",
     r.ncr_gbn_cd       AS "ncrGbnCd",
     r.product_type     AS "productType",
+    r.vendor_cd        AS "vendorCd",
+    r.vendor_nm        AS "vendorNm",
     ic.category        AS "itemGroup",
     ic.name            AS "itemName"
 """

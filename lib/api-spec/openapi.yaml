@@ -62,6 +62,39 @@ paths:
                 items:
                   $ref: "#/components/schemas/Item"
 
+  /vendors:
+    get:
+      operationId: listVendors
+      tags: [vendors]
+      summary: List ERP vendors (거래처 마스터)
+      description: Returns vendors for submit form autocomplete. Searches vendor_cd, vendor_nm, and tax_no.
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: includeInvalid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "1 or true → also include valid_flg=false vendors"
+      responses:
+        "200":
+          description: List of vendors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Vendor"
+
   /reports:
     get:
       operationId: listReports
@@ -869,6 +902,27 @@ components:
         - name
         - category
 
+    Vendor:
+      type: object
+      properties:
+        vendorCd:
+          type: string
+        vendorNm:
+          type: string
+        taxNo:
+          type: ["string", "null"]
+          description: "사업자번호 (10자리)"
+        validFlg:
+          type: boolean
+        syncedAt:
+          type: string
+          format: date-time
+      required:
+        - vendorCd
+        - vendorNm
+        - validFlg
+        - syncedAt
+
     PlantItem:
       type: object
       properties:
@@ -978,6 +1032,12 @@ components:
           type: ["string", "null"]
         ncrGbnCd:
           type: ["string", "null"]
+        vendorCd:
+          type: ["string", "null"]
+          description: "거래처 코드 (vendors.vendor_cd 또는 사업자번호)"
+        vendorNm:
+          type: ["string", "null"]
+          description: "거래처명 (보고 시점 스냅샷)"
         productType:
           type: ["string", "null"]
           enum: ["양산", "개발", null]
@@ -1113,6 +1173,12 @@ components:
           type: ["string", "null"]
         ncrGbnCd:
           type: ["string", "null"]
+        vendorCd:
+          type: ["string", "null"]
+          description: "거래처 코드 또는 사업자번호 (RPA가 ERP #11에 입력)"
+        vendorNm:
+          type: ["string", "null"]
+          description: "거래처명"
         productType:
           type: string
           enum: ["양산", "개발"]
@@ -1170,6 +1236,10 @@ components:
         deptCd:
           type: ["string", "null"]
         ncrGbnCd:
+          type: ["string", "null"]
+        vendorCd:
+          type: ["string", "null"]
+        vendorNm:
           type: ["string", "null"]
 
     QcAnalysisBody:

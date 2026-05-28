@@ -22,7 +22,7 @@
         { "label": "불량수량",   "method": "type",     "ncr_key": "defectQty",                                                             "tab_after": 1 },
         { "label": "품목그룹",   "method": "type",     "ncr_key": "itemGroup",                                                             "tab_after": 1, "_note": "item_codes.category 자동 조회 (DbSource: JOIN, ApiSource: /api/items?search)" },
         { "label": "불량유형",   "method": "dropdown", "ncr_key": "flawTypeCd",     "map_ref": "flawType_map",                             "tab_after": 1, "_note": "flaw_types.sort_index + 1 = ↓ 횟수" },
-        { "label": "거래처",     "method": "skip",                                                                                         "tab_after": 1, "_TODO": "보고 스키마에 거래처 필드 없음 — 추후 submit 폼/non_conformity_reports에 vendor_cd 컬럼 추가 후 ncr_key 지정" },
+        { "label": "거래처",     "method": "type",     "ncr_key": "vendorCd",                                                              "tab_after": 1, "_note": "vendors 마스터에서 선택한 코드 또는 사업자번호. 비어있으면 SKIP 처리됨." },
         { "label": "손실공수",   "method": "type",     "ncr_key": "lostManHours",                                                          "tab_after": 1 },
         { "label": "제품코드",   "method": "type",     "ncr_key": "itemCode",                                                              "tab_after": 1, "_note": "부품코드와 동일한 itemCode 사용 — UNIERP에서 다르게 받아야 한다면 별도 필드 필요" }
     ],

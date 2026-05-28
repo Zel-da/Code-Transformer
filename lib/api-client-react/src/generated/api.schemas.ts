@@ -16,6 +16,18 @@ export interface Item {
   category: string;
 }
 
+export interface Vendor {
+  vendorCd: string;
+  vendorNm: string;
+  /**
+   * 사업자번호 (10자리)
+   * @nullable
+   */
+  taxNo?: string | null;
+  validFlg: boolean;
+  syncedAt: string;
+}
+
 export interface PlantItem {
   plantCd: string;
   plantNm: string;
@@ -106,6 +118,16 @@ export interface Report {
   deptCd?: string | null;
   /** @nullable */
   ncrGbnCd?: string | null;
+  /**
+   * 거래처 코드 (vendors.vendor_cd 또는 사업자번호)
+   * @nullable
+   */
+  vendorCd?: string | null;
+  /**
+   * 거래처명 (보고 시점 스냅샷)
+   * @nullable
+   */
+  vendorNm?: string | null;
   /**
    * 양산 or 개발
    * @nullable
@@ -238,6 +260,16 @@ export interface CreateReportBody {
   deptCd?: string | null;
   /** @nullable */
   ncrGbnCd?: string | null;
+  /**
+   * 거래처 코드 또는 사업자번호 (RPA가 ERP #11에 입력)
+   * @nullable
+   */
+  vendorCd?: string | null;
+  /**
+   * 거래처명
+   * @nullable
+   */
+  vendorNm?: string | null;
   /** 양산 or 개발 */
   productType?: CreateReportBodyProductType;
   /** 조치 방향 */
@@ -288,6 +320,10 @@ export interface UpdateReportBody {
   deptCd?: string | null;
   /** @nullable */
   ncrGbnCd?: string | null;
+  /** @nullable */
+  vendorCd?: string | null;
+  /** @nullable */
+  vendorNm?: string | null;
 }
 
 /**
@@ -569,6 +605,15 @@ export interface UpdateDepartmentBody {
 export type ListItemsParams = {
   search?: string;
   limit?: number;
+};
+
+export type ListVendorsParams = {
+  search?: string;
+  limit?: number;
+  /**
+   * 1 or true → also include valid_flg=false vendors
+   */
+  includeInvalid?: string;
 };
 
 export type ListReportsParams = {

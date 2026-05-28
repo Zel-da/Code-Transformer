@@ -33,6 +33,28 @@ export const ListItemsResponseItem = zod.object({
 export const ListItemsResponse = zod.array(ListItemsResponseItem);
 
 /**
+ * Returns vendors for submit form autocomplete. Searches vendor_cd, vendor_nm, and tax_no.
+ * @summary List ERP vendors (거래처 마스터)
+ */
+export const ListVendorsQueryParams = zod.object({
+  search: zod.coerce.string().optional(),
+  limit: zod.coerce.number().optional(),
+  includeInvalid: zod.coerce
+    .string()
+    .optional()
+    .describe("1 or true → also include valid_flg=false vendors"),
+});
+
+export const ListVendorsResponseItem = zod.object({
+  vendorCd: zod.string(),
+  vendorNm: zod.string(),
+  taxNo: zod.string().nullish().describe("사업자번호 (10자리)"),
+  validFlg: zod.boolean(),
+  syncedAt: zod.coerce.date(),
+});
+export const ListVendorsResponse = zod.array(ListVendorsResponseItem);
+
+/**
  * Returns a filtered, paginated list of non-conformity reports
  * @summary List non-conformity reports
  */
@@ -73,6 +95,11 @@ export const ListReportsResponse = zod.object({
       flawTypeCd: zod.string().nullish(),
       deptCd: zod.string().nullish(),
       ncrGbnCd: zod.string().nullish(),
+      vendorCd: zod
+        .string()
+        .nullish()
+        .describe("거래처 코드 (vendors.vendor_cd 또는 사업자번호)"),
+      vendorNm: zod.string().nullish().describe("거래처명 (보고 시점 스냅샷)"),
       productType: zod
         .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
         .nullish()
@@ -145,6 +172,11 @@ export const CreateReportBody = zod.object({
   flawTypeCd: zod.string().nullish(),
   deptCd: zod.string().nullish(),
   ncrGbnCd: zod.string().nullish(),
+  vendorCd: zod
+    .string()
+    .nullish()
+    .describe("거래처 코드 또는 사업자번호 (RPA가 ERP #11에 입력)"),
+  vendorNm: zod.string().nullish().describe("거래처명"),
   productType: zod.enum(["양산", "개발"]).optional().describe("양산 or 개발"),
   actionDirection: zod
     .enum(["업체 방문 수정", "생산팀 자체 수정", "업체 반출 및 수정 입고"])
@@ -205,6 +237,11 @@ export const ListPendingReportsResponseItem = zod.object({
   flawTypeCd: zod.string().nullish(),
   deptCd: zod.string().nullish(),
   ncrGbnCd: zod.string().nullish(),
+  vendorCd: zod
+    .string()
+    .nullish()
+    .describe("거래처 코드 (vendors.vendor_cd 또는 사업자번호)"),
+  vendorNm: zod.string().nullish().describe("거래처명 (보고 시점 스냅샷)"),
   productType: zod
     .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
     .nullish()
@@ -274,6 +311,8 @@ export const UpdateReportBody = zod.object({
   flawTypeCd: zod.string().nullish(),
   deptCd: zod.string().nullish(),
   ncrGbnCd: zod.string().nullish(),
+  vendorCd: zod.string().nullish(),
+  vendorNm: zod.string().nullish(),
 });
 
 export const UpdateReportResponse = zod.object({
@@ -299,6 +338,11 @@ export const UpdateReportResponse = zod.object({
   flawTypeCd: zod.string().nullish(),
   deptCd: zod.string().nullish(),
   ncrGbnCd: zod.string().nullish(),
+  vendorCd: zod
+    .string()
+    .nullish()
+    .describe("거래처 코드 (vendors.vendor_cd 또는 사업자번호)"),
+  vendorNm: zod.string().nullish().describe("거래처명 (보고 시점 스냅샷)"),
   productType: zod
     .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
     .nullish()
@@ -373,6 +417,11 @@ export const GetReportResponse = zod.object({
   flawTypeCd: zod.string().nullish(),
   deptCd: zod.string().nullish(),
   ncrGbnCd: zod.string().nullish(),
+  vendorCd: zod
+    .string()
+    .nullish()
+    .describe("거래처 코드 (vendors.vendor_cd 또는 사업자번호)"),
+  vendorNm: zod.string().nullish().describe("거래처명 (보고 시점 스냅샷)"),
   productType: zod
     .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
     .nullish()
@@ -449,6 +498,11 @@ export const UpdateReportSyncStatusResponse = zod.object({
   flawTypeCd: zod.string().nullish(),
   deptCd: zod.string().nullish(),
   ncrGbnCd: zod.string().nullish(),
+  vendorCd: zod
+    .string()
+    .nullish()
+    .describe("거래처 코드 (vendors.vendor_cd 또는 사업자번호)"),
+  vendorNm: zod.string().nullish().describe("거래처명 (보고 시점 스냅샷)"),
   productType: zod
     .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
     .nullish()
@@ -545,6 +599,11 @@ export const UpdateReportQcResponse = zod.object({
   flawTypeCd: zod.string().nullish(),
   deptCd: zod.string().nullish(),
   ncrGbnCd: zod.string().nullish(),
+  vendorCd: zod
+    .string()
+    .nullish()
+    .describe("거래처 코드 (vendors.vendor_cd 또는 사업자번호)"),
+  vendorNm: zod.string().nullish().describe("거래처명 (보고 시점 스냅샷)"),
   productType: zod
     .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
     .nullish()
@@ -619,6 +678,11 @@ export const SubmitQcActionResponse = zod.object({
   flawTypeCd: zod.string().nullish(),
   deptCd: zod.string().nullish(),
   ncrGbnCd: zod.string().nullish(),
+  vendorCd: zod
+    .string()
+    .nullish()
+    .describe("거래처 코드 (vendors.vendor_cd 또는 사업자번호)"),
+  vendorNm: zod.string().nullish().describe("거래처명 (보고 시점 스냅샷)"),
   productType: zod
     .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
     .nullish()
@@ -689,6 +753,11 @@ export const TriggerRpaResponse = zod.object({
       flawTypeCd: zod.string().nullish(),
       deptCd: zod.string().nullish(),
       ncrGbnCd: zod.string().nullish(),
+      vendorCd: zod
+        .string()
+        .nullish()
+        .describe("거래처 코드 (vendors.vendor_cd 또는 사업자번호)"),
+      vendorNm: zod.string().nullish().describe("거래처명 (보고 시점 스냅샷)"),
       productType: zod
         .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
         .nullish()
