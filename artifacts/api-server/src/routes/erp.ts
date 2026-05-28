@@ -90,8 +90,8 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
   const hogiRaw = req.query.hogi as string | undefined;
   const hogi = hogiRaw != null && hogiRaw !== "" && !Number.isNaN(Number(hogiRaw)) ? Number(hogiRaw) : null;
 
-  if (!itemCode && !product) {
-    res.status(400).json({ ok: false, reason: "itemCode 또는 product 중 하나는 필요합니다." });
+  if (!itemCode && !product && hogi == null) {
+    res.status(400).json({ ok: false, reason: "itemCode/product/hogi 중 하나는 필요합니다." });
     return;
   }
 
@@ -103,6 +103,33 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
       return;
     }
     res.json(buildResult(item, hogi, await ordersFor(item.code, hogi)));
+    return;
+  }
+
+  // 2) 호기 단독 — 그 호기를 가진 제조오더의 품목을 본다 (보통 완성품 1건)
+  if (!product && hogi != null) {
+    const rows = await db
+      .selectDistinct({
+        code: itemCodesTable.code,
+        name: itemCodesTable.name,
+        category: itemCodesTable.category,
+        id: itemCodesTable.id,
+        createdAt: itemCodesTable.createdAt,
+      })
+      .from(itemCodesTable)
+      .innerJoin(productionOrdersTable, eq(productionOrdersTable.itemCode, itemCodesTable.code))
+      .where(sql`${hogi} BETWEEN ${productionOrdersTable.hogiFrom} AND ${productionOrdersTable.hogiTo}`)
+      .orderBy(asc(itemCodesTable.code));
+    if (rows.length === 1) {
+      const item = rows[0] as ItemRow;
+      res.json(buildResult(item, hogi, await ordersFor(item.code, hogi)));
+      return;
+    }
+    res.json({
+      ok: false,
+      reason: rows.length ? `호기 ${hogi}에 ${rows.length}건 — 제품/품번을 함께 입력` : `호기 ${hogi} 매칭 없음`,
+      candidates: rows,
+    });
     return;
   }
 

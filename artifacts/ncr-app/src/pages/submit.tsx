@@ -193,18 +193,26 @@ export default function SubmitReport() {
   }, [selectedFactory]);
 
 
-  // 제품명+호기 → ERP 검색
+  // 부품코드/제품/품목그룹/거래처/호기 — 아무거나 입력 → 단건이면 자동 입력, 다건이면 후보 표시
   const searchErpByProduct = async () => {
     const product = erpSearchProduct.trim();
-    if (!product) return;
+    const hogi = parseHogi(erpSearchHogi);
+    if (!product && hogi == null) return;
     setErpSearchLoading(true);
     setErpSearchResult(null);
     try {
-      const params = new URLSearchParams({ product });
-      const hogi = parseHogi(erpSearchHogi);
+      const params = new URLSearchParams();
+      if (product) params.set("product", product);
       if (hogi != null) params.set("hogi", String(hogi));
       const res = await fetch(`${ERP_API_BASE}/api/erp/input-data?${params}`);
-      setErpSearchResult(await res.json());
+      const data: ErpLookup = await res.json();
+      if (data.ok) {
+        // 단건 매칭 → 폼에 즉시 자동 입력
+        fillFromErp(data);
+        toast({ title: "자동 입력됨", description: `${data.itemCode ?? ""} ${data.modelName ?? ""}` });
+      } else {
+        setErpSearchResult(data);
+      }
     } catch {
       setErpSearchResult({ ok: false, reason: "네트워크 오류가 발생했습니다." });
     } finally {
@@ -501,8 +509,8 @@ export default function SubmitReport() {
             {/* ERP 제품 검색 */}
             <div className="px-5 py-4 border-b border-[#F2F4F6]">
               <div className="mb-3">
-                <p className="text-[13px] font-semibold text-[#191F28] mb-0.5">ERP 제품 조회</p>
-                <p className="text-[11px] text-[#8B95A1]">제품명 또는 품번으로 검색하면 제품코드·공장이 자동 입력됩니다</p>
+                <p className="text-[13px] font-semibold text-[#191F28] mb-0.5">ERP 자동 조회</p>
+                <p className="text-[11px] text-[#8B95A1]">부품코드·제품명·품목그룹·거래처 중 아무거나 + (선택) 호기 — 단건이면 자동 입력</p>
               </div>
               <div className="flex gap-2">
                 <input
@@ -510,7 +518,7 @@ export default function SubmitReport() {
                   value={erpSearchProduct}
                   onChange={e => setErpSearchProduct(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && searchErpByProduct()}
-                  placeholder="제품명 또는 품번"
+                  placeholder="부품코드/제품/품목그룹/거래처"
                   className="flex-1 h-11 rounded-xl bg-[#F8F9FA] px-3 text-[14px] outline-none text-[#191F28] placeholder-[#BEC5CC] border-2 border-transparent focus:border-[#1A1A1A]"
                 />
                 <input
@@ -524,7 +532,7 @@ export default function SubmitReport() {
                 <button
                   type="button"
                   onClick={searchErpByProduct}
-                  disabled={erpSearchLoading || !erpSearchProduct.trim()}
+                  disabled={erpSearchLoading || (!erpSearchProduct.trim() && !erpSearchHogi.trim())}
                   className="h-11 px-4 rounded-xl bg-[#1A1A1A] text-white text-[13px] font-semibold flex items-center gap-1.5 disabled:opacity-40 shrink-0"
                 >
                   {erpSearchLoading
