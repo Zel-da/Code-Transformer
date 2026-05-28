@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, or, ilike, asc, sql } from "drizzle-orm";
+import { eq, and, or, ilike, asc, sql, type SQL } from "drizzle-orm";
 import { db, itemCodesTable, productionOrdersTable } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -8,6 +8,39 @@ const router: IRouter = Router();
 const PLANT_TO_FACTORY: Record<string, string> = { SA00: "아산", SH00: "화성" };
 
 type ItemRow = typeof itemCodesTable.$inferSelect;
+
+// 한자 로마숫자(Ⅰ~Ⅹ) ↔ 영문 변형. ERP에는 JD-800EⅡ 같은 한자 표기가 섞여 있어
+// 사용자가 "JD-800EII"로 쳐도 매칭되도록 검색어를 양방향 변형해 OR로 묶는다.
+const ROMAN: ReadonlyArray<readonly [string, string]> = [
+  ["Ⅰ", "I"], ["Ⅱ", "II"], ["Ⅲ", "III"], ["Ⅳ", "IV"], ["Ⅴ", "V"],
+  ["Ⅵ", "VI"], ["Ⅶ", "VII"], ["Ⅷ", "VIII"], ["Ⅸ", "IX"], ["Ⅹ", "X"],
+];
+function searchVariants(s: string): string[] {
+  const out = new Set<string>([s]);
+  let han2eng = s;
+  for (const [h, e] of ROMAN) han2eng = han2eng.split(h).join(e);
+  out.add(han2eng);
+  // 영문→한자: 긴 것 우선(III/IV/IX 등이 II/I보다 먼저 매칭되도록 역순)
+  let eng2han = s;
+  for (let i = ROMAN.length - 1; i >= 0; i--) {
+    const [h, e] = ROMAN[i];
+    eng2han = eng2han.split(e).join(h);
+  }
+  out.add(eng2han);
+  return Array.from(out);
+}
+
+// 검색어를 code/name/category 3개 컬럼 + 한자/영문 변형 모두에 대해 ILIKE OR.
+function buildProductMatchCondition(term: string): SQL {
+  const conds: SQL[] = [];
+  for (const v of searchVariants(term)) {
+    const like = `%${v}%`;
+    conds.push(ilike(itemCodesTable.code, like));
+    conds.push(ilike(itemCodesTable.name, like));
+    conds.push(ilike(itemCodesTable.category, like));
+  }
+  return or(...conds)!;
+}
 
 function buildResult(item: ItemRow, hogi: number | null, orders: (typeof productionOrdersTable.$inferSelect)[]) {
   const plantCd = orders[0]?.plantCd ?? null;
@@ -73,8 +106,9 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
     return;
   }
 
-  // 2) 제품명/품번 부분일치 — 호기가 있으면 그 호기에 제조오더가 있는 품목으로 좁힘
-  const term = `%${product}%`;
+  // 2) 제품명/품번/품목그룹 부분일치(한자↔영문 II/Ⅱ 등 정규화)
+  //    호기가 있으면 그 호기에 제조오더가 있는 품목으로 좁힘.
+  const matchCond = buildProductMatchCondition(product!);
   if (hogi != null) {
     const narrowed = await db
       .selectDistinct({
@@ -88,7 +122,7 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
       .innerJoin(productionOrdersTable, eq(productionOrdersTable.itemCode, itemCodesTable.code))
       .where(
         and(
-          or(ilike(itemCodesTable.code, term), ilike(itemCodesTable.name, term)),
+          matchCond,
           sql`${hogi} BETWEEN ${productionOrdersTable.hogiFrom} AND ${productionOrdersTable.hogiTo}`,
         ),
       )
@@ -108,7 +142,7 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
   const candidates = await db
     .select()
     .from(itemCodesTable)
-    .where(or(ilike(itemCodesTable.code, term), ilike(itemCodesTable.name, term)))
+    .where(matchCond)
     .orderBy(asc(itemCodesTable.code))
     .limit(25);
 
