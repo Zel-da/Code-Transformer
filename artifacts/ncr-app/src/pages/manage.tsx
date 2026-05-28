@@ -206,6 +206,8 @@ export default function ManagePage() {
     return () => { _onUnauthorized = null; };
   }, [logout]);
 
+  const [activeTab, setActiveTab] = useState<"reports" | "users" | "settings">("reports");
+
   const [page, setPage] = useState(1);
   const [editingReport, setEditingReport] = useState<Report | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -235,7 +237,6 @@ export default function ManagePage() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [auditLogsLoading, setAuditLogsLoading] = useState(false);
 
-  // 부서 webhook 관련 state
   const [deptWebhooks, setDeptWebhooks] = useState<Record<string, string>>({});
   const [deptSaving, setDeptSaving] = useState<Record<string, boolean>>({});
 
@@ -550,467 +551,503 @@ export default function ManagePage() {
     }
   };
 
+  const TABS = [
+    { key: "reports" as const, label: "보고서" },
+    { key: "users" as const, label: "사용자" },
+    { key: "settings" as const, label: "설정" },
+  ];
+
   return (
     <Layout>
-      <div className="max-w-[1400px] mx-auto px-5 py-5 space-y-5 pb-24">
+      <div className="max-w-[1400px] mx-auto px-5 py-5 pb-24">
 
         {/* Header */}
-        <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center justify-between pt-1 mb-4">
           <div>
             <h1 className="text-[20px] font-bold text-[#191F28]">관리자 패널</h1>
             <p className="text-[13px] text-[#8B95A1] mt-0.5">보고서 수정·삭제 및 RPA 동기화 실행</p>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <StatCard
-            title="전체 보고서"
-            value={stats?.total ?? 0}
-            subtitle={`최근 7일 ${stats?.recentCount ?? 0}건`}
-            icon={BarChart3}
-          />
-          <StatCard
-            title="동기화 대기"
-            value={stats?.bySyncStatus.find((s) => s.label === "PENDING")?.count ?? 0}
-            icon={Clock}
-            dot="bg-amber-400"
-          />
-          <StatCard
-            title="동기화 실패"
-            value={stats?.bySyncStatus.find((s) => s.label === "FAILED")?.count ?? 0}
-            icon={XCircle}
-            dot="bg-red-400"
-          />
-          <StatCard
-            title="동기화 완료"
-            value={stats?.bySyncStatus.find((s) => s.label === "COMPLETED")?.count ?? 0}
-            icon={CheckCircle2}
-            dot="bg-emerald-400"
-          />
-          <StatCard
-            title="SLA 잠금"
-            value={stats?.lockedCount ?? 0}
-            icon={Lock}
-            dot="bg-slate-400"
-          />
-          <StatCard
-            title="연구소 대기"
-            value={stats?.pendingLabCount ?? 0}
-            subtitle="개발품 랩 통보 미완료"
-            icon={FlaskConical}
-            dot="bg-violet-400"
-          />
-        </div>
-
-        {/* User Management Section */}
-        <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
-          <div className="px-5 py-4 flex items-center gap-3">
-            <div className="p-1.5 bg-[#F2F4F6] rounded-lg">
-              <Users className="h-4 w-4 text-[#4E5968]" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-semibold text-[14px] text-[#191F28]">사용자 계정 관리</h2>
-              {!isMobile && <p className="text-[12px] text-[#8B95A1]">직원 계정을 생성하고 프로필을 설정합니다</p>}
-            </div>
+        {/* Tab Nav */}
+        <div className="flex gap-1 bg-[#F2F4F6] rounded-2xl p-1 mb-5 w-fit">
+          {TABS.map(({ key, label }) => (
             <button
-              onClick={() => { setEditingUser(null); setNewUserForm(EMPTY_USER_FORM); setShowPw(false); setShowUserDialog(true); }}
-              className={`${BTN_DARK} flex items-center gap-1.5 text-[13px] px-3 py-2`}
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`px-5 py-2 rounded-xl text-[13px] font-semibold transition-all ${
+                activeTab === key
+                  ? "bg-[#1A1A1A] text-white shadow-sm"
+                  : "text-[#8B95A1] hover:text-[#191F28]"
+              }`}
             >
-              <UserPlus className="h-3.5 w-3.5" />
-              {isMobile ? "추가" : "계정 추가"}
+              {label}
             </button>
-          </div>
-
-          <div className="border-t border-[#F2F4F6]">
-            {usersLoading ? (
-              <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">불러오는 중...</div>
-            ) : users.length === 0 ? (
-              <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">등록된 계정이 없습니다</div>
-            ) : (
-              <div className="divide-y divide-[#F2F4F6]">
-                {users.map((u) => (
-                  <div key={u.id} className={`flex items-center gap-3 px-5 py-3 ${!u.isActive ? "opacity-50" : ""}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0 ${u.isActive ? "bg-[#F2F4F6] text-[#4E5968]" : "bg-gray-100 text-gray-400"}`}>
-                      {u.displayName.charAt(0)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-[14px] font-semibold ${u.isActive ? "text-[#191F28]" : "text-[#8B95A1]"}`}>{u.displayName}</span>
-                        <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${u.role === "admin" ? "bg-[#1A1A1A] text-white" : "bg-[#F2F4F6] text-[#4E5968]"}`}>
-                          {u.role === "admin" ? "관리자" : "작업자"}
-                        </span>
-                        {!u.isActive && (
-                          <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-red-100 text-red-500">
-                            비활성
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[12px] text-[#8B95A1] mt-0.5">
-                        @{u.username}
-                        {u.factory && <span className="ml-2">{u.factory}</span>}
-                        {u.processName && <span className="ml-1">· {u.processName}</span>}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => openEditUser(u)}
-                        title="계정 수정"
-                        className="p-1.5 rounded-lg hover:bg-[#F2F4F6] text-[#8B95A1] hover:text-[#191F28] transition-colors"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => { setResetPwUser(u); setResetPwValue(""); setShowResetPw(false); }}
-                        title="비밀번호 초기화"
-                        className="p-1.5 rounded-lg hover:bg-amber-50 text-[#8B95A1] hover:text-amber-600 transition-colors"
-                      >
-                        <KeyRound className="h-3.5 w-3.5" />
-                      </button>
-                      {currentUser?.id !== u.id && (
-                        <>
-                          <button
-                            onClick={() => handleToggleActive(u)}
-                            disabled={togglingActiveId === u.id}
-                            title={u.isActive ? "계정 비활성화" : "계정 활성화"}
-                            className={`p-1.5 rounded-lg transition-colors ${u.isActive ? "hover:bg-orange-50 text-[#8B95A1] hover:text-orange-500" : "hover:bg-emerald-50 text-[#8B95A1] hover:text-emerald-600"}`}
-                          >
-                            {togglingActiveId === u.id
-                              ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                              : <Power className="h-3.5 w-3.5" />}
-                          </button>
-                          <button
-                            onClick={() => setDeletingUserId(u.id)}
-                            title="계정 삭제"
-                            className="p-1.5 rounded-lg hover:bg-red-50 text-[#8B95A1] hover:text-red-500 transition-colors"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          ))}
         </div>
 
-        {/* 부서 Webhook 설정 섹션 */}
-        <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
-          <div className="px-5 py-4 flex items-center gap-3">
-            <div className="p-1.5 bg-[#F2F4F6] rounded-lg">
-              <Webhook className="h-4 w-4 text-[#4E5968]" />
+        {/* ── 보고서 탭 ── */}
+        {activeTab === "reports" && (
+          <div className="space-y-5">
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              <StatCard
+                title="전체 보고서"
+                value={stats?.total ?? 0}
+                subtitle={`최근 7일 ${stats?.recentCount ?? 0}건`}
+                icon={BarChart3}
+              />
+              <StatCard
+                title="동기화 대기"
+                value={stats?.bySyncStatus.find((s) => s.label === "PENDING")?.count ?? 0}
+                icon={Clock}
+                dot="bg-amber-400"
+              />
+              <StatCard
+                title="동기화 실패"
+                value={stats?.bySyncStatus.find((s) => s.label === "FAILED")?.count ?? 0}
+                icon={XCircle}
+                dot="bg-red-400"
+              />
+              <StatCard
+                title="동기화 완료"
+                value={stats?.bySyncStatus.find((s) => s.label === "COMPLETED")?.count ?? 0}
+                icon={CheckCircle2}
+                dot="bg-emerald-400"
+              />
+              <StatCard
+                title="SLA 잠금"
+                value={stats?.lockedCount ?? 0}
+                icon={Lock}
+                dot="bg-slate-400"
+              />
+              <StatCard
+                title="연구소 대기"
+                value={stats?.pendingLabCount ?? 0}
+                subtitle="개발품 랩 통보 미완료"
+                icon={FlaskConical}
+                dot="bg-violet-400"
+              />
             </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-semibold text-[14px] text-[#191F28]">귀책 부서 알림 Webhook</h2>
-              <p className="text-[12px] text-[#8B95A1]">부서별 수산톡 채널 Webhook URL 설정 (부적합 접수 시 자동 알림)</p>
-            </div>
-          </div>
-          <div className="border-t border-[#F2F4F6]">
-            {departments.isLoading ? (
-              <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">불러오는 중...</div>
-            ) : !departments.data || departments.data.length === 0 ? (
-              <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">등록된 부서가 없습니다</div>
-            ) : (
-              <div className="divide-y divide-[#F2F4F6]">
-                {departments.data.map((dept: DepartmentItem) => (
-                  <div key={dept.deptCd} className="px-5 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                    <div className="w-full sm:w-28 sm:shrink-0">
-                      <p className="text-[13px] font-semibold text-[#191F28]">{dept.deptName}</p>
-                      <p className="text-[11px] text-[#8B95A1]">{dept.deptCd}</p>
-                    </div>
-                    <Input
-                      className="flex-1 h-9 text-[12px] font-mono"
-                      placeholder="https://talk.ssusantalk.com/hooks/..."
-                      value={deptWebhooks[dept.deptCd] ?? ""}
-                      onChange={(e) => setDeptWebhooks((prev) => ({ ...prev, [dept.deptCd]: e.target.value }))}
-                    />
-                    <button
-                      onClick={() => handleSaveDeptWebhook(dept.deptCd)}
-                      disabled={deptSaving[dept.deptCd]}
-                      className={`${BTN_GHOST} flex items-center gap-1 text-[12px] px-3 py-2 self-start sm:self-auto shrink-0 ${deptSaving[dept.deptCd] ? "opacity-50 cursor-not-allowed" : ""}`}
-                    >
-                      <Save className="h-3.5 w-3.5" />
-                      저장
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* Audit Log Section */}
-        <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
-          <div className="px-5 py-4 flex items-center gap-3">
-            <div className="p-1.5 bg-[#F2F4F6] rounded-lg">
-              <History className="h-4 w-4 text-[#4E5968]" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-semibold text-[14px] text-[#191F28]">최근 활동 기록</h2>
-              {!isMobile && <p className="text-[12px] text-[#8B95A1]">관리자 계정 조치 이력 (최근 30건)</p>}
-            </div>
-            <button
-              onClick={fetchAuditLogs}
-              disabled={auditLogsLoading}
-              className={`${BTN_GHOST} flex items-center gap-1.5 text-[13px] px-3 py-2`}
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${auditLogsLoading ? "animate-spin" : ""}`} />
-              {!isMobile && "새로고침"}
-            </button>
-          </div>
-          <div className="border-t border-[#F2F4F6]">
-            {auditLogsLoading ? (
-              <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">불러오는 중...</div>
-            ) : auditLogs.length === 0 ? (
-              <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">활동 기록이 없습니다</div>
-            ) : (
-              <div className="divide-y divide-[#F2F4F6]">
-                {auditLogs.map((log) => {
-                  const actionLabel = ACTION_LABELS[log.action] ?? log.action;
-                  const isDestructive = log.action === "delete_user" || log.action === "deactivate_user";
-                  const isPositive = log.action === "create_user" || log.action === "activate_user";
-                  return (
-                    <div key={log.id} className="flex items-start gap-3 px-5 py-3">
-                      <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${isDestructive ? "bg-red-400" : isPositive ? "bg-emerald-400" : "bg-[#BEC5CC]"}`} />
+            {/* Reports Management */}
+            <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-[#F2F4F6] flex items-center justify-between">
+                <h2 className="font-semibold text-[13px] text-[#191F28]">보고서 관리</h2>
+                {reportsData?.total !== undefined && (
+                  <span className="text-[12px] text-[#8B95A1]">총 {reportsData.total}건</span>
+                )}
+              </div>
+
+              {isLoading ? (
+                <div className="h-48 flex items-center justify-center gap-3 text-[#8B95A1]">
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                  <span className="text-[13px]">불러오는 중...</span>
+                </div>
+              ) : reports.length === 0 ? (
+                <div className="h-48 flex items-center justify-center text-[13px] text-[#8B95A1]">
+                  보고서가 없습니다.
+                </div>
+              ) : isMobile ? (
+                <div className="divide-y divide-[#F2F4F6]">
+                  {reports.map((report) => (
+                    <div key={report.id} className="px-5 py-3.5 flex items-center gap-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`text-[11px] font-bold rounded px-1.5 py-0.5 ${isDestructive ? "bg-red-50 text-red-500" : isPositive ? "bg-emerald-50 text-emerald-600" : "bg-[#F2F4F6] text-[#4E5968]"}`}>
-                            {actionLabel}
-                          </span>
-                          <span className="text-[12px] font-semibold text-[#191F28]">@{log.actorName}</span>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="font-semibold text-[14px] text-[#191F28] truncate">{report.itemCode}</span>
+                          <StatusBadge status={report.syncStatus} />
                         </div>
-                        {log.detail && (
-                          <p className="text-[12px] text-[#8B95A1] mt-0.5 truncate">{log.detail}</p>
-                        )}
+                        <p className="text-[12px] text-[#8B95A1] truncate">
+                          {report.processName} · {report.defectType}
+                        </p>
+                        <p className="text-[11px] text-[#BEC5CC] mt-0.5">
+                          {format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}
+                        </p>
                       </div>
-                      <span className="text-[11px] text-[#BEC5CC] shrink-0 mt-0.5">
-                        {format(new Date(log.createdAt), "MM.dd HH:mm")}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* RPA Section */}
-        <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
-          {/* Header — always compact on mobile */}
-          <div className="px-5 py-4 flex items-center gap-3">
-            <div className="p-1.5 bg-[#F2F4F6] rounded-lg">
-              <Bot className="h-4 w-4 text-[#4E5968]" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-semibold text-[14px] text-[#191F28]">RPA 동기화</h2>
-              {!isMobile && (
-                <p className="text-[12px] text-[#8B95A1]">대기(PENDING) 상태 보고서를 일괄 처리합니다</p>
-              )}
-            </div>
-            <button
-              onClick={handleRpaRun}
-              disabled={rpaRunning}
-              className={`${BTN_DARK} flex items-center gap-1.5 text-[13px] px-3 py-2`}
-            >
-              {rpaRunning ? (
-                <><RefreshCw className="h-3.5 w-3.5 animate-spin" />{!isMobile && " 실행 중..."}</>
-              ) : (
-                <><Play className="h-3.5 w-3.5" />{isMobile ? "실행" : " RPA 실행"}</>
-              )}
-            </button>
-          </div>
-
-          {rpaResult ? (
-            <div className="px-5 pb-5 border-t border-[#F2F4F6] pt-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Zap className="h-3.5 w-3.5 text-[#4E5968]" />
-                <span className="font-semibold text-[12px] text-[#191F28]">실행 결과</span>
-              </div>
-              <div className="flex gap-2 mb-4">
-                <div className="flex-1 bg-[#F8F9FA] rounded-xl p-2.5 text-center">
-                  <p className="text-[18px] font-bold text-[#191F28]">{rpaResult.processed}</p>
-                  <p className="text-[10px] text-[#8B95A1]">처리</p>
-                </div>
-                <div className="flex-1 bg-emerald-50 rounded-xl p-2.5 text-center">
-                  <p className="text-[18px] font-bold text-emerald-600">{rpaResult.completed}</p>
-                  <p className="text-[10px] text-[#8B95A1]">완료</p>
-                </div>
-                <div className="flex-1 bg-red-50 rounded-xl p-2.5 text-center">
-                  <p className="text-[18px] font-bold text-red-500">{rpaResult.failed}</p>
-                  <p className="text-[10px] text-[#8B95A1]">실패</p>
-                </div>
-              </div>
-              {rpaResult.reports.length > 0 && (
-                <div className="divide-y divide-[#F2F4F6] border border-[#F2F4F6] rounded-xl overflow-hidden">
-                  {rpaResult.reports.map((r: any) => (
-                    <div key={r.id} className="flex items-center justify-between px-3 py-2 bg-white">
-                      <div className="flex items-center gap-2">
-                        {r.syncStatus === "COMPLETED" ? (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                        ) : (
-                          <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
-                        )}
-                        <span className="font-medium text-[12px] text-[#191F28]">{r.itemCode}</span>
-                        <span className="text-[11px] text-[#8B95A1]">{r.defectType}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center active:bg-[#E5E8EB]"
+                          onClick={() => openEdit(report)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center active:bg-red-50 active:text-red-400"
+                          onClick={() => setDeletingId(report.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
-                      <StatusBadge status={r.syncStatus} />
                     </div>
                   ))}
                 </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-[#F8F9FA] hover:bg-[#F8F9FA]">
+                        <TableHead className="h-10 text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[140px]">접수 일시</TableHead>
+                        <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[100px]">품목코드</TableHead>
+                        <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[120px]">공정명</TableHead>
+                        <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">불량 유형</TableHead>
+                        <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[150px]">동기화 상태</TableHead>
+                        <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide text-right w-[100px]">작업</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {reports.map((report) => (
+                        <TableRow key={report.id} className="hover:bg-[#F8F9FA] border-[#F2F4F6] transition-colors">
+                          <TableCell className="text-[12px] text-[#8B95A1]">
+                            {format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}
+                          </TableCell>
+                          <TableCell className="font-semibold text-[13px] text-[#191F28]">{report.itemCode}</TableCell>
+                          <TableCell className="text-[13px] text-[#8B95A1]">{report.processName}</TableCell>
+                          <TableCell className="text-[13px] font-medium text-[#191F28]">{report.defectType}</TableCell>
+                          <TableCell>
+                            <Select
+                              value={report.syncStatus}
+                              onValueChange={(val) => handleStatusChange(report.id, val)}
+                              disabled={!!report.isLocked}
+                            >
+                              <SelectTrigger className="h-8 text-[12px] rounded-lg bg-[#F8F9FA] border-0 w-[120px] focus:ring-0 disabled:opacity-50">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl">
+                                {SYNC_STATUSES.map((s) => (
+                                  <SelectItem key={s} value={s} className="text-[12px]">
+                                    {SYNC_STATUS_LABELS[s]}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="text-right pr-4">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                className="h-8 w-8 rounded-lg bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center hover:bg-[#E5E8EB] transition-colors"
+                                onClick={() => openEdit(report)}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                className="h-8 w-8 rounded-lg bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center hover:bg-red-50 hover:text-red-400 transition-colors"
+                                onClick={() => setDeletingId(report.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
-              {rpaResult.processed === 0 && (
-                <p className="text-[12px] text-[#8B95A1] text-center py-2">처리할 대기 보고서가 없습니다.</p>
-              )}
-            </div>
-          ) : !isMobile ? (
-            <div className="px-5 py-3 border-t border-[#F2F4F6] text-[13px] text-[#8B95A1]">
-              RPA 실행 버튼을 누르면 <span className="font-semibold text-amber-600">대기(PENDING)</span> 상태의 모든 보고서를 자동으로 ERP에 동기화합니다.
-            </div>
-          ) : null}
-        </div>
 
-        {/* Reports Management */}
-        <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-[#F2F4F6] flex items-center justify-between">
-            <h2 className="font-semibold text-[13px] text-[#191F28]">보고서 관리</h2>
-            {reportsData?.total !== undefined && (
-              <span className="text-[12px] text-[#8B95A1]">총 {reportsData.total}건</span>
-            )}
-          </div>
-
-          {isLoading ? (
-            <div className="h-48 flex items-center justify-center gap-3 text-[#8B95A1]">
-              <RefreshCw className="h-5 w-5 animate-spin" />
-              <span className="text-[13px]">불러오는 중...</span>
-            </div>
-          ) : reports.length === 0 ? (
-            <div className="h-48 flex items-center justify-center text-[13px] text-[#8B95A1]">
-              보고서가 없습니다.
-            </div>
-          ) : isMobile ? (
-            /* Mobile: compact list rows */
-            <div className="divide-y divide-[#F2F4F6]">
-              {reports.map((report) => (
-                <div key={report.id} className="px-5 py-3.5 flex items-center gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="font-semibold text-[14px] text-[#191F28] truncate">{report.itemCode}</span>
-                      <StatusBadge status={report.syncStatus} />
-                    </div>
-                    <p className="text-[12px] text-[#8B95A1] truncate">
-                      {report.processName} · {report.defectType}
-                    </p>
-                    <p className="text-[11px] text-[#BEC5CC] mt-0.5">
-                      {format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
+              {reportsData && reportsData.total > reportsData.pageSize && (
+                <div className="border-t border-[#F2F4F6] px-5 py-3 flex items-center justify-between">
+                  <span className="text-[12px] text-[#8B95A1]">
+                    {page} / {Math.ceil(reportsData.total / reportsData.pageSize)} 페이지
+                  </span>
+                  <div className="flex items-center gap-2">
                     <button
-                      className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center active:bg-[#E5E8EB]"
-                      onClick={() => openEdit(report)}
+                      className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center disabled:opacity-40"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
                     >
-                      <Pencil className="h-3.5 w-3.5" />
+                      <ChevronLeft className="h-4 w-4" />
                     </button>
                     <button
-                      className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center active:bg-red-50 active:text-red-400"
-                      onClick={() => setDeletingId(report.id)}
+                      className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center disabled:opacity-40"
+                      onClick={() => setPage((p) => p + 1)}
+                      disabled={page >= Math.ceil(reportsData.total / reportsData.pageSize)}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <ChevronRight className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
-              ))}
+              )}
             </div>
-          ) : (
-            /* Desktop: full table */
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-[#F8F9FA] hover:bg-[#F8F9FA]">
-                    <TableHead className="h-10 text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[140px]">접수 일시</TableHead>
-                    <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[100px]">품목코드</TableHead>
-                    <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[120px]">공정명</TableHead>
-                    <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">불량 유형</TableHead>
-                    <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[150px]">동기화 상태</TableHead>
-                    <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide text-right w-[100px]">작업</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reports.map((report) => (
-                    <TableRow key={report.id} className="hover:bg-[#F8F9FA] border-[#F2F4F6] transition-colors">
-                      <TableCell className="text-[12px] text-[#8B95A1]">
-                        {format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}
-                      </TableCell>
-                      <TableCell className="font-semibold text-[13px] text-[#191F28]">{report.itemCode}</TableCell>
-                      <TableCell className="text-[13px] text-[#8B95A1]">{report.processName}</TableCell>
-                      <TableCell className="text-[13px] font-medium text-[#191F28]">{report.defectType}</TableCell>
-                      <TableCell>
-                        <Select
-                          value={report.syncStatus}
-                          onValueChange={(val) => handleStatusChange(report.id, val)}
-                          disabled={!!report.isLocked}
-                        >
-                          <SelectTrigger className="h-8 text-[12px] rounded-lg bg-[#F8F9FA] border-0 w-[120px] focus:ring-0 disabled:opacity-50">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-xl">
-                            {SYNC_STATUSES.map((s) => (
-                              <SelectItem key={s} value={s} className="text-[12px]">
-                                {SYNC_STATUS_LABELS[s]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="text-right pr-4">
-                        <div className="flex items-center justify-end gap-1">
+          </div>
+        )}
+
+        {/* ── 사용자 탭 ── */}
+        {activeTab === "users" && (
+          <div className="space-y-5">
+            {/* User Management */}
+            <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+              <div className="px-5 py-4 flex items-center gap-3">
+                <div className="p-1.5 bg-[#F2F4F6] rounded-lg">
+                  <Users className="h-4 w-4 text-[#4E5968]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-semibold text-[14px] text-[#191F28]">사용자 계정 관리</h2>
+                  {!isMobile && <p className="text-[12px] text-[#8B95A1]">직원 계정을 생성하고 프로필을 설정합니다</p>}
+                </div>
+                <button
+                  onClick={() => { setEditingUser(null); setNewUserForm(EMPTY_USER_FORM); setShowPw(false); setShowUserDialog(true); }}
+                  className={`${BTN_DARK} flex items-center gap-1.5 text-[13px] px-3 py-2`}
+                >
+                  <UserPlus className="h-3.5 w-3.5" />
+                  {isMobile ? "추가" : "계정 추가"}
+                </button>
+              </div>
+
+              <div className="border-t border-[#F2F4F6]">
+                {usersLoading ? (
+                  <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">불러오는 중...</div>
+                ) : users.length === 0 ? (
+                  <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">등록된 계정이 없습니다</div>
+                ) : (
+                  <div className="divide-y divide-[#F2F4F6]">
+                    {users.map((u) => (
+                      <div key={u.id} className={`flex items-center gap-3 px-5 py-3 ${!u.isActive ? "opacity-50" : ""}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0 ${u.isActive ? "bg-[#F2F4F6] text-[#4E5968]" : "bg-gray-100 text-gray-400"}`}>
+                          {u.displayName.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-[14px] font-semibold ${u.isActive ? "text-[#191F28]" : "text-[#8B95A1]"}`}>{u.displayName}</span>
+                            <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${u.role === "admin" ? "bg-[#1A1A1A] text-white" : "bg-[#F2F4F6] text-[#4E5968]"}`}>
+                              {u.role === "admin" ? "관리자" : "작업자"}
+                            </span>
+                            {!u.isActive && (
+                              <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-red-100 text-red-500">
+                                비활성
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[12px] text-[#8B95A1] mt-0.5">
+                            @{u.username}
+                            {u.factory && <span className="ml-2">{u.factory}</span>}
+                            {u.processName && <span className="ml-1">· {u.processName}</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
                           <button
-                            className="h-8 w-8 rounded-lg bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center hover:bg-[#E5E8EB] transition-colors"
-                            onClick={() => openEdit(report)}
+                            onClick={() => openEditUser(u)}
+                            title="계정 수정"
+                            className="p-1.5 rounded-lg hover:bg-[#F2F4F6] text-[#8B95A1] hover:text-[#191F28] transition-colors"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
                           <button
-                            className="h-8 w-8 rounded-lg bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center hover:bg-red-50 hover:text-red-400 transition-colors"
-                            onClick={() => setDeletingId(report.id)}
+                            onClick={() => { setResetPwUser(u); setResetPwValue(""); setShowResetPw(false); }}
+                            title="비밀번호 초기화"
+                            className="p-1.5 rounded-lg hover:bg-amber-50 text-[#8B95A1] hover:text-amber-600 transition-colors"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <KeyRound className="h-3.5 w-3.5" />
                           </button>
+                          {currentUser?.id !== u.id && (
+                            <>
+                              <button
+                                onClick={() => handleToggleActive(u)}
+                                disabled={togglingActiveId === u.id}
+                                title={u.isActive ? "계정 비활성화" : "계정 활성화"}
+                                className={`p-1.5 rounded-lg transition-colors ${u.isActive ? "hover:bg-orange-50 text-[#8B95A1] hover:text-orange-500" : "hover:bg-emerald-50 text-[#8B95A1] hover:text-emerald-600"}`}
+                              >
+                                {togglingActiveId === u.id
+                                  ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                  : <Power className="h-3.5 w-3.5" />}
+                              </button>
+                              <button
+                                onClick={() => setDeletingUserId(u.id)}
+                                title="계정 삭제"
+                                className="p-1.5 rounded-lg hover:bg-red-50 text-[#8B95A1] hover:text-red-500 transition-colors"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </>
+                          )}
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-
-          {reportsData && reportsData.total > reportsData.pageSize && (
-            <div className="border-t border-[#F2F4F6] px-5 py-3 flex items-center justify-between">
-              <span className="text-[12px] text-[#8B95A1]">
-                {page} / {Math.ceil(reportsData.total / reportsData.pageSize)} 페이지
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center disabled:opacity-40"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <button
-                  className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center disabled:opacity-40"
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={page >= Math.ceil(reportsData.total / reportsData.pageSize)}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-          )}
-        </div>
+
+            {/* Audit Log */}
+            <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+              <div className="px-5 py-4 flex items-center gap-3">
+                <div className="p-1.5 bg-[#F2F4F6] rounded-lg">
+                  <History className="h-4 w-4 text-[#4E5968]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-semibold text-[14px] text-[#191F28]">최근 활동 기록</h2>
+                  {!isMobile && <p className="text-[12px] text-[#8B95A1]">관리자 계정 조치 이력 (최근 30건)</p>}
+                </div>
+                <button
+                  onClick={fetchAuditLogs}
+                  disabled={auditLogsLoading}
+                  className={`${BTN_GHOST} flex items-center gap-1.5 text-[13px] px-3 py-2`}
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${auditLogsLoading ? "animate-spin" : ""}`} />
+                  {!isMobile && "새로고침"}
+                </button>
+              </div>
+              <div className="border-t border-[#F2F4F6]">
+                {auditLogsLoading ? (
+                  <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">불러오는 중...</div>
+                ) : auditLogs.length === 0 ? (
+                  <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">활동 기록이 없습니다</div>
+                ) : (
+                  <div className="divide-y divide-[#F2F4F6]">
+                    {auditLogs.map((log) => {
+                      const actionLabel = ACTION_LABELS[log.action] ?? log.action;
+                      const isDestructive = log.action === "delete_user" || log.action === "deactivate_user";
+                      const isPositive = log.action === "create_user" || log.action === "activate_user";
+                      return (
+                        <div key={log.id} className="flex items-start gap-3 px-5 py-3">
+                          <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${isDestructive ? "bg-red-400" : isPositive ? "bg-emerald-400" : "bg-[#BEC5CC]"}`} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`text-[11px] font-bold rounded px-1.5 py-0.5 ${isDestructive ? "bg-red-50 text-red-500" : isPositive ? "bg-emerald-50 text-emerald-600" : "bg-[#F2F4F6] text-[#4E5968]"}`}>
+                                {actionLabel}
+                              </span>
+                              <span className="text-[12px] font-semibold text-[#191F28]">@{log.actorName}</span>
+                            </div>
+                            {log.detail && (
+                              <p className="text-[12px] text-[#8B95A1] mt-0.5 truncate">{log.detail}</p>
+                            )}
+                          </div>
+                          <span className="text-[11px] text-[#BEC5CC] shrink-0 mt-0.5">
+                            {format(new Date(log.createdAt), "MM.dd HH:mm")}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── 설정 탭 ── */}
+        {activeTab === "settings" && (
+          <div className="space-y-5">
+            {/* Webhook */}
+            <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+              <div className="px-5 py-4 flex items-center gap-3">
+                <div className="p-1.5 bg-[#F2F4F6] rounded-lg">
+                  <Webhook className="h-4 w-4 text-[#4E5968]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-semibold text-[14px] text-[#191F28]">귀책 부서 알림 Webhook</h2>
+                  <p className="text-[12px] text-[#8B95A1]">부서별 수산톡 채널 Webhook URL 설정 (부적합 접수 시 자동 알림)</p>
+                </div>
+              </div>
+              <div className="border-t border-[#F2F4F6]">
+                {departments.isLoading ? (
+                  <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">불러오는 중...</div>
+                ) : !departments.data || departments.data.length === 0 ? (
+                  <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">등록된 부서가 없습니다</div>
+                ) : (
+                  <div className="divide-y divide-[#F2F4F6]">
+                    {departments.data.map((dept: DepartmentItem) => (
+                      <div key={dept.deptCd} className="px-5 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                        <div className="w-full sm:w-28 sm:shrink-0">
+                          <p className="text-[13px] font-semibold text-[#191F28]">{dept.deptName}</p>
+                          <p className="text-[11px] text-[#8B95A1]">{dept.deptCd}</p>
+                        </div>
+                        <Input
+                          className="flex-1 h-9 text-[12px] font-mono"
+                          placeholder="https://talk.ssusantalk.com/hooks/..."
+                          value={deptWebhooks[dept.deptCd] ?? ""}
+                          onChange={(e) => setDeptWebhooks((prev) => ({ ...prev, [dept.deptCd]: e.target.value }))}
+                        />
+                        <button
+                          onClick={() => handleSaveDeptWebhook(dept.deptCd)}
+                          disabled={deptSaving[dept.deptCd]}
+                          className={`${BTN_GHOST} flex items-center gap-1 text-[12px] px-3 py-2 self-start sm:self-auto shrink-0 ${deptSaving[dept.deptCd] ? "opacity-50 cursor-not-allowed" : ""}`}
+                        >
+                          <Save className="h-3.5 w-3.5" />
+                          저장
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* RPA */}
+            <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+              <div className="px-5 py-4 flex items-center gap-3">
+                <div className="p-1.5 bg-[#F2F4F6] rounded-lg">
+                  <Bot className="h-4 w-4 text-[#4E5968]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-semibold text-[14px] text-[#191F28]">RPA 동기화</h2>
+                  {!isMobile && (
+                    <p className="text-[12px] text-[#8B95A1]">대기(PENDING) 상태 보고서를 일괄 처리합니다</p>
+                  )}
+                </div>
+                <button
+                  onClick={handleRpaRun}
+                  disabled={rpaRunning}
+                  className={`${BTN_DARK} flex items-center gap-1.5 text-[13px] px-3 py-2`}
+                >
+                  {rpaRunning ? (
+                    <><RefreshCw className="h-3.5 w-3.5 animate-spin" />{!isMobile && " 실행 중..."}</>
+                  ) : (
+                    <><Play className="h-3.5 w-3.5" />{isMobile ? "실행" : " RPA 실행"}</>
+                  )}
+                </button>
+              </div>
+
+              {rpaResult ? (
+                <div className="px-5 pb-5 border-t border-[#F2F4F6] pt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Zap className="h-3.5 w-3.5 text-[#4E5968]" />
+                    <span className="font-semibold text-[12px] text-[#191F28]">실행 결과</span>
+                  </div>
+                  <div className="flex gap-2 mb-4">
+                    <div className="flex-1 bg-[#F8F9FA] rounded-xl p-2.5 text-center">
+                      <p className="text-[18px] font-bold text-[#191F28]">{rpaResult.processed}</p>
+                      <p className="text-[10px] text-[#8B95A1]">처리</p>
+                    </div>
+                    <div className="flex-1 bg-emerald-50 rounded-xl p-2.5 text-center">
+                      <p className="text-[18px] font-bold text-emerald-600">{rpaResult.completed}</p>
+                      <p className="text-[10px] text-[#8B95A1]">완료</p>
+                    </div>
+                    <div className="flex-1 bg-red-50 rounded-xl p-2.5 text-center">
+                      <p className="text-[18px] font-bold text-red-500">{rpaResult.failed}</p>
+                      <p className="text-[10px] text-[#8B95A1]">실패</p>
+                    </div>
+                  </div>
+                  {rpaResult.reports.length > 0 && (
+                    <div className="divide-y divide-[#F2F4F6] border border-[#F2F4F6] rounded-xl overflow-hidden">
+                      {rpaResult.reports.map((r: any) => (
+                        <div key={r.id} className="flex items-center justify-between px-3 py-2 bg-white">
+                          <div className="flex items-center gap-2">
+                            {r.syncStatus === "COMPLETED" ? (
+                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                            ) : (
+                              <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                            )}
+                            <span className="font-medium text-[12px] text-[#191F28]">{r.itemCode}</span>
+                            <span className="text-[11px] text-[#8B95A1]">{r.defectType}</span>
+                          </div>
+                          <StatusBadge status={r.syncStatus} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {rpaResult.processed === 0 && (
+                    <p className="text-[12px] text-[#8B95A1] text-center py-2">처리할 대기 보고서가 없습니다.</p>
+                  )}
+                </div>
+              ) : !isMobile ? (
+                <div className="px-5 py-3 border-t border-[#F2F4F6] text-[13px] text-[#8B95A1]">
+                  RPA 실행 버튼을 누르면 <span className="font-semibold text-amber-600">대기(PENDING)</span> 상태의 모든 보고서를 자동으로 ERP에 동기화합니다.
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
+
       </div>
 
       {/* Edit Dialog */}
@@ -1036,9 +1073,7 @@ export default function ManagePage() {
             </DialogTitle>
           </DialogHeader>
 
-          {/* Scrollable body */}
           <div className="overflow-y-auto flex-1 -mx-6 px-6">
-            {/* Lock notice */}
             {editingReport?.isLocked && (
               <div className="mb-3 rounded-xl bg-red-50 border border-red-200 px-3 py-2.5 flex items-center gap-2">
                 <Lock className="h-3.5 w-3.5 text-red-500 shrink-0" />
@@ -1046,7 +1081,6 @@ export default function ManagePage() {
               </div>
             )}
 
-            {/* Section: 등록 정보 */}
             <p className="text-[10px] font-bold text-[#8B95A1] uppercase tracking-widest mb-2 mt-1">등록 정보</p>
             <div className="space-y-3 mb-4">
               <div className="grid grid-cols-2 gap-3">
@@ -1073,7 +1107,6 @@ export default function ManagePage() {
               </div>
             </div>
 
-            {/* Section: 부적합 기본 정보 */}
             <p className="text-[10px] font-bold text-[#8B95A1] uppercase tracking-widest mb-2">부적합 기본 정보</p>
             <div className="space-y-3 mb-4">
               <div className="space-y-1">
@@ -1116,7 +1149,6 @@ export default function ManagePage() {
               </div>
             </div>
 
-            {/* Section: 수량 / 일정 */}
             <p className="text-[10px] font-bold text-[#8B95A1] uppercase tracking-widest mb-2">수량 및 일정</p>
             <div className="space-y-3 mb-4">
               <div className="grid grid-cols-3 gap-3">
@@ -1139,13 +1171,11 @@ export default function ManagePage() {
               </div>
             </div>
 
-            {/* Section: 상세 내용 */}
             <p className="text-[10px] font-bold text-[#8B95A1] uppercase tracking-widest mb-2">상세 내용</p>
             <div className="space-y-3 mb-4">
               <Textarea className={`${INP} resize-none`} rows={3} value={editForm.description} disabled={!!editingReport?.isLocked} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} />
             </div>
 
-            {/* Section: 시스템 */}
             <p className="text-[10px] font-bold text-[#8B95A1] uppercase tracking-widest mb-2">시스템</p>
             <div className="space-y-1 mb-4">
               <Label className="text-[11px] font-semibold text-[#8B95A1]">동기화 상태</Label>
@@ -1161,7 +1191,6 @@ export default function ManagePage() {
               </Select>
             </div>
 
-            {/* Section: QC 조치 확정 (admin only) */}
             {currentUser?.role === "admin" && (
               <>
                 <div className="border-t border-[#F2F4F6] pt-4 mb-2">
@@ -1291,7 +1320,6 @@ export default function ManagePage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            {/* 기본 정보 */}
             <p className="text-[10px] font-bold text-[#8B95A1] uppercase tracking-widest">기본 정보</p>
             <div className="space-y-1">
               <Label className="text-[11px] font-semibold text-[#8B95A1]">아이디 *</Label>
@@ -1346,7 +1374,6 @@ export default function ManagePage() {
               </Select>
             </div>
 
-            {/* 프로필 정보 */}
             <p className="text-[10px] font-bold text-[#8B95A1] uppercase tracking-widest pt-1">프로필 (선택)</p>
             <div className="space-y-1">
               <Label className="text-[11px] font-semibold text-[#8B95A1]">공장</Label>
@@ -1445,7 +1472,7 @@ export default function ManagePage() {
               onClick={handleResetPassword}
               disabled={resetPwSaving || !resetPwValue}
             >
-              {resetPwSaving ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" />초기화 중...</> : <><KeyRound className="h-3.5 w-3.5" />비밀번호 초기화</>}
+              {resetPwSaving ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" />초기화 중...</> : "비밀번호 초기화"}
             </button>
           </DialogFooter>
         </DialogContent>
