@@ -9,6 +9,7 @@ import SubmitReport from "@/pages/submit";
 import ManagePage from "@/pages/manage";
 import LoginPage from "@/pages/login";
 import QcPage from "@/pages/qc";
+import QcListPage from "@/pages/qc-list";
 import { ReactNode } from "react";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,9 @@ function Router() {
       </Route>
       <Route path="/manage">
         <RequireAdmin><ManagePage /></RequireAdmin>
+      </Route>
+      <Route path="/qc">
+        <RequireAdmin><QcListPage /></RequireAdmin>
       </Route>
       <Route path="/qc/:reportId">
         <RequireAdmin><QcPage /></RequireAdmin>
