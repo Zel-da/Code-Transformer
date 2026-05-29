@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, or, ilike, asc, sql, type SQL } from "drizzle-orm";
-import { db, itemCodesTable, productionOrdersTable } from "@workspace/db";
+import { db, itemCodesTable, productionOrdersTable, vendorsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -8,6 +8,7 @@ const router: IRouter = Router();
 const PLANT_TO_FACTORY: Record<string, string> = { SA00: "아산", SH00: "화성" };
 
 type ItemRow = typeof itemCodesTable.$inferSelect;
+type VendorMatch = { vendorCd: string; vendorNm: string; taxNo: string | null };
 
 // 한자 로마숫자(Ⅰ~Ⅹ) ↔ 영문 변형. ERP에는 JD-800EⅡ 같은 한자 표기가 섞여 있어
 // 사용자가 "JD-800EII"로 쳐도 매칭되도록 검색어를 양방향 변형해 OR로 묶는다.
@@ -31,7 +32,9 @@ function searchVariants(s: string): string[] {
 }
 
 // 검색어를 code/name/category 3개 컬럼 + 한자/영문 변형 모두에 대해 ILIKE OR.
-function buildProductMatchCondition(term: string): SQL {
+// vendorNames가 주어지면 item.name에서 그 거래처명도 ILIKE 매칭 (vendor 코드/사업자번호로 검색했을 때
+// ITEM_NM에 박힌 거래처명을 통해 제품을 찾기 위함).
+function buildProductMatchCondition(term: string, vendorNames: string[] = []): SQL {
   const conds: SQL[] = [];
   for (const v of searchVariants(term)) {
     const like = `%${v}%`;
@@ -39,10 +42,53 @@ function buildProductMatchCondition(term: string): SQL {
     conds.push(ilike(itemCodesTable.name, like));
     conds.push(ilike(itemCodesTable.category, like));
   }
+  for (const nm of vendorNames) {
+    if (!nm || nm.length < 2) continue;
+    conds.push(ilike(itemCodesTable.name, `%${nm}%`));
+  }
   return or(...conds)!;
 }
 
-function buildResult(item: ItemRow, hogi: number | null, orders: (typeof productionOrdersTable.$inferSelect)[]) {
+// 검색어(거래처명/코드/사업자번호)로 vendors 매칭. valid_flg=true만, limit으로 폭주 방지.
+async function findVendors(term: string, limit = 30): Promise<VendorMatch[]> {
+  if (!term || term.length < 1) return [];
+  const like = `%${term}%`;
+  return db
+    .select({
+      vendorCd: vendorsTable.vendorCd,
+      vendorNm: vendorsTable.vendorNm,
+      taxNo: vendorsTable.taxNo,
+    })
+    .from(vendorsTable)
+    .where(
+      and(
+        eq(vendorsTable.validFlg, true),
+        or(
+          ilike(vendorsTable.vendorCd, like),
+          ilike(vendorsTable.vendorNm, like),
+          ilike(vendorsTable.taxNo, like),
+        ),
+      ),
+    )
+    .orderBy(asc(vendorsTable.vendorNm))
+    .limit(limit);
+}
+
+// 단일 item에 대해 vendor 매칭 후보 중 가장 가능성 높은 1건 추출.
+// 우선순위: 매칭 1건이면 그 거래처 / 다건이면 ITEM_NM에 박힌 거래처명 우선.
+function pickVendorForItem(item: ItemRow, vendors: VendorMatch[]): VendorMatch | null {
+  if (vendors.length === 0) return null;
+  if (vendors.length === 1) return vendors[0];
+  const itemNm = item.name ?? "";
+  return vendors.find((v) => v.vendorNm && itemNm.includes(v.vendorNm)) ?? null;
+}
+
+function buildResult(
+  item: ItemRow,
+  hogi: number | null,
+  orders: (typeof productionOrdersTable.$inferSelect)[],
+  vendor: VendorMatch | null = null,
+) {
   const plantCd = orders[0]?.plantCd ?? null;
   return {
     ok: true,
@@ -54,6 +100,8 @@ function buildResult(item: ItemRow, hogi: number | null, orders: (typeof product
     factory: plantCd ? PLANT_TO_FACTORY[plantCd] ?? null : null,
     plantCd,
     shipmentUnit: hogi != null ? String(hogi) : null,
+    vendorCd: vendor?.vendorCd ?? null,
+    vendorNm: vendor?.vendorNm ?? null,
     matchedOrders: orders.map((o) => ({
       PRODT_ORDER_NO: o.prodtOrderNo,
       ORDER_STATUS: o.orderStatus,
@@ -133,9 +181,11 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
     return;
   }
 
-  // 2) 제품명/품번/품목그룹 부분일치(한자↔영문 II/Ⅱ 등 정규화)
+  // 2) 제품명/품번/품목그룹/거래처 부분일치(한자↔영문 II/Ⅱ, vendors 마스터 통합)
   //    호기가 있으면 그 호기에 제조오더가 있는 품목으로 좁힘.
-  const matchCond = buildProductMatchCondition(product!);
+  const vendorMatches = await findVendors(product!);
+  const vendorNames = vendorMatches.map((v) => v.vendorNm).filter((s): s is string => !!s);
+  const matchCond = buildProductMatchCondition(product!, vendorNames);
   if (hogi != null) {
     const narrowed = await db
       .selectDistinct({
@@ -156,11 +206,17 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
       .orderBy(asc(itemCodesTable.code));
     if (narrowed.length === 1) {
       const item = narrowed[0] as ItemRow;
-      res.json(buildResult(item, hogi, await ordersFor(item.code, hogi)));
+      const vendor = pickVendorForItem(item, vendorMatches);
+      res.json(buildResult(item, hogi, await ordersFor(item.code, hogi), vendor));
       return;
     }
     if (narrowed.length > 1) {
-      res.json({ ok: false, reason: `품목 후보 ${narrowed.length}건 — 품번을 특정하세요`, candidates: narrowed });
+      res.json({
+        ok: false,
+        reason: `품목 후보 ${narrowed.length}건 — 품번을 특정하세요`,
+        candidates: narrowed,
+        matchedVendors: vendorMatches,
+      });
       return;
     }
     // 호기 매칭 없음 → 이름만 후보 안내로 폴백
@@ -174,13 +230,16 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
     .limit(25);
 
   if (candidates.length === 1) {
-    res.json(buildResult(candidates[0], hogi, await ordersFor(candidates[0].code, hogi)));
+    const item = candidates[0];
+    const vendor = pickVendorForItem(item, vendorMatches);
+    res.json(buildResult(item, hogi, await ordersFor(item.code, hogi), vendor));
     return;
   }
   res.json({
     ok: false,
     reason: candidates.length ? `품목 후보 ${candidates.length}건 — 호기 입력 또는 품번 특정` : "품목을 찾지 못함",
     candidates,
+    matchedVendors: vendorMatches,
   });
 });
 
