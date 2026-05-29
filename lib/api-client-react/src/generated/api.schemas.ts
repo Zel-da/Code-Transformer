@@ -440,6 +440,16 @@ export interface QcAnalysisBody {
    * @nullable
    */
   ncrGbnCd?: string | null;
+  /**
+   * 거래처 코드 (원본 수정)
+   * @nullable
+   */
+  vendorCd?: string | null;
+  /**
+   * 거래처명 (원본 수정)
+   * @nullable
+   */
+  vendorNm?: string | null;
 }
 
 export interface QcActionBody {

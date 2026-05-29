@@ -574,6 +574,8 @@ export const UpdateReportQcBody = zod.object({
   deptCd: zod.string().nullish().describe("귀책부서 코드 (원본 수정)"),
   issuingTeam: zod.string().nullish().describe("귀책부서명 (원본 수정)"),
   ncrGbnCd: zod.string().nullish().describe("NCR 구분코드 (원본 수정)"),
+  vendorCd: zod.string().nullish().describe("거래처 코드 (원본 수정)"),
+  vendorNm: zod.string().nullish().describe("거래처명 (원본 수정)"),
 });
 
 export const UpdateReportQcResponse = zod.object({

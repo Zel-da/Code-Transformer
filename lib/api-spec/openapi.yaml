@@ -1305,6 +1305,12 @@ components:
         ncrGbnCd:
           type: ["string", "null"]
           description: "NCR 구분코드 (원본 수정)"
+        vendorCd:
+          type: ["string", "null"]
+          description: "거래처 코드 (원본 수정)"
+        vendorNm:
+          type: ["string", "null"]
+          description: "거래처명 (원본 수정)"
 
     QcActionBody:
       type: object

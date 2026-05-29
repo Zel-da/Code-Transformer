@@ -2,7 +2,7 @@ import { useParams, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   useGetReport,
   useUpdateReportQc,
@@ -11,8 +11,10 @@ import {
   useListDepartments,
   useListPlants,
   useListProcesses,
+  useListVendors,
   getListReportsQueryKey,
   getGetReportQueryKey,
+  getListVendorsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -44,6 +46,8 @@ const formSchema = z.object({
   lostManHours: z.coerce.number().min(0).nullable().optional(),
   qcCorrectiveResult: z.string().nullable().optional(),
   qcStatus: z.enum(QC_STATUSES),
+  vendorCd: z.string().nullable().optional(),
+  vendorNm: z.string().nullable().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -90,6 +94,72 @@ const INPUT_CLS = "w-full h-11 rounded-xl bg-[#F8F9FA] px-3.5 text-[14px] text-[
 const CHIP_SEL = "border-[#1A1A1A] bg-[#F2F4F6] text-[#1A1A1A]";
 const CHIP_UNSEL = "border-[#E5E8EB] text-[#4E5968] hover:border-[#1A1A1A]/30";
 
+function VendorPicker({ form }: { form: ReturnType<typeof useForm<FormValues>> }) {
+  const [query, setQuery] = useState("");
+  const vendorCd = form.watch("vendorCd");
+  const vendorNm = form.watch("vendorNm");
+
+  const vendorParams = { search: query, limit: 8 };
+  const { data: vendors = [] } = useListVendors(
+    vendorParams,
+    { query: { enabled: query.trim().length >= 2, queryKey: getListVendorsQueryKey(vendorParams) } },
+  );
+
+  const select = (cd: string, nm: string) => {
+    form.setValue("vendorCd", cd, { shouldValidate: true });
+    form.setValue("vendorNm", nm, { shouldValidate: true });
+    setQuery("");
+  };
+
+  const clear = () => {
+    form.setValue("vendorCd", null, { shouldValidate: true });
+    form.setValue("vendorNm", null, { shouldValidate: true });
+    setQuery("");
+  };
+
+  return (
+    <FieldRow label="거래처" optional>
+      {vendorCd ? (
+        <div className="flex items-center justify-between bg-[#F8F9FA] rounded-xl px-3.5 h-11">
+          <div className="flex-1 min-w-0">
+            <span className="font-bold text-[14px] text-[#191F28] truncate">{vendorCd}</span>
+            {vendorNm && <span className="text-[12px] text-[#4E5968] ml-2 truncate">{vendorNm}</span>}
+          </div>
+          <button type="button" onClick={clear} className="ml-2 text-[12px] text-[#4E5968] underline shrink-0">변경</button>
+        </div>
+      ) : (
+        <div className="relative">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="거래처명/코드/사업자번호 (2자 이상)"
+            className={INPUT_CLS}
+          />
+          {query.trim().length >= 2 && vendors.length > 0 && (
+            <div className="absolute left-0 right-0 top-full mt-1 z-10 bg-white border border-[#E5E8EB] rounded-xl shadow-md max-h-52 overflow-y-auto">
+              {vendors.map((v) => (
+                <button
+                  key={v.vendorCd}
+                  type="button"
+                  onClick={() => select(v.vendorCd, v.vendorNm)}
+                  className="w-full text-left px-3.5 py-2.5 hover:bg-[#F8F9FA] border-b border-[#F2F4F6] last:border-0"
+                >
+                  <p className="font-bold text-[13px] text-[#191F28]">{v.vendorCd} · {v.vendorNm}</p>
+                  {v.taxNo && <p className="text-[11px] text-[#8B95A1] mt-0.5">사업자: {v.taxNo}</p>}
+                </button>
+              ))}
+            </div>
+          )}
+          {query.trim().length >= 2 && vendors.length === 0 && (
+            <p className="text-[11px] text-[#8B95A1] mt-1.5">검색 결과 없음</p>
+          )}
+        </div>
+      )}
+    </FieldRow>
+  );
+}
+
 export default function QcPage() {
   const { reportId } = useParams<{ reportId: string }>();
   const id = Number(reportId);
@@ -125,6 +195,8 @@ export default function QcPage() {
       lostManHours: null,
       qcCorrectiveResult: null,
       qcStatus: "접수",
+      vendorCd: null,
+      vendorNm: null,
     },
   });
 
@@ -156,6 +228,8 @@ export default function QcPage() {
         lostManHours: report.lostManHours ?? null,
         qcCorrectiveResult: report.qcCorrectiveResult ?? null,
         qcStatus: (report.qcStatus as (typeof QC_STATUSES)[number]) ?? "접수",
+        vendorCd: report.vendorCd ?? null,
+        vendorNm: report.vendorNm ?? null,
       });
     }
   }, [report]);
@@ -186,6 +260,8 @@ export default function QcPage() {
           lostManHours: values.lostManHours ?? null,
           qcCorrectiveResult: values.qcCorrectiveResult || null,
           qcStatus: values.qcStatus,
+          vendorCd: values.vendorCd || null,
+          vendorNm: values.vendorNm || null,
         },
       });
       await Promise.all([
@@ -451,6 +527,9 @@ export default function QcPage() {
                   </FieldRow>
                 )}
               />
+
+              {/* 거래처 */}
+              <VendorPicker form={form} />
 
               {/* 부적합 현상 */}
               <FormField
