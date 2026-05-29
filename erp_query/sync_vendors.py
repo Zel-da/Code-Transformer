@@ -93,7 +93,7 @@ def upsert_vendors(rows: list[tuple]) -> int:
             execute_values(
                 cur,
                 """
-                INSERT INTO vendors (vendor_cd, vendor_nm, tax_no, valid_flg, synced_at)
+                INSERT INTO vendors (vendor_cd, vendor_nm, tax_no, valid_flg)
                 VALUES %s
                 ON CONFLICT (vendor_cd) DO UPDATE
                   SET vendor_nm = EXCLUDED.vendor_nm,
@@ -101,8 +101,7 @@ def upsert_vendors(rows: list[tuple]) -> int:
                       valid_flg = EXCLUDED.valid_flg,
                       synced_at = now()
                 """,
-                [(r[0], r[1], r[2], r[3], "now()") for r in rows],
-                template="(%s, %s, %s, %s, now())",
+                rows,
                 page_size=1000,
             )
         return len(rows)
