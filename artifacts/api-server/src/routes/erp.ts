@@ -1,6 +1,12 @@
 import { Router, type IRouter } from "express";
-import { eq, and, or, ilike, asc, sql, type SQL } from "drizzle-orm";
-import { db, itemCodesTable, productionOrdersTable, vendorsTable } from "@workspace/db";
+import { eq, and, or, ilike, asc, desc, sql, type SQL } from "drizzle-orm";
+import {
+  db,
+  itemCodesTable,
+  productionOrdersTable,
+  vendorsTable,
+  shipmentsTable,
+} from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -83,6 +89,49 @@ function pickVendorForItem(item: ItemRow, vendors: VendorMatch[]): VendorMatch |
   return vendors.find((v) => v.vendorNm && itemNm.includes(v.vendorNm)) ?? null;
 }
 
+// 출하이력(shipments)에서 item+hogi로 거래처를 정확 매칭. 가장 최근 출하건 1개의 BP_CD →
+// vendors 마스터 JOIN으로 vendor_nm/tax_no를 얻는다. (호기→거래처의 가장 신뢰할 만한 경로)
+async function lookupShipmentVendor(itemCode: string, hogi: number): Promise<VendorMatch | null> {
+  const [row] = await db
+    .select({ bpCd: shipmentsTable.bpCd })
+    .from(shipmentsTable)
+    .where(
+      and(
+        eq(shipmentsTable.itemCode, itemCode),
+        eq(shipmentsTable.outHogiInt, hogi),
+      ),
+    )
+    .orderBy(desc(shipmentsTable.realOutDt))
+    .limit(1);
+  if (!row?.bpCd) return null;
+  const [vendor] = await db
+    .select({
+      vendorCd: vendorsTable.vendorCd,
+      vendorNm: vendorsTable.vendorNm,
+      taxNo: vendorsTable.taxNo,
+    })
+    .from(vendorsTable)
+    .where(eq(vendorsTable.vendorCd, row.bpCd))
+    .limit(1);
+  // vendors 마스터에 없는 BP_CD라도 BP_CD 자체는 응답에 포함 (이름은 빈 값)
+  return vendor ?? { vendorCd: row.bpCd, vendorNm: "", taxNo: null };
+}
+
+// 단일 item + 호기에 대해 거래처를 결정한다. 우선순위:
+//   1) shipments 정확 매칭 (가장 신뢰)
+//   2) product 검색에서 추론된 vendor (ITEM_NM 기반 폴백)
+async function resolveVendor(
+  item: ItemRow,
+  hogi: number | null,
+  vendorMatches: VendorMatch[],
+): Promise<VendorMatch | null> {
+  if (hogi != null) {
+    const shipmentVendor = await lookupShipmentVendor(item.code, hogi);
+    if (shipmentVendor) return shipmentVendor;
+  }
+  return pickVendorForItem(item, vendorMatches);
+}
+
 function buildResult(
   item: ItemRow,
   hogi: number | null,
@@ -150,13 +199,15 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
       res.json({ ok: false, reason: "품목을 찾지 못함", candidates: [] });
       return;
     }
-    res.json(buildResult(item, hogi, await ordersFor(item.code, hogi)));
+    const vendor = await resolveVendor(item, hogi, []);
+    res.json(buildResult(item, hogi, await ordersFor(item.code, hogi), vendor));
     return;
   }
 
-  // 2) 호기 단독 — 그 호기를 가진 제조오더의 품목을 본다 (보통 완성품 1건)
+  // 2) 호기 단독 — 생산오더 + 출하이력 둘 다 조회 (출하된 호기도 잡힘)
   if (!product && hogi != null) {
-    const rows = await db
+    // 생산오더 호기 매칭
+    const fromOrders = await db
       .selectDistinct({
         code: itemCodesTable.code,
         name: itemCodesTable.name,
@@ -168,9 +219,27 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
       .innerJoin(productionOrdersTable, eq(productionOrdersTable.itemCode, itemCodesTable.code))
       .where(sql`${hogi} BETWEEN ${productionOrdersTable.hogiFrom} AND ${productionOrdersTable.hogiTo}`)
       .orderBy(asc(itemCodesTable.code));
+    // 출하이력 호기 매칭 (숫자 호기만)
+    const fromShipments = await db
+      .selectDistinct({
+        code: itemCodesTable.code,
+        name: itemCodesTable.name,
+        category: itemCodesTable.category,
+        id: itemCodesTable.id,
+        createdAt: itemCodesTable.createdAt,
+      })
+      .from(itemCodesTable)
+      .innerJoin(shipmentsTable, eq(shipmentsTable.itemCode, itemCodesTable.code))
+      .where(eq(shipmentsTable.outHogiInt, hogi))
+      .orderBy(asc(itemCodesTable.code));
+    // 합치고 중복 제거
+    const merged = new Map<string, ItemRow>();
+    for (const r of [...fromOrders, ...fromShipments]) merged.set(r.code, r as ItemRow);
+    const rows = Array.from(merged.values());
     if (rows.length === 1) {
-      const item = rows[0] as ItemRow;
-      res.json(buildResult(item, hogi, await ordersFor(item.code, hogi)));
+      const item = rows[0];
+      const vendor = await resolveVendor(item, hogi, []);
+      res.json(buildResult(item, hogi, await ordersFor(item.code, hogi), vendor));
       return;
     }
     res.json({
@@ -206,7 +275,7 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
       .orderBy(asc(itemCodesTable.code));
     if (narrowed.length === 1) {
       const item = narrowed[0] as ItemRow;
-      const vendor = pickVendorForItem(item, vendorMatches);
+      const vendor = await resolveVendor(item, hogi, vendorMatches);
       res.json(buildResult(item, hogi, await ordersFor(item.code, hogi), vendor));
       return;
     }
@@ -231,7 +300,7 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
 
   if (candidates.length === 1) {
     const item = candidates[0];
-    const vendor = pickVendorForItem(item, vendorMatches);
+    const vendor = await resolveVendor(item, hogi, vendorMatches);
     res.json(buildResult(item, hogi, await ordersFor(item.code, hogi), vendor));
     return;
   }
