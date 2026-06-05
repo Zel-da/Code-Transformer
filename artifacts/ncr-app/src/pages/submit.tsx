@@ -762,8 +762,8 @@ export default function SubmitReport() {
               </div>
             </div>
 
-            {/* ── 불량 상세 ── */}
-            <GroupDivider title="불량 상세" />
+            {/* ── 부적합 상세 ── */}
+            <GroupDivider title="부적합 상세" />
 
             <div className="px-5 py-4 border-b border-[#F2F4F6] grid grid-cols-2 gap-6">
               <FormField
@@ -772,7 +772,7 @@ export default function SubmitReport() {
                 render={({ field }) => (
                   <div>
                     <div className="flex items-center justify-between mb-2.5">
-                      <span className="text-[13px] font-semibold text-[#191F28]">불량수량</span>
+                      <span className="text-[13px] font-semibold text-[#191F28]">부적합 수량</span>
                       <span className="text-[11px] text-[#BEC5CC]">선택</span>
                     </div>
                     <input
