@@ -578,7 +578,7 @@ export default function SubmitReport() {
             {/* ERP 제품 검색 */}
             <div className="px-5 py-4 border-b border-[#F2F4F6]">
               <div className="mb-3">
-                <p className="text-[13px] font-semibold text-[#191F28] mb-0.5">ERP 자동 조회</p>
+                <p className="text-[13px] font-semibold text-[#191F28] mb-0.5">제품 정보 조회</p>
                 <p className="text-[11px] text-[#8B95A1]">부품코드·제품명·품목그룹·거래처 중 아무거나 + (선택) 호기 — 단건이면 자동 입력</p>
               </div>
               <div className="flex gap-2">
