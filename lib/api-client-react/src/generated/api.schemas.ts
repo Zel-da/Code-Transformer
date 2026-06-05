@@ -273,7 +273,7 @@ export interface CreateReportBody {
   /** 양산 or 개발 */
   productType?: CreateReportBodyProductType;
   /** 조치 방향 */
-  actionDirection: CreateReportBodyActionDirection;
+  actionDirection?: CreateReportBodyActionDirection;
 }
 
 export type UpdateReportBodySyncStatus =

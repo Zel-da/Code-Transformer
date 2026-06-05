@@ -87,7 +87,6 @@ const formSchema = z.object({
   registrantName: z.string().min(1, "등록자명을 입력해주세요"),
   factory: z.string().min(1, "공장을 선택해주세요"),
   processName: z.string().min(1, "공정을 선택해주세요"),
-  actionDirection: z.enum(ACTION_DIRECTIONS, { errorMap: () => ({ message: "조치 방향을 선택해주세요" }) }),
   itemCode: z.string().min(1, "제품코드를 선택해주세요"),
   modelName: z.string().optional(),
   shipmentUnit: z.string().optional(),
@@ -240,7 +239,6 @@ export default function SubmitReport() {
     registrantName: user?.displayName ?? "",
     factory: user?.factory ?? "",
     processName: user?.processName ?? "",
-    actionDirection: undefined as (typeof ACTION_DIRECTIONS)[number] | undefined,
     itemCode: "",
     modelName: "",
     shipmentUnit: "",
@@ -403,7 +401,6 @@ export default function SubmitReport() {
           deptCd: null,
           flawTypeCd: null,
           productType: values.productType,
-          actionDirection: values.actionDirection ?? null,
           vendorCd: values.vendorCd?.trim() || null,
           vendorNm: values.vendorNm?.trim() || null,
         },
@@ -574,27 +571,6 @@ export default function SubmitReport() {
               )}
             />
 
-            {/* 조치 방향 */}
-            <FormField
-              control={form.control}
-              name="actionDirection"
-              render={({ field }) => (
-                <FieldRow label="조치 방향" error={form.formState.errors.actionDirection?.message}>
-                  <div className="flex flex-col gap-2">
-                    {ACTION_DIRECTIONS.map((dir) => (
-                      <button
-                        key={dir}
-                        type="button"
-                        onClick={() => field.onChange(dir)}
-                        className={`w-full text-left px-4 py-3 rounded-xl text-[14px] font-semibold border-2 transition-all ${field.value === dir ? "border-[#1A1A1A] bg-[#F2F4F6] text-[#1A1A1A]" : "border-[#E5E8EB] text-[#4E5968] hover:border-[#1A1A1A]/30"}`}
-                      >
-                        {dir}
-                      </button>
-                    ))}
-                  </div>
-                </FieldRow>
-              )}
-            />
 
             {/* ── 부적합 기본 정보 ── */}
             <GroupDivider title="부적합 기본 정보" />

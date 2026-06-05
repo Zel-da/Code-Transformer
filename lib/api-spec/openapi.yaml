@@ -1192,7 +1192,6 @@ components:
         - processName
         - defectType
         - description
-        - actionDirection
 
     UpdateReportBody:
       type: object
