@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and, or, isNull, lte, gt, count } from "drizzle-orm";
 import { db, nonConformityReportsTable } from "@workspace/db";
+import { requireAuth, requireRole } from "../middleware/requireAuth";
 
 const router: IRouter = Router();
 
@@ -10,7 +11,7 @@ function backoffMinutes(attempt: number): number {
   return Math.min(2 ** attempt, 60);
 }
 
-router.post("/rpa/trigger", async (req, res): Promise<void> => {
+router.post("/rpa/trigger", requireAuth, requireRole("admin", "approver"), async (req, res): Promise<void> => {
   const now = new Date();
 
   // 재시도 대기 중인 건수 (backoff 기간 내 — 아직 처리 불가)
