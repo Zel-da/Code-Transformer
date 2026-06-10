@@ -407,6 +407,11 @@ export interface UpdateReportBody {
   /** @nullable */
   vendorNm?: string | null;
   /**
+   * 품목그룹 (원본 수정)
+   * @nullable
+   */
+  itemGroup?: string | null;
+  /**
    * 비고
    * @nullable
    */

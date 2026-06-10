@@ -1606,6 +1606,9 @@ components:
           type: ["string", "null"]
         vendorNm:
           type: ["string", "null"]
+        itemGroup:
+          type: ["string", "null"]
+          description: "품목그룹 (원본 수정)"
         remarks:
           type: ["string", "null"]
           description: "비고"

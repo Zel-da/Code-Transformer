@@ -436,6 +436,7 @@ export const UpdateReportBody = zod.object({
   ncrGbnCd: zod.string().nullish(),
   vendorCd: zod.string().nullish(),
   vendorNm: zod.string().nullish(),
+  itemGroup: zod.string().nullish().describe("품목그룹 (원본 수정)"),
   remarks: zod.string().nullish().describe("비고"),
   shipmentDateFrom: zod.coerce.date().nullish().describe("출하 기간 시작일"),
   shipmentDateTo: zod.coerce.date().nullish().describe("출하 기간 종료일"),
