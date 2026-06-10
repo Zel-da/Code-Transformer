@@ -96,6 +96,18 @@ class NcrReportFieldMap:
         fmt = spec.get("format")
         if fmt:
             return format_date(raw, fmt)
+
+        transform = spec.get("transform")
+        if transform == "multiply_60":
+            try:
+                minutes = float(raw) * 60
+                # 정수로 딱 떨어지면 소수점 없이
+                result = int(minutes) if minutes == int(minutes) else minutes
+                return str(result)
+            except (TypeError, ValueError):
+                logger.warning("multiply_60 변환 실패 (ncr_key=%s, raw=%r) → 건너뜀", ncr_key, raw)
+                return ""
+
         return str(raw)
 
     def _resolve_dropdown(self, spec: dict[str, Any], raw_value: str) -> str:
