@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, and, gte, lte, count, lt } from "drizzle-orm";
+import { eq, ne, sql, and, gte, lte, count, lt } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { db, nonConformityReportsTable, departmentsTable } from "@workspace/db";
 import {
@@ -64,11 +64,12 @@ router.get("/reports", async (req, res): Promise<void> => {
   const { defectType, syncStatus, dateFrom, dateTo, page, pageSize } =
     parsed.data;
 
-  // qcStatus는 openapi spec 미생성 파라미터 — req.query에서 직접 추출
+  // qcStatus / excludeErpSynced는 openapi spec 외 파라미터 — req.query에서 직접 추출
   const qcStatusRaw = typeof req.query.qcStatus === "string" ? req.query.qcStatus : undefined;
   const validQcStatuses = ["OPEN", "IN_REVIEW", "PENDING_COLLAB", "RESOLVED", "APPROVED", "ERP_SYNCED"] as const;
   type QcStatusFilter = (typeof validQcStatuses)[number];
   const qcStatus = validQcStatuses.includes(qcStatusRaw as QcStatusFilter) ? (qcStatusRaw as QcStatusFilter) : undefined;
+  const excludeErpSynced = req.query.excludeErpSynced === "true";
 
   const conditions = [];
   if (defectType) {
@@ -79,6 +80,8 @@ router.get("/reports", async (req, res): Promise<void> => {
   }
   if (qcStatus) {
     conditions.push(eq(nonConformityReportsTable.qcStatus, qcStatus));
+  } else if (excludeErpSynced) {
+    conditions.push(ne(nonConformityReportsTable.qcStatus, "ERP_SYNCED"));
   }
   if (dateFrom) {
     conditions.push(gte(nonConformityReportsTable.reportDate, dateFrom));
@@ -285,13 +288,15 @@ router.get("/reports/pending", async (_req, res): Promise<void> => {
 router.get("/reports/summary", requireAuth, async (req, res): Promise<void> => {
   const from = typeof req.query.from === "string" && req.query.from ? new Date(req.query.from) : null;
   const to   = typeof req.query.to   === "string" && req.query.to   ? new Date(req.query.to)   : null;
-  const vendorCd   = typeof req.query.vendorCd   === "string" && req.query.vendorCd   ? req.query.vendorCd   : null;
+  const vendorCd    = typeof req.query.vendorCd    === "string" && req.query.vendorCd    ? req.query.vendorCd    : null;
+  const flawTypeCd  = typeof req.query.flawTypeCd  === "string" && req.query.flawTypeCd  ? req.query.flawTypeCd  : null;
   const qcStatusRaw = typeof req.query.qcStatus === "string" && req.query.qcStatus ? req.query.qcStatus : null;
 
   const conds: ReturnType<typeof eq>[] = [];
   if (from && !isNaN(from.getTime())) conds.push(gte(nonConformityReportsTable.reportDate, from));
   if (to   && !isNaN(to.getTime()))   conds.push(lte(nonConformityReportsTable.reportDate, to));
   if (vendorCd)   conds.push(eq(nonConformityReportsTable.vendorCd, vendorCd));
+  if (flawTypeCd) conds.push(eq(nonConformityReportsTable.flawTypeCd, flawTypeCd));
   if (qcStatusRaw) conds.push(eq(nonConformityReportsTable.qcStatus, qcStatusRaw as "OPEN" | "IN_REVIEW" | "PENDING_COLLAB" | "RESOLVED" | "APPROVED" | "ERP_SYNCED"));
   const where = conds.length > 0 ? and(...conds) : undefined;
 
@@ -336,14 +341,16 @@ router.get("/reports/summary", requireAuth, async (req, res): Promise<void> => {
 router.get("/reports/export.xlsx", requireAuth, async (req, res): Promise<void> => {
   const from = typeof req.query.from === "string" && req.query.from ? new Date(req.query.from) : null;
   const to   = typeof req.query.to   === "string" && req.query.to   ? new Date(req.query.to)   : null;
-  const vendorCd    = typeof req.query.vendorCd   === "string" && req.query.vendorCd   ? req.query.vendorCd   : null;
-  const qcStatusRaw = typeof req.query.qcStatus   === "string" && req.query.qcStatus   ? req.query.qcStatus   : null;
-  const syncStatusRaw = typeof req.query.syncStatus === "string" && req.query.syncStatus ? req.query.syncStatus : null;
+  const vendorCd      = typeof req.query.vendorCd    === "string" && req.query.vendorCd    ? req.query.vendorCd    : null;
+  const flawTypeCd    = typeof req.query.flawTypeCd  === "string" && req.query.flawTypeCd  ? req.query.flawTypeCd  : null;
+  const qcStatusRaw   = typeof req.query.qcStatus    === "string" && req.query.qcStatus    ? req.query.qcStatus    : null;
+  const syncStatusRaw = typeof req.query.syncStatus  === "string" && req.query.syncStatus  ? req.query.syncStatus  : null;
 
   const conds: ReturnType<typeof eq>[] = [];
   if (from && !isNaN(from.getTime())) conds.push(gte(nonConformityReportsTable.reportDate, from));
   if (to   && !isNaN(to.getTime()))   conds.push(lte(nonConformityReportsTable.reportDate, to));
   if (vendorCd)     conds.push(eq(nonConformityReportsTable.vendorCd, vendorCd));
+  if (flawTypeCd)   conds.push(eq(nonConformityReportsTable.flawTypeCd, flawTypeCd));
   if (qcStatusRaw)  conds.push(eq(nonConformityReportsTable.qcStatus, qcStatusRaw as "OPEN" | "IN_REVIEW" | "PENDING_COLLAB" | "RESOLVED" | "APPROVED" | "ERP_SYNCED"));
   if (syncStatusRaw) conds.push(eq(nonConformityReportsTable.syncStatus, syncStatusRaw as "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"));
   const where = conds.length > 0 ? and(...conds) : undefined;

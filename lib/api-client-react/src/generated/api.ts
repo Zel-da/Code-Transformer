@@ -24,6 +24,7 @@ import type {
   CreateUserBody,
   DepartmentItem,
   ErrorEnvelope,
+  ExportReportsXlsxParams,
   FlawTypeItem,
   GetReportSummaryParams,
   HealthStatus,
@@ -760,6 +761,104 @@ export function useGetReportSummary<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetReportSummaryQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * 필터를 적용한 전체 보고서 목록을 xlsx 파일로 반환한다.
+ * @summary 보고서 Excel 내보내기
+ */
+export const getExportReportsXlsxUrl = (params?: ExportReportsXlsxParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/reports/export.xlsx?${stringifiedParams}`
+    : `/api/reports/export.xlsx`;
+};
+
+export const exportReportsXlsx = async (
+  params?: ExportReportsXlsxParams,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getExportReportsXlsxUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getExportReportsXlsxQueryKey = (
+  params?: ExportReportsXlsxParams,
+) => {
+  return [`/api/reports/export.xlsx`, ...(params ? [params] : [])] as const;
+};
+
+export const getExportReportsXlsxQueryOptions = <
+  TData = Awaited<ReturnType<typeof exportReportsXlsx>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ExportReportsXlsxParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof exportReportsXlsx>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getExportReportsXlsxQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof exportReportsXlsx>>
+  > = ({ signal }) => exportReportsXlsx(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof exportReportsXlsx>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ExportReportsXlsxQueryResult = NonNullable<
+  Awaited<ReturnType<typeof exportReportsXlsx>>
+>;
+export type ExportReportsXlsxQueryError = ErrorType<unknown>;
+
+/**
+ * @summary 보고서 Excel 내보내기
+ */
+
+export function useExportReportsXlsx<
+  TData = Awaited<ReturnType<typeof exportReportsXlsx>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ExportReportsXlsxParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof exportReportsXlsx>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getExportReportsXlsxQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

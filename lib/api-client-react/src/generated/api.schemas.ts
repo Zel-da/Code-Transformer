@@ -860,13 +860,35 @@ export type ListReportsParams = {
   dateTo?: string;
   page?: number;
   pageSize?: number;
+  /**
+   * true 이면 ERP_SYNCED 상태 보고서를 목록에서 제외한다 (진행 현황 탭 전용)
+   */
+  excludeErpSynced?: ListReportsExcludeErpSynced;
 };
+
+export type ListReportsExcludeErpSynced =
+  (typeof ListReportsExcludeErpSynced)[keyof typeof ListReportsExcludeErpSynced];
+
+export const ListReportsExcludeErpSynced = {
+  true: "true",
+  false: "false",
+} as const;
 
 export type GetReportSummaryParams = {
   from?: string;
   to?: string;
   vendorCd?: string;
+  flawTypeCd?: string;
   qcStatus?: string;
+};
+
+export type ExportReportsXlsxParams = {
+  from?: string;
+  to?: string;
+  vendorCd?: string;
+  flawTypeCd?: string;
+  qcStatus?: string;
+  syncStatus?: string;
 };
 
 export type ListProcessesParams = {

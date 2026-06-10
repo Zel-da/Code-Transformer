@@ -136,6 +136,13 @@ paths:
           schema:
             type: integer
             default: 20
+        - name: excludeErpSynced
+          in: query
+          required: false
+          description: true 이면 ERP_SYNCED 상태 보고서를 목록에서 제외한다 (진행 현황 탭 전용)
+          schema:
+            type: string
+            enum: ["true", "false"]
       responses:
         "200":
           description: Paginated list of reports
@@ -223,6 +230,11 @@ paths:
           required: false
           schema:
             type: string
+        - name: flawTypeCd
+          in: query
+          required: false
+          schema:
+            type: string
         - name: qcStatus
           in: query
           required: false
@@ -235,6 +247,54 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReportSummary"
+
+  /reports/export.xlsx:
+    get:
+      operationId: exportReportsXlsx
+      tags: [reports]
+      summary: 보고서 Excel 내보내기
+      description: 필터를 적용한 전체 보고서 목록을 xlsx 파일로 반환한다.
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: vendorCd
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: flawTypeCd
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: qcStatus
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: syncStatus
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Excel file (xlsx)
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
 
   /reports/{id}:
     put:

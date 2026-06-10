@@ -68,6 +68,12 @@ export const ListReportsQueryParams = zod.object({
   dateTo: zod.coerce.date().optional(),
   page: zod.coerce.number().default(listReportsQueryPageDefault),
   pageSize: zod.coerce.number().default(listReportsQueryPageSizeDefault),
+  excludeErpSynced: zod
+    .enum(["true", "false"])
+    .optional()
+    .describe(
+      "true 이면 ERP_SYNCED 상태 보고서를 목록에서 제외한다 (진행 현황 탭 전용)",
+    ),
 });
 
 export const ListReportsResponse = zod.object({
@@ -336,6 +342,7 @@ export const GetReportSummaryQueryParams = zod.object({
   from: zod.coerce.date().optional(),
   to: zod.coerce.date().optional(),
   vendorCd: zod.coerce.string().optional(),
+  flawTypeCd: zod.coerce.string().optional(),
   qcStatus: zod.coerce.string().optional(),
 });
 
@@ -363,6 +370,19 @@ export const GetReportSummaryResponse = zod.object({
       totalLostManHours: zod.number(),
     }),
   ),
+});
+
+/**
+ * 필터를 적용한 전체 보고서 목록을 xlsx 파일로 반환한다.
+ * @summary 보고서 Excel 내보내기
+ */
+export const ExportReportsXlsxQueryParams = zod.object({
+  from: zod.coerce.date().optional(),
+  to: zod.coerce.date().optional(),
+  vendorCd: zod.coerce.string().optional(),
+  flawTypeCd: zod.coerce.string().optional(),
+  qcStatus: zod.coerce.string().optional(),
+  syncStatus: zod.coerce.string().optional(),
 });
 
 /**

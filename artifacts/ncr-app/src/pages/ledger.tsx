@@ -544,6 +544,8 @@ export default function LedgerPage() {
   const [settledFrom, setSettledFrom] = useState<string>("");
   const [settledTo, setSettledTo] = useState<string>("");
   const [settledVendorCd, setSettledVendorCd] = useState<string>("");
+  const [settledFlawTypeCd, setSettledFlawTypeCd] = useState<string>("");
+  const [excludeErp, setExcludeErp] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
 
   const queryParams = useMemo<QueryParams>(() => {
@@ -552,8 +554,9 @@ export default function LedgerPage() {
     if (qcStatusFilter !== "all") p.qcStatus = qcStatusFilter;
     if (dateFrom) p.dateFrom = new Date(dateFrom).toISOString();
     if (dateTo) p.dateTo = new Date(dateTo + "T23:59:59").toISOString();
+    if (excludeErp && qcStatusFilter === "all") (p as unknown as Record<string, string>).excludeErpSynced = "true";
     return p;
-  }, [syncStatus, qcStatusFilter, dateFrom, dateTo, page]);
+  }, [syncStatus, qcStatusFilter, dateFrom, dateTo, page, excludeErp]);
 
   const { data: reportsData, isLoading: isLoadingReports } = useListReports(
     queryParams as Parameters<typeof useListReports>[0],
@@ -566,12 +569,13 @@ export default function LedgerPage() {
   });
 
   const settledSummaryParams = useMemo(() => {
-    const p: { qcStatus: string; from?: string; to?: string; vendorCd?: string } = { qcStatus: "ERP_SYNCED" };
+    const p: { qcStatus: string; from?: string; to?: string; vendorCd?: string; flawTypeCd?: string } = { qcStatus: "ERP_SYNCED" };
     if (settledFrom) p.from = new Date(settledFrom).toISOString();
     if (settledTo) p.to = new Date(settledTo + "T23:59:59").toISOString();
     if (settledVendorCd) p.vendorCd = settledVendorCd;
+    if (settledFlawTypeCd) p.flawTypeCd = settledFlawTypeCd;
     return p;
-  }, [settledFrom, settledTo, settledVendorCd]);
+  }, [settledFrom, settledTo, settledVendorCd, settledFlawTypeCd]);
 
   const { data: settledSummary, isLoading: isLoadingSettled } = useGetReportSummary(
     settledSummaryParams as Parameters<typeof useGetReportSummary>[0],
@@ -604,6 +608,7 @@ export default function LedgerPage() {
         if (settledFrom) params.set("from", new Date(settledFrom).toISOString());
         if (settledTo) params.set("to", new Date(settledTo + "T23:59:59").toISOString());
         if (settledVendorCd) params.set("vendorCd", settledVendorCd);
+        if (settledFlawTypeCd) params.set("flawTypeCd", settledFlawTypeCd);
       }
       const base = import.meta.env.BASE_URL.replace(/\/$/, "");
       const res = await fetch(`${base}/api/reports/export.xlsx?${params.toString()}`, {
@@ -796,6 +801,17 @@ export default function LedgerPage() {
                     )}
                   </div>
                 </div>
+                <div className="col-span-full flex items-center gap-2 pt-0.5">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={excludeErp}
+                      onChange={(e) => { setExcludeErp(e.target.checked); setPage(1); }}
+                      className="h-3.5 w-3.5 rounded accent-[#191F28]"
+                    />
+                    <span className="text-[12px] text-[#4E5968]">ERP 등록 건 제외 (진행 중만 표시)</span>
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -982,9 +998,21 @@ export default function LedgerPage() {
                       value={settledVendorCd}
                       onChange={(e) => setSettledVendorCd(e.target.value)}
                     />
-                    {(settledFrom || settledTo || settledVendorCd) && (
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">불량유형코드</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      className="flex-1 h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 px-3 outline-none text-[#191F28]"
+                      placeholder="불량유형코드 입력"
+                      value={settledFlawTypeCd}
+                      onChange={(e) => setSettledFlawTypeCd(e.target.value)}
+                    />
+                    {(settledFrom || settledTo || settledVendorCd || settledFlawTypeCd) && (
                       <button
-                        onClick={() => { setSettledFrom(""); setSettledTo(""); setSettledVendorCd(""); }}
+                        onClick={() => { setSettledFrom(""); setSettledTo(""); setSettledVendorCd(""); setSettledFlawTypeCd(""); }}
                         className="h-9 px-3 rounded-xl text-[12px] text-[#8B95A1] bg-[#F2F4F6] hover:text-[#191F28] hover:bg-[#E5E8EB] flex items-center gap-1 transition-colors shrink-0"
                       >
                         <X className="w-3 h-3" /> 초기화
