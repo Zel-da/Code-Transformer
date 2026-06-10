@@ -35,6 +35,7 @@ const FILTER_LABELS: Record<FilterKey, string> = {
   "PENDING_COLLAB": "협업 대기",
   "RESOLVED": "조치 완료",
   "APPROVED": "승인 완료",
+  "ERP_SYNCED": "ERP 등록",
   "전체": "전체",
 };
 

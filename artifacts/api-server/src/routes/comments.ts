@@ -153,7 +153,7 @@ router.put("/reports/:id/comments/:cid", requireAuth, async (req, res): Promise<
   const actorId = req.auth!.userId;
   const actorRole = req.auth!.role;
 
-  if (existing.authorId !== actorId && actorRole !== "admin") {
+  if (existing.authorId !== actorId) {
     res.status(403).json({ error: "본인 의견만 수정할 수 있습니다." });
     return;
   }
