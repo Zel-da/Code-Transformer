@@ -58,8 +58,11 @@ type ErpLookup = {
   factory?: string;
   plantCd?: string;
   shipmentUnit?: string;
+  vendorCd?: string | null;
+  vendorNm?: string | null;
   orderCount?: number;
   matchedOrders?: { PRODT_ORDER_NO: string; ORDER_STATUS: string; PLAN_START: string | null }[];
+  matchedVendors?: { vendorCd: string; vendorNm: string; taxNo: string | null }[];
   reason?: string;
   candidates?: ErpCandidate[];
 };
@@ -85,6 +88,8 @@ const formSchema = z.object({
   itemCode: z.string().min(1, "제품코드를 선택해주세요"),
   modelName: z.string().optional(),
   shipmentUnit: z.string().optional(),
+  vendorCd: z.string().optional(),
+  vendorNm: z.string().optional(),
   occurrenceDate: z.string().optional(),
   defectQty: z.preprocess(
     (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
@@ -155,6 +160,8 @@ export default function SubmitReport() {
     itemCode: "",
     modelName: "",
     shipmentUnit: "",
+    vendorCd: "",
+    vendorNm: "",
     occurrenceDate: todayStr(),
     defectQty: undefined as number | undefined,
     description: "",
@@ -225,6 +232,8 @@ export default function SubmitReport() {
     const modelName = isCandidate ? result.name : result.modelName;
     const factory = isCandidate ? undefined : result.factory;
     const shipmentUnit = isCandidate ? undefined : result.shipmentUnit;
+    const vendorCd = isCandidate ? undefined : result.vendorCd;
+    const vendorNm = isCandidate ? undefined : result.vendorNm;
     if (itemCode) form.setValue("itemCode", itemCode, { shouldValidate: true });
     if (modelName) form.setValue("modelName", modelName, { shouldValidate: true });
     if (factory) {
@@ -233,6 +242,8 @@ export default function SubmitReport() {
       setTimeout(() => { skipFactoryClearRef.current = false; }, 0);
     }
     if (shipmentUnit) form.setValue("shipmentUnit", shipmentUnit, { shouldValidate: true });
+    if (vendorCd) form.setValue("vendorCd", vendorCd, { shouldValidate: true });
+    if (vendorNm) form.setValue("vendorNm", vendorNm, { shouldValidate: true });
     setErpSearchResult(null);
     setErpSearchProduct("");
     setErpSearchHogi("");
@@ -309,6 +320,8 @@ export default function SubmitReport() {
           deptCd: null,
           flawTypeCd: null,
           productType: values.productType,
+          vendorCd: values.vendorCd || null,
+          vendorNm: values.vendorNm || null,
           shipmentDateFrom: null,
           shipmentDateTo: null,
           remarks: null,
@@ -537,6 +550,9 @@ export default function SubmitReport() {
                           )}
                           {erpSearchResult.shipmentUnit && (
                             <span className="text-[11px] text-[#8B95A1]">호기 {erpSearchResult.shipmentUnit}</span>
+                          )}
+                          {erpSearchResult.vendorNm && (
+                            <span className="text-[11px] text-[#8B95A1]">거래처 {erpSearchResult.vendorNm}</span>
                           )}
                         </div>
                       </div>
