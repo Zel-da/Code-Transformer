@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, sql, and, gte, lte, count, lt } from "drizzle-orm";
+import * as XLSX from "xlsx";
 import { db, nonConformityReportsTable, departmentsTable } from "@workspace/db";
 import {
   ListReportsQueryParams,
@@ -278,6 +279,120 @@ router.get("/reports/pending", async (_req, res): Promise<void> => {
     .orderBy(nonConformityReportsTable.createdAt);
 
   res.json(reports);
+});
+
+// Task #37: 집계 통계 API
+router.get("/reports/summary", requireAuth, async (req, res): Promise<void> => {
+  const from = typeof req.query.from === "string" && req.query.from ? new Date(req.query.from) : null;
+  const to   = typeof req.query.to   === "string" && req.query.to   ? new Date(req.query.to)   : null;
+  const vendorCd   = typeof req.query.vendorCd   === "string" && req.query.vendorCd   ? req.query.vendorCd   : null;
+  const qcStatusRaw = typeof req.query.qcStatus === "string" && req.query.qcStatus ? req.query.qcStatus : null;
+
+  const conds: ReturnType<typeof eq>[] = [];
+  if (from && !isNaN(from.getTime())) conds.push(gte(nonConformityReportsTable.reportDate, from));
+  if (to   && !isNaN(to.getTime()))   conds.push(lte(nonConformityReportsTable.reportDate, to));
+  if (vendorCd)   conds.push(eq(nonConformityReportsTable.vendorCd, vendorCd));
+  if (qcStatusRaw) conds.push(eq(nonConformityReportsTable.qcStatus, qcStatusRaw as "OPEN" | "IN_REVIEW" | "PENDING_COLLAB" | "RESOLVED" | "APPROVED" | "ERP_SYNCED"));
+  const where = conds.length > 0 ? and(...conds) : undefined;
+
+  const [byQcStatus, byFlawType, byVendor, totals] = await Promise.all([
+    db.select({ status: nonConformityReportsTable.qcStatus, cnt: count() })
+      .from(nonConformityReportsTable).where(where)
+      .groupBy(nonConformityReportsTable.qcStatus),
+    db.select({
+      flawTypeCd: nonConformityReportsTable.flawTypeCd,
+      cnt: count(),
+      totalLostManHours: sql<number>`COALESCE(SUM(${nonConformityReportsTable.lostManHours}), 0)`,
+    })
+      .from(nonConformityReportsTable).where(where)
+      .groupBy(nonConformityReportsTable.flawTypeCd)
+      .orderBy(sql`count(*) DESC`),
+    db.select({
+      vendorCd: nonConformityReportsTable.vendorCd,
+      vendorNm: nonConformityReportsTable.vendorNm,
+      cnt: count(),
+      totalLostManHours: sql<number>`COALESCE(SUM(${nonConformityReportsTable.lostManHours}), 0)`,
+    })
+      .from(nonConformityReportsTable).where(where)
+      .groupBy(nonConformityReportsTable.vendorCd, nonConformityReportsTable.vendorNm)
+      .orderBy(sql`count(*) DESC`),
+    db.select({
+      total: count(),
+      totalLostManHours: sql<number>`COALESCE(SUM(${nonConformityReportsTable.lostManHours}), 0)`,
+    })
+      .from(nonConformityReportsTable).where(where),
+  ]);
+
+  res.json({
+    total: Number(totals[0]?.total ?? 0),
+    totalLostManHours: Number(totals[0]?.totalLostManHours ?? 0),
+    byQcStatus: byQcStatus.map((r) => ({ status: r.status, count: Number(r.cnt) })),
+    byFlawType: byFlawType.map((r) => ({ flawTypeCd: r.flawTypeCd, count: Number(r.cnt), totalLostManHours: Number(r.totalLostManHours) })),
+    byVendor: byVendor.slice(0, 20).map((r) => ({ vendorCd: r.vendorCd, vendorNm: r.vendorNm, count: Number(r.cnt), totalLostManHours: Number(r.totalLostManHours) })),
+  });
+});
+
+// Task #37: Excel 내보내기 API
+router.get("/reports/export.xlsx", requireAuth, async (req, res): Promise<void> => {
+  const from = typeof req.query.from === "string" && req.query.from ? new Date(req.query.from) : null;
+  const to   = typeof req.query.to   === "string" && req.query.to   ? new Date(req.query.to)   : null;
+  const vendorCd    = typeof req.query.vendorCd   === "string" && req.query.vendorCd   ? req.query.vendorCd   : null;
+  const qcStatusRaw = typeof req.query.qcStatus   === "string" && req.query.qcStatus   ? req.query.qcStatus   : null;
+  const syncStatusRaw = typeof req.query.syncStatus === "string" && req.query.syncStatus ? req.query.syncStatus : null;
+
+  const conds: ReturnType<typeof eq>[] = [];
+  if (from && !isNaN(from.getTime())) conds.push(gte(nonConformityReportsTable.reportDate, from));
+  if (to   && !isNaN(to.getTime()))   conds.push(lte(nonConformityReportsTable.reportDate, to));
+  if (vendorCd)     conds.push(eq(nonConformityReportsTable.vendorCd, vendorCd));
+  if (qcStatusRaw)  conds.push(eq(nonConformityReportsTable.qcStatus, qcStatusRaw as "OPEN" | "IN_REVIEW" | "PENDING_COLLAB" | "RESOLVED" | "APPROVED" | "ERP_SYNCED"));
+  if (syncStatusRaw) conds.push(eq(nonConformityReportsTable.syncStatus, syncStatusRaw as "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"));
+  const where = conds.length > 0 ? and(...conds) : undefined;
+
+  const reports = await db
+    .select()
+    .from(nonConformityReportsTable)
+    .where(where)
+    .orderBy(sql`${nonConformityReportsTable.createdAt} DESC`);
+
+  const QC_STATUS_KR: Record<string, string> = {
+    OPEN: "접수", IN_REVIEW: "검토 중", PENDING_COLLAB: "협업 대기",
+    RESOLVED: "조치 완료", APPROVED: "승인 완료", ERP_SYNCED: "ERP 등록",
+  };
+
+  const rows = reports.map((r) => ({
+    "NCR 번호":       r.ncrNumber ?? "",
+    "접수일시":        r.reportDate ? new Date(r.reportDate).toISOString().slice(0, 16).replace("T", " ") : "",
+    "발생일":          r.occurrenceDate ? new Date(r.occurrenceDate).toISOString().slice(0, 10) : "",
+    "품목코드":        r.itemCode,
+    "모델명":          r.modelName ?? "",
+    "거래처명":        r.vendorNm ?? "",
+    "거래처코드":      r.vendorCd ?? "",
+    "불량유형":        r.defectType ?? "",
+    "불량유형코드":    r.flawTypeCd ?? "",
+    "공정명":          r.processName ?? "",
+    "공장":            r.factory ?? "",
+    "등록자":          r.registrantName ?? "",
+    "조치방향":        r.actionDirection ?? "",
+    "QC상태":          r.qcStatus ? (QC_STATUS_KR[r.qcStatus] ?? r.qcStatus) : "",
+    "손실공수(h)":     r.lostManHours ?? "",
+    "불량수량":        r.defectQty ?? "",
+    "귀책부서코드":    r.deptCd ?? "",
+    "동기화상태":      r.syncStatus ?? "",
+    "비고":            r.remarks ?? "",
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const colWidths = [14, 18, 12, 14, 16, 20, 14, 14, 14, 16, 8, 12, 16, 12, 12, 10, 12, 12, 20];
+  ws["!cols"] = colWidths.map((w) => ({ wch: w }));
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "NCR 관리대장");
+
+  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
+  const now = new Date().toISOString().slice(0, 10);
+  res.setHeader("Content-Disposition", `attachment; filename="ncr-export-${now}.xlsx"`);
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.send(buf);
 });
 
 router.get("/reports/:id", async (req, res): Promise<void> => {

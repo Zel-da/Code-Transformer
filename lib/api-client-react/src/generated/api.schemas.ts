@@ -809,6 +809,36 @@ export interface UpdateCommentBody {
   body: string;
 }
 
+export type ReportSummaryByQcStatusItem = {
+  /** @nullable */
+  status?: string | null;
+  count: number;
+};
+
+export type ReportSummaryByFlawTypeItem = {
+  /** @nullable */
+  flawTypeCd?: string | null;
+  count: number;
+  totalLostManHours: number;
+};
+
+export type ReportSummaryByVendorItem = {
+  /** @nullable */
+  vendorCd?: string | null;
+  /** @nullable */
+  vendorNm?: string | null;
+  count: number;
+  totalLostManHours: number;
+};
+
+export interface ReportSummary {
+  total: number;
+  totalLostManHours: number;
+  byQcStatus: ReportSummaryByQcStatusItem[];
+  byFlawType: ReportSummaryByFlawTypeItem[];
+  byVendor: ReportSummaryByVendorItem[];
+}
+
 export type ListItemsParams = {
   search?: string;
   limit?: number;
@@ -830,6 +860,13 @@ export type ListReportsParams = {
   dateTo?: string;
   page?: number;
   pageSize?: number;
+};
+
+export type GetReportSummaryParams = {
+  from?: string;
+  to?: string;
+  vendorCd?: string;
+  qcStatus?: string;
 };
 
 export type ListProcessesParams = {

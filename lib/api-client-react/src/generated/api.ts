@@ -25,6 +25,7 @@ import type {
   DepartmentItem,
   ErrorEnvelope,
   FlawTypeItem,
+  GetReportSummaryParams,
   HealthStatus,
   Item,
   ListDepartmentsParams,
@@ -42,6 +43,7 @@ import type {
   ReportComment,
   ReportListResponse,
   ReportStats,
+  ReportSummary,
   ResetUserPassword200,
   ResetUserPasswordBody,
   RpaRunResult,
@@ -658,6 +660,106 @@ export function useListPendingReports<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListPendingReportsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * 상태별 건수, 불량유형별 합산, 업체별 통계를 반환한다.
+qcStatus=ERP_SYNCED 로 필터하면 확정 통계를 조회할 수 있다.
+
+ * @summary 보고서 집계 통계 (대시보드용)
+ */
+export const getGetReportSummaryUrl = (params?: GetReportSummaryParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/reports/summary?${stringifiedParams}`
+    : `/api/reports/summary`;
+};
+
+export const getReportSummary = async (
+  params?: GetReportSummaryParams,
+  options?: RequestInit,
+): Promise<ReportSummary> => {
+  return customFetch<ReportSummary>(getGetReportSummaryUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetReportSummaryQueryKey = (
+  params?: GetReportSummaryParams,
+) => {
+  return [`/api/reports/summary`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetReportSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getReportSummary>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetReportSummaryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getReportSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetReportSummaryQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getReportSummary>>
+  > = ({ signal }) => getReportSummary(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getReportSummary>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetReportSummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getReportSummary>>
+>;
+export type GetReportSummaryQueryError = ErrorType<unknown>;
+
+/**
+ * @summary 보고서 집계 통계 (대시보드용)
+ */
+
+export function useGetReportSummary<
+  TData = Awaited<ReturnType<typeof getReportSummary>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetReportSummaryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getReportSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetReportSummaryQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

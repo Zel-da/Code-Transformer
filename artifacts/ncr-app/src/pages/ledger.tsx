@@ -1,6 +1,19 @@
 import { Layout } from "@/components/layout";
 import { CommentThread } from "@/components/comment-thread";
-import { useListReports, getListReportsQueryKey, useGetReport, useUpdateReportSyncStatus, useUpdateReportStatus, useTriggerRpa, getGetReportQueryKey, getGetReportStatsQueryKey } from "@workspace/api-client-react";
+import {
+  useListReports,
+  getListReportsQueryKey,
+  useGetReport,
+  useUpdateReportSyncStatus,
+  useUpdateReportStatus,
+  useTriggerRpa,
+  getGetReportQueryKey,
+  getGetReportStatsQueryKey,
+  useListUsers,
+  useCreateReportComment,
+  useGetReportSummary,
+  getGetReportSummaryQueryKey,
+} from "@workspace/api-client-react";
 import { StatusBadge } from "@/components/status-badge";
 import { format, differenceInDays } from "date-fns";
 import { useState, useMemo } from "react";
@@ -12,8 +25,15 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/auth";
 import { useLocation } from "wouter";
-import { useListUsers, useCreateReportComment } from "@workspace/api-client-react";
-import { Search, RefreshCw, X, XCircle, ChevronLeft, ChevronRight, ImageIcon, Lock, ClipboardCheck, AlertTriangle, Zap, Users } from "lucide-react";
+import {
+  Search, RefreshCw, X, XCircle, ChevronLeft, ChevronRight, ImageIcon,
+  Lock, ClipboardCheck, AlertTriangle, Zap, Users, Download, TrendingDown,
+  Activity, CheckCircle2, BarChart3,
+} from "lucide-react";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Cell,
+} from "recharts";
 
 function SlaBadge({ occurrenceDate }: { occurrenceDate?: string | null }) {
   if (!occurrenceDate) return null;
@@ -65,9 +85,6 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 
 type QcStatus = "OPEN" | "IN_REVIEW" | "PENDING_COLLAB" | "RESOLVED" | "APPROVED" | "ERP_SYNCED";
 
-// ERP_SYNCED는 RPA 성공 시 자동 전이만 — 수동 전이 불가
-// RESOLVED → APPROVED: approver 전용 (spec: "QC 팀장(approver)만 최종 승인")
-// PENDING_COLLAB → RESOLVED: collaborator는 직접 종결 불가
 const TRANSITION_MATRIX: Record<QcStatus, Partial<Record<QcStatus, string[]>>> = {
   OPEN:           { IN_REVIEW: ["admin", "reviewer", "approver"] },
   IN_REVIEW:      { PENDING_COLLAB: ["admin", "reviewer"], RESOLVED: ["admin", "reviewer"], OPEN: ["admin"] },
@@ -97,7 +114,6 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
   const triggerRpa = useTriggerRpa();
   const createComment = useCreateReportComment();
 
-  // PENDING_COLLAB 협업 요청 모달
   const [collabModalOpen, setCollabModalOpen] = useState(false);
   const [selectedCollabIds, setSelectedCollabIds] = useState<number[]>([]);
   const [collabNote, setCollabNote] = useState("");
@@ -303,7 +319,6 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
         </div>
       )}
 
-      {/* QC 분석 결과 섹션 */}
       {(report.qcStatus || report.qcCorrectiveResult || report.lostManHours != null || report.flawTypeCd) && (
         <div className="mt-4 rounded-xl border border-[#F2F4F6] overflow-hidden">
           <div className="bg-[#F8F9FA] px-3 py-2 flex items-center gap-2 border-b border-[#F2F4F6]">
@@ -331,7 +346,6 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
         </div>
       )}
 
-      {/* 역할별 상태 전이 버튼 */}
       {availableTransitions.length > 0 && (
         <div className="mt-4 rounded-xl border border-[#F2F4F6] overflow-hidden">
           <div className="bg-[#F8F9FA] px-3 py-2 border-b border-[#F2F4F6]">
@@ -359,7 +373,6 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
         </div>
       )}
 
-      {/* RPA 등록 버튼: qcStatus=APPROVED && syncStatus=PENDING 조건 (spec: APPROVED일 때만 활성화) */}
       {report.qcStatus === "APPROVED" && report.syncStatus === "PENDING" && (
         <div className="mt-4 rounded-xl border border-teal-200 bg-teal-50 overflow-hidden">
           <div className="px-3 py-2.5 flex items-center justify-between gap-2">
@@ -382,7 +395,6 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
         </div>
       )}
 
-      {/* QC 분석 입력 버튼: 관리자/검토자/승인자 */}
       {(user?.role === "admin" || user?.role === "reviewer" || user?.role === "approver") && (
         <div className="pt-4">
           <button
@@ -395,7 +407,6 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
         </div>
       )}
 
-      {/* 협업 의견 스레드 */}
       <CommentThread reportId={report.id} />
 
       <div className="pt-3 md:hidden">
@@ -407,7 +418,6 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
         </button>
       </div>
 
-      {/* PENDING_COLLAB 협업 담당자 지정 모달 */}
       {collabModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
@@ -499,6 +509,16 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
 
 const QC_STATUS_OPTIONS = ["OPEN", "IN_REVIEW", "PENDING_COLLAB", "RESOLVED", "APPROVED", "ERP_SYNCED"] as const;
 
+const WIP_STATUS_CARDS: { status: QcStatus; icon: React.ElementType; color: string; bg: string; border: string }[] = [
+  { status: "OPEN",           icon: Activity,       color: "text-blue-700",   bg: "bg-blue-50",   border: "border-blue-200" },
+  { status: "IN_REVIEW",      icon: RefreshCw,      color: "text-amber-700",  bg: "bg-amber-50",  border: "border-amber-200" },
+  { status: "PENDING_COLLAB", icon: Users,           color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200" },
+  { status: "RESOLVED",       icon: CheckCircle2,   color: "text-green-700",  bg: "bg-green-50",  border: "border-green-200" },
+  { status: "APPROVED",       icon: CheckCircle2,   color: "text-teal-700",   bg: "bg-teal-50",   border: "border-teal-200" },
+];
+
+const CHART_COLORS = ["#3B82F6", "#F59E0B", "#10B981", "#8B5CF6", "#EF4444", "#06B6D4", "#F97316", "#84CC16"];
+
 interface QueryParams {
   page: number;
   pageSize: number;
@@ -510,6 +530,9 @@ interface QueryParams {
 
 export default function LedgerPage() {
   const isMobile = useIsMobile();
+  const { token } = useAuth();
+
+  const [activeTab, setActiveTab] = useState<"wip" | "settled">("wip");
 
   const [syncStatus, setSyncStatus] = useState<string>("all");
   const [qcStatusFilter, setQcStatusFilter] = useState<string>("all");
@@ -517,6 +540,11 @@ export default function LedgerPage() {
   const [dateTo, setDateTo] = useState<string>("");
   const [page, setPage] = useState(1);
   const [selectedReportId, setSelectedReportId] = useState<number | null>(null);
+
+  const [settledFrom, setSettledFrom] = useState<string>("");
+  const [settledTo, setSettledTo] = useState<string>("");
+  const [settledVendorCd, setSettledVendorCd] = useState<string>("");
+  const [isExporting, setIsExporting] = useState(false);
 
   const queryParams = useMemo<QueryParams>(() => {
     const p: QueryParams = { page, pageSize: 20 };
@@ -527,9 +555,28 @@ export default function LedgerPage() {
     return p;
   }, [syncStatus, qcStatusFilter, dateFrom, dateTo, page]);
 
-  const { data: reportsData, isLoading: isLoadingReports } = useListReports(queryParams as Parameters<typeof useListReports>[0], {
-    query: { queryKey: getListReportsQueryKey(queryParams as Parameters<typeof useListReports>[0]), enabled: true },
+  const { data: reportsData, isLoading: isLoadingReports } = useListReports(
+    queryParams as Parameters<typeof useListReports>[0],
+    { query: { queryKey: getListReportsQueryKey(queryParams as Parameters<typeof useListReports>[0]), enabled: true } },
+  );
+
+  const wipSummaryParams = useMemo(() => ({}), []);
+  const { data: wipSummary } = useGetReportSummary(wipSummaryParams, {
+    query: { queryKey: getGetReportSummaryQueryKey(wipSummaryParams) },
   });
+
+  const settledSummaryParams = useMemo(() => {
+    const p: { qcStatus: string; from?: string; to?: string; vendorCd?: string } = { qcStatus: "ERP_SYNCED" };
+    if (settledFrom) p.from = new Date(settledFrom).toISOString();
+    if (settledTo) p.to = new Date(settledTo + "T23:59:59").toISOString();
+    if (settledVendorCd) p.vendorCd = settledVendorCd;
+    return p;
+  }, [settledFrom, settledTo, settledVendorCd]);
+
+  const { data: settledSummary, isLoading: isLoadingSettled } = useGetReportSummary(
+    settledSummaryParams as Parameters<typeof useGetReportSummary>[0],
+    { query: { queryKey: getGetReportSummaryQueryKey(settledSummaryParams as Parameters<typeof useGetReportSummary>[0]) } },
+  );
 
   const reports = reportsData?.data ?? [];
 
@@ -543,226 +590,620 @@ export default function LedgerPage() {
 
   const hasFilters = syncStatus !== "all" || qcStatusFilter !== "all" || dateFrom || dateTo;
 
+  const handleExportExcel = async (scope: "wip" | "settled") => {
+    setIsExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (scope === "wip") {
+        if (dateFrom) params.set("from", new Date(dateFrom).toISOString());
+        if (dateTo) params.set("to", new Date(dateTo + "T23:59:59").toISOString());
+        if (syncStatus !== "all") params.set("syncStatus", syncStatus);
+        if (qcStatusFilter !== "all") params.set("qcStatus", qcStatusFilter);
+      } else {
+        params.set("qcStatus", "ERP_SYNCED");
+        if (settledFrom) params.set("from", new Date(settledFrom).toISOString());
+        if (settledTo) params.set("to", new Date(settledTo + "T23:59:59").toISOString());
+        if (settledVendorCd) params.set("vendorCd", settledVendorCd);
+      }
+      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const res = await fetch(`${base}/api/reports/export.xlsx?${params.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ncr-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      console.error("Excel export failed");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const getWipCount = (status: string) =>
+    wipSummary?.byQcStatus.find((r) => r.status === status)?.count ?? 0;
+
+  const flawChartData = (settledSummary?.byFlawType ?? [])
+    .filter((r) => r.flawTypeCd)
+    .slice(0, 10)
+    .map((r) => ({ name: r.flawTypeCd ?? "기타", count: r.count, hours: Number(r.totalLostManHours.toFixed(1)) }));
+
+  const vendorChartData = (settledSummary?.byVendor ?? [])
+    .filter((r) => r.vendorNm)
+    .slice(0, 10)
+    .map((r) => ({ name: r.vendorNm ?? r.vendorCd ?? "기타", count: r.count, hours: Number(r.totalLostManHours.toFixed(1)) }));
+
   return (
     <Layout>
       <div className="max-w-[1400px] mx-auto px-5 py-5 pb-24">
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pt-1 mb-5">
-          <h1 className="text-[20px] font-bold text-[#191F28]">관리대장</h1>
-          <p className="text-[12px] text-[#8B95A1]">{format(new Date(), "yyyy년 MM월 dd일 HH:mm")}</p>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden mb-5">
-          <div className="p-4 grid gap-3 grid-cols-1 md:grid-cols-4">
-            <div className="space-y-1.5">
-              <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">동기화 상태</p>
-              <Select value={syncStatus} onValueChange={(val) => { setSyncStatus(val); setPage(1); }}>
-                <SelectTrigger className="h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 focus:ring-0">
-                  <SelectValue placeholder="전체" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="all">전체</SelectItem>
-                  {SYNC_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>{SYNC_STATUS_LABELS[s] ?? s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        {/* 헤더 + 탭 */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-1 mb-5">
+          <div>
+            <h1 className="text-[20px] font-bold text-[#191F28]">관리대장</h1>
+            <p className="text-[12px] text-[#8B95A1] mt-0.5">{format(new Date(), "yyyy년 MM월 dd일 HH:mm")}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 bg-[#F2F4F6] rounded-xl p-1">
+              <button
+                onClick={() => setActiveTab("wip")}
+                className={`px-4 py-2 rounded-lg text-[13px] font-semibold transition-all ${
+                  activeTab === "wip"
+                    ? "bg-white text-[#191F28] shadow-sm"
+                    : "text-[#8B95A1] hover:text-[#4E5968]"
+                }`}
+              >
+                진행 현황
+              </button>
+              <button
+                onClick={() => setActiveTab("settled")}
+                className={`px-4 py-2 rounded-lg text-[13px] font-semibold transition-all ${
+                  activeTab === "settled"
+                    ? "bg-white text-[#191F28] shadow-sm"
+                    : "text-[#8B95A1] hover:text-[#4E5968]"
+                }`}
+              >
+                확정 통계
+              </button>
             </div>
-            <div className="space-y-1.5">
-              <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">QC 처리 상태</p>
-              <Select value={qcStatusFilter} onValueChange={(val) => { setQcStatusFilter(val); setPage(1); }}>
-                <SelectTrigger className="h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 focus:ring-0">
-                  <SelectValue placeholder="전체" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="all">전체</SelectItem>
-                  {QC_STATUS_OPTIONS.map((s) => (
-                    <SelectItem key={s} value={s}>{QC_STATUS_BADGE[s]?.label ?? s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">시작일</p>
-              <input
-                type="date"
-                className="w-full h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 px-3 outline-none text-[#191F28]"
-                value={dateFrom}
-                onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">종료일</p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  className="flex-1 h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 px-3 outline-none text-[#191F28]"
-                  value={dateTo}
-                  onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
-                />
-                {hasFilters && (
-                  <button
-                    onClick={handleReset}
-                    className="h-9 px-3 rounded-xl text-[12px] text-[#8B95A1] bg-[#F2F4F6] hover:text-[#191F28] hover:bg-[#E5E8EB] flex items-center gap-1 transition-colors shrink-0"
-                  >
-                    <X className="w-3 h-3" /> 초기화
-                  </button>
-                )}
-              </div>
-            </div>
+            <button
+              onClick={() => handleExportExcel(activeTab)}
+              disabled={isExporting}
+              className="h-9 px-4 rounded-xl text-[13px] font-semibold bg-[#1A1A1A] text-white flex items-center gap-1.5 hover:bg-[#333] transition-colors disabled:opacity-50"
+            >
+              {isExporting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+              엑셀 내보내기
+            </button>
           </div>
         </div>
 
-        {/* 분할 레이아웃: 목록 + 상세 */}
-        <div className="md:flex md:gap-5 md:items-start">
+        {/* ── 진행 현황 탭 ── */}
+        {activeTab === "wip" && (
+          <>
+            {/* 상태별 카드 */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+              {WIP_STATUS_CARDS.map(({ status, icon: Icon, color, bg, border }) => (
+                <button
+                  key={status}
+                  onClick={() => { setQcStatusFilter(qcStatusFilter === status ? "all" : status); setPage(1); }}
+                  className={`rounded-2xl border p-4 text-left transition-all hover:shadow-sm ${
+                    qcStatusFilter === status ? `${bg} ${border}` : "bg-white border-[#F2F4F6] hover:border-[#E5E8EB]"
+                  }`}
+                >
+                  <div className={`inline-flex items-center justify-center h-8 w-8 rounded-xl mb-2.5 ${bg} ${border} border`}>
+                    <Icon className={`h-4 w-4 ${color}`} />
+                  </div>
+                  <p className="text-[22px] font-bold text-[#191F28] leading-none mb-1">{getWipCount(status)}</p>
+                  <p className="text-[11px] text-[#8B95A1]">{QC_STATUS_BADGE[status]?.label}</p>
+                </button>
+              ))}
+            </div>
 
-          {/* 목록 열 */}
-          <div className="flex-1 min-w-0">
-            <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-[#F2F4F6] flex items-center justify-between">
-                <span className="text-[13px] font-semibold text-[#191F28]">보고서 목록</span>
-                {reportsData?.total !== undefined && (
-                  <span className="text-[12px] text-[#8B95A1]">총 {reportsData.total}건</span>
-                )}
-              </div>
-
-              {isLoadingReports ? (
-                <div className="h-56 flex flex-col items-center justify-center text-[#8B95A1] gap-3">
-                  <RefreshCw className="h-5 w-5 animate-spin" />
-                  <p className="text-[13px]">불러오는 중...</p>
-                </div>
-              ) : reports.length === 0 ? (
-                <div className="h-56 flex flex-col items-center justify-center text-[#BEC5CC] gap-3">
-                  <Search className="h-8 w-8 opacity-40" />
-                  <p className="text-[13px]">조건에 맞는 보고서가 없습니다.</p>
-                </div>
-              ) : isMobile ? (
-                <div className="divide-y divide-[#F2F4F6]">
-                  {reports.map((report) => (
-                    <div
-                      key={report.id}
-                      className="px-5 py-4 cursor-pointer active:bg-[#F8F9FA] transition-colors"
-                      onClick={() => setSelectedReportId(report.id)}
-                    >
-                      <div className="flex justify-between items-start mb-1.5">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-semibold text-[14px] text-[#191F28]">{report.itemCode}</span>
-                            {report.ncrNumber && (
-                              <span className="text-[10px] font-bold text-[#4E5968] bg-[#F2F4F6] rounded px-1 py-0.5">{report.ncrNumber}</span>
-                            )}
-                          </div>
-                          <span className="text-[12px] text-[#8B95A1]">{report.processName}</span>
-                        </div>
-                        <StatusBadge status={report.syncStatus} />
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[13px] font-medium text-[#191F28]">{report.defectType}</span>
-                          <SlaBadge occurrenceDate={report.occurrenceDate} />
-                        </div>
-                        <span className="text-[11px] text-[#8B95A1]">{format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}</span>
-                      </div>
+            {/* SLA 경과 경고 */}
+            {(() => {
+              const overdue = reports.filter((r) => {
+                if (!r.occurrenceDate) return false;
+                if (r.qcStatus === "ERP_SYNCED" || r.qcStatus === "APPROVED") return false;
+                return differenceInDays(new Date(), new Date(r.occurrenceDate)) >= 7;
+              });
+              if (overdue.length === 0) return null;
+              return (
+                <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-5 flex items-start gap-3">
+                  <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold text-red-700 mb-1">SLA 7일 초과 미처리 {overdue.length}건</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {overdue.slice(0, 8).map((r) => (
+                        <button
+                          key={r.id}
+                          onClick={() => setSelectedReportId(r.id)}
+                          className="text-[11px] font-mono font-semibold bg-white text-red-700 border border-red-200 rounded-lg px-2 py-0.5 hover:bg-red-100 transition-colors"
+                        >
+                          {r.ncrNumber ?? `#${r.id}`}
+                        </button>
+                      ))}
+                      {overdue.length > 8 && (
+                        <span className="text-[11px] text-red-500 py-0.5">외 {overdue.length - 8}건</span>
+                      )}
                     </div>
-                  ))}
+                  </div>
                 </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-[#F8F9FA] hover:bg-[#F8F9FA]">
-                        <TableHead className="h-10 text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[130px]">NCR 번호</TableHead>
-                        <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[130px]">접수 일시</TableHead>
-                        <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[110px]">품목코드</TableHead>
-                        <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">공정명</TableHead>
-                        <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide hidden lg:table-cell">SLA</TableHead>
-                        <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide text-center w-[110px]">상태</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+              );
+            })()}
+
+            {/* 필터 */}
+            <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden mb-5">
+              <div className="p-4 grid gap-3 grid-cols-1 md:grid-cols-4">
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">동기화 상태</p>
+                  <Select value={syncStatus} onValueChange={(val) => { setSyncStatus(val); setPage(1); }}>
+                    <SelectTrigger className="h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 focus:ring-0">
+                      <SelectValue placeholder="전체" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="all">전체</SelectItem>
+                      {SYNC_STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>{SYNC_STATUS_LABELS[s] ?? s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">QC 처리 상태</p>
+                  <Select value={qcStatusFilter} onValueChange={(val) => { setQcStatusFilter(val); setPage(1); }}>
+                    <SelectTrigger className="h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 focus:ring-0">
+                      <SelectValue placeholder="전체" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="all">전체</SelectItem>
+                      {QC_STATUS_OPTIONS.map((s) => (
+                        <SelectItem key={s} value={s}>{QC_STATUS_BADGE[s]?.label ?? s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">시작일</p>
+                  <input
+                    type="date"
+                    className="w-full h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 px-3 outline-none text-[#191F28]"
+                    value={dateFrom}
+                    onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">종료일</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      className="flex-1 h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 px-3 outline-none text-[#191F28]"
+                      value={dateTo}
+                      onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+                    />
+                    {hasFilters && (
+                      <button
+                        onClick={handleReset}
+                        className="h-9 px-3 rounded-xl text-[12px] text-[#8B95A1] bg-[#F2F4F6] hover:text-[#191F28] hover:bg-[#E5E8EB] flex items-center gap-1 transition-colors shrink-0"
+                      >
+                        <X className="w-3 h-3" /> 초기화
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 목록 + 상세 분할 레이아웃 */}
+            <div className="md:flex md:gap-5 md:items-start">
+              <div className="flex-1 min-w-0">
+                <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+                  <div className="px-5 py-3.5 border-b border-[#F2F4F6] flex items-center justify-between">
+                    <span className="text-[13px] font-semibold text-[#191F28]">보고서 목록</span>
+                    {reportsData?.total !== undefined && (
+                      <span className="text-[12px] text-[#8B95A1]">총 {reportsData.total}건</span>
+                    )}
+                  </div>
+
+                  {isLoadingReports ? (
+                    <div className="h-56 flex flex-col items-center justify-center text-[#8B95A1] gap-3">
+                      <RefreshCw className="h-5 w-5 animate-spin" />
+                      <p className="text-[13px]">불러오는 중...</p>
+                    </div>
+                  ) : reports.length === 0 ? (
+                    <div className="h-56 flex flex-col items-center justify-center text-[#BEC5CC] gap-3">
+                      <Search className="h-8 w-8 opacity-40" />
+                      <p className="text-[13px]">조건에 맞는 보고서가 없습니다.</p>
+                    </div>
+                  ) : isMobile ? (
+                    <div className="divide-y divide-[#F2F4F6]">
                       {reports.map((report) => (
-                        <TableRow
+                        <div
                           key={report.id}
-                          className={`cursor-pointer transition-colors border-[#F2F4F6] ${
-                            selectedReportId === report.id
-                              ? "bg-[#F2F4F6] hover:bg-[#F2F4F6]"
-                              : "hover:bg-[#F8F9FA]"
-                          }`}
+                          className="px-5 py-4 cursor-pointer active:bg-[#F8F9FA] transition-colors"
                           onClick={() => setSelectedReportId(report.id)}
                         >
-                          <TableCell className="font-mono font-semibold text-[12px] text-[#4E5968]">
-                            {report.ncrNumber ?? "—"}
-                          </TableCell>
-                          <TableCell className="text-[12px] text-[#8B95A1]">
-                            {format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}
-                          </TableCell>
-                          <TableCell className="font-semibold text-[13px] text-[#191F28]">{report.itemCode}</TableCell>
-                          <TableCell className="text-[13px] text-[#8B95A1]">{report.processName}</TableCell>
-                          <TableCell className="hidden lg:table-cell">
-                            <SlaBadge occurrenceDate={report.occurrenceDate} />
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex flex-col items-center gap-1">
-                              <StatusBadge status={report.syncStatus} />
-                              {report.qcStatus && (
-                                <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${QC_STATUS_BADGE[report.qcStatus]?.cls ?? "bg-[#F2F4F6] text-[#8B95A1]"}`}>
-                                  {QC_STATUS_BADGE[report.qcStatus]?.label ?? report.qcStatus}
-                                </span>
-                              )}
+                          <div className="flex justify-between items-start mb-1.5">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-semibold text-[14px] text-[#191F28]">{report.itemCode}</span>
+                                {report.ncrNumber && (
+                                  <span className="text-[10px] font-bold text-[#4E5968] bg-[#F2F4F6] rounded px-1 py-0.5">{report.ncrNumber}</span>
+                                )}
+                              </div>
+                              <span className="text-[12px] text-[#8B95A1]">{report.processName}</span>
                             </div>
-                          </TableCell>
-                        </TableRow>
+                            <StatusBadge status={report.syncStatus} />
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[13px] font-medium text-[#191F28]">{report.defectType}</span>
+                              <SlaBadge occurrenceDate={report.occurrenceDate} />
+                            </div>
+                            <span className="text-[11px] text-[#8B95A1]">{format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}</span>
+                          </div>
+                        </div>
                       ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-[#F8F9FA] hover:bg-[#F8F9FA]">
+                            <TableHead className="h-10 text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[130px]">NCR 번호</TableHead>
+                            <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[130px]">접수 일시</TableHead>
+                            <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[110px]">품목코드</TableHead>
+                            <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">공정명</TableHead>
+                            <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide hidden lg:table-cell">SLA</TableHead>
+                            <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide text-center w-[110px]">상태</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {reports.map((report) => (
+                            <TableRow
+                              key={report.id}
+                              className={`cursor-pointer transition-colors border-[#F2F4F6] ${
+                                selectedReportId === report.id
+                                  ? "bg-[#F2F4F6] hover:bg-[#F2F4F6]"
+                                  : "hover:bg-[#F8F9FA]"
+                              }`}
+                              onClick={() => setSelectedReportId(report.id)}
+                            >
+                              <TableCell className="font-mono font-semibold text-[12px] text-[#4E5968]">
+                                {report.ncrNumber ?? "—"}
+                              </TableCell>
+                              <TableCell className="text-[12px] text-[#8B95A1]">
+                                {format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}
+                              </TableCell>
+                              <TableCell className="font-semibold text-[13px] text-[#191F28]">{report.itemCode}</TableCell>
+                              <TableCell className="text-[13px] text-[#8B95A1]">{report.processName}</TableCell>
+                              <TableCell className="hidden lg:table-cell">
+                                <SlaBadge occurrenceDate={report.occurrenceDate} />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <div className="flex flex-col items-center gap-1">
+                                  <StatusBadge status={report.syncStatus} />
+                                  {report.qcStatus && (
+                                    <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${QC_STATUS_BADGE[report.qcStatus]?.cls ?? "bg-[#F2F4F6] text-[#8B95A1]"}`}>
+                                      {QC_STATUS_BADGE[report.qcStatus]?.label ?? report.qcStatus}
+                                    </span>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
 
-              {reportsData && reportsData.total > reportsData.pageSize && (
-                <div className="border-t border-[#F2F4F6] px-5 py-3 flex items-center justify-between">
-                  <span className="text-[12px] text-[#8B95A1]">
-                    {page} / {Math.ceil(reportsData.total / reportsData.pageSize)} 페이지
-                  </span>
-                  <div className="flex items-center gap-2">
+                  {reportsData && reportsData.total > reportsData.pageSize && (
+                    <div className="border-t border-[#F2F4F6] px-5 py-3 flex items-center justify-between">
+                      <span className="text-[12px] text-[#8B95A1]">
+                        {page} / {Math.ceil(reportsData.total / reportsData.pageSize)} 페이지
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center disabled:opacity-40"
+                          onClick={() => setPage((p) => Math.max(1, p - 1))}
+                          disabled={page === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </button>
+                        <button
+                          className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center disabled:opacity-40"
+                          onClick={() => setPage((p) => p + 1)}
+                          disabled={page >= Math.ceil(reportsData.total / reportsData.pageSize)}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {selectedReportId && (
+                <div className="hidden md:flex flex-col w-[400px] xl:w-[440px] shrink-0 sticky top-[78px] bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden max-h-[calc(100vh-100px)]">
+                  <div className="px-5 py-3.5 border-b border-[#F2F4F6] flex items-center justify-between shrink-0">
+                    <h2 className="font-bold text-[17px] text-[#191F28]">보고서 상세</h2>
                     <button
-                      className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center disabled:opacity-40"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page === 1}
+                      onClick={() => setSelectedReportId(null)}
+                      className="h-8 w-8 rounded-xl bg-[#F2F4F6] flex items-center justify-center text-[#4E5968] hover:bg-[#E5E8EB] transition-colors"
                     >
-                      <ChevronLeft className="h-4 w-4" />
+                      <X className="h-4 w-4" />
                     </button>
-                    <button
-                      className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center disabled:opacity-40"
-                      onClick={() => setPage((p) => p + 1)}
-                      disabled={page >= Math.ceil(reportsData.total / reportsData.pageSize)}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-5 py-2">
+                    <ReportDetail reportId={selectedReportId} onClose={() => setSelectedReportId(null)} />
                   </div>
                 </div>
               )}
             </div>
-          </div>
+          </>
+        )}
 
-          {/* 상세 패널: md+ 인라인 표시 */}
-          {selectedReportId && (
-            <div className="hidden md:flex flex-col w-[400px] xl:w-[440px] shrink-0 sticky top-[78px] bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden max-h-[calc(100vh-100px)]">
-              <div className="px-5 py-3.5 border-b border-[#F2F4F6] flex items-center justify-between shrink-0">
-                <h2 className="font-bold text-[17px] text-[#191F28]">보고서 상세</h2>
-                <button
-                  onClick={() => setSelectedReportId(null)}
-                  className="h-8 w-8 rounded-xl bg-[#F2F4F6] flex items-center justify-center text-[#4E5968] hover:bg-[#E5E8EB] transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto px-5 py-2">
-                <ReportDetail reportId={selectedReportId} onClose={() => setSelectedReportId(null)} />
+        {/* ── 확정 통계 탭 ── */}
+        {activeTab === "settled" && (
+          <>
+            {/* 필터 */}
+            <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden mb-5">
+              <div className="p-4 grid gap-3 grid-cols-1 md:grid-cols-3">
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">시작일</p>
+                  <input
+                    type="date"
+                    className="w-full h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 px-3 outline-none text-[#191F28]"
+                    value={settledFrom}
+                    onChange={(e) => setSettledFrom(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">종료일</p>
+                  <input
+                    type="date"
+                    className="w-full h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 px-3 outline-none text-[#191F28]"
+                    value={settledTo}
+                    onChange={(e) => setSettledTo(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">거래처코드</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      className="flex-1 h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 px-3 outline-none text-[#191F28]"
+                      placeholder="거래처코드 입력"
+                      value={settledVendorCd}
+                      onChange={(e) => setSettledVendorCd(e.target.value)}
+                    />
+                    {(settledFrom || settledTo || settledVendorCd) && (
+                      <button
+                        onClick={() => { setSettledFrom(""); setSettledTo(""); setSettledVendorCd(""); }}
+                        className="h-9 px-3 rounded-xl text-[12px] text-[#8B95A1] bg-[#F2F4F6] hover:text-[#191F28] hover:bg-[#E5E8EB] flex items-center gap-1 transition-colors shrink-0"
+                      >
+                        <X className="w-3 h-3" /> 초기화
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
-          )}
-        </div>
+
+            {isLoadingSettled ? (
+              <div className="h-56 flex flex-col items-center justify-center text-[#8B95A1] gap-3">
+                <RefreshCw className="h-5 w-5 animate-spin" />
+                <p className="text-[13px]">통계 집계 중...</p>
+              </div>
+            ) : (
+              <>
+                {/* 요약 카드 */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                  <div className="bg-white rounded-2xl border border-[#F2F4F6] p-4">
+                    <div className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-[#F8F9FA] border border-[#F2F4F6] mb-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-[#4E5968]" />
+                    </div>
+                    <p className="text-[22px] font-bold text-[#191F28] leading-none mb-1">{settledSummary?.total ?? 0}</p>
+                    <p className="text-[11px] text-[#8B95A1]">ERP 등록 완료</p>
+                  </div>
+                  <div className="bg-white rounded-2xl border border-[#F2F4F6] p-4">
+                    <div className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-amber-50 border border-amber-200 mb-2.5">
+                      <TrendingDown className="h-4 w-4 text-amber-700" />
+                    </div>
+                    <p className="text-[22px] font-bold text-[#191F28] leading-none mb-1">
+                      {settledSummary?.totalLostManHours != null
+                        ? Number(settledSummary.totalLostManHours).toFixed(1)
+                        : "0"}
+                    </p>
+                    <p className="text-[11px] text-[#8B95A1]">누적 손실공수 (h)</p>
+                  </div>
+                  <div className="bg-white rounded-2xl border border-[#F2F4F6] p-4">
+                    <div className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-blue-50 border border-blue-200 mb-2.5">
+                      <BarChart3 className="h-4 w-4 text-blue-700" />
+                    </div>
+                    <p className="text-[22px] font-bold text-[#191F28] leading-none mb-1">
+                      {settledSummary?.byFlawType.filter((r) => r.flawTypeCd).length ?? 0}
+                    </p>
+                    <p className="text-[11px] text-[#8B95A1]">불량유형 종류</p>
+                  </div>
+                  <div className="bg-white rounded-2xl border border-[#F2F4F6] p-4">
+                    <div className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-purple-50 border border-purple-200 mb-2.5">
+                      <Users className="h-4 w-4 text-purple-700" />
+                    </div>
+                    <p className="text-[22px] font-bold text-[#191F28] leading-none mb-1">
+                      {settledSummary?.byVendor.filter((r) => r.vendorCd).length ?? 0}
+                    </p>
+                    <p className="text-[11px] text-[#8B95A1]">거래처 수</p>
+                  </div>
+                </div>
+
+                {/* 차트 그리드 */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+                  {/* 불량유형별 건수 */}
+                  <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+                    <div className="px-5 py-3.5 border-b border-[#F2F4F6]">
+                      <p className="text-[13px] font-semibold text-[#191F28]">불량유형별 건수</p>
+                    </div>
+                    <div className="p-4">
+                      {flawChartData.length === 0 ? (
+                        <div className="h-48 flex flex-col items-center justify-center text-[#BEC5CC] gap-2">
+                          <BarChart3 className="h-8 w-8 opacity-40" />
+                          <p className="text-[12px]">데이터가 없습니다</p>
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height={220}>
+                          <BarChart data={flawChartData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#F2F4F6" vertical={false} />
+                            <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#8B95A1" }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11, fill: "#8B95A1" }} axisLine={false} tickLine={false} />
+                            <Tooltip
+                              contentStyle={{ borderRadius: "12px", border: "1px solid #F2F4F6", fontSize: "12px" }}
+                              cursor={{ fill: "#F8F9FA" }}
+                            />
+                            <Bar dataKey="count" name="건수" radius={[6, 6, 0, 0]} maxBarSize={40}>
+                              {flawChartData.map((_, i) => (
+                                <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 불량유형별 손실공수 */}
+                  <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+                    <div className="px-5 py-3.5 border-b border-[#F2F4F6]">
+                      <p className="text-[13px] font-semibold text-[#191F28]">불량유형별 손실공수 (h)</p>
+                    </div>
+                    <div className="p-4">
+                      {flawChartData.length === 0 ? (
+                        <div className="h-48 flex flex-col items-center justify-center text-[#BEC5CC] gap-2">
+                          <TrendingDown className="h-8 w-8 opacity-40" />
+                          <p className="text-[12px]">데이터가 없습니다</p>
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height={220}>
+                          <BarChart data={flawChartData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#F2F4F6" vertical={false} />
+                            <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#8B95A1" }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11, fill: "#8B95A1" }} axisLine={false} tickLine={false} />
+                            <Tooltip
+                              contentStyle={{ borderRadius: "12px", border: "1px solid #F2F4F6", fontSize: "12px" }}
+                              cursor={{ fill: "#F8F9FA" }}
+                            />
+                            <Bar dataKey="hours" name="손실공수(h)" fill="#F59E0B" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 거래처별 건수 */}
+                  <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+                    <div className="px-5 py-3.5 border-b border-[#F2F4F6]">
+                      <p className="text-[13px] font-semibold text-[#191F28]">거래처별 건수 (Top 10)</p>
+                    </div>
+                    <div className="p-4">
+                      {vendorChartData.length === 0 ? (
+                        <div className="h-48 flex flex-col items-center justify-center text-[#BEC5CC] gap-2">
+                          <Users className="h-8 w-8 opacity-40" />
+                          <p className="text-[12px]">데이터가 없습니다</p>
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height={220}>
+                          <BarChart data={vendorChartData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#F2F4F6" vertical={false} />
+                            <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#8B95A1" }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11, fill: "#8B95A1" }} axisLine={false} tickLine={false} />
+                            <Tooltip
+                              contentStyle={{ borderRadius: "12px", border: "1px solid #F2F4F6", fontSize: "12px" }}
+                              cursor={{ fill: "#F8F9FA" }}
+                            />
+                            <Bar dataKey="count" name="건수" fill="#3B82F6" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 거래처별 손실공수 */}
+                  <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+                    <div className="px-5 py-3.5 border-b border-[#F2F4F6]">
+                      <p className="text-[13px] font-semibold text-[#191F28]">거래처별 손실공수 (h, Top 10)</p>
+                    </div>
+                    <div className="p-4">
+                      {vendorChartData.length === 0 ? (
+                        <div className="h-48 flex flex-col items-center justify-center text-[#BEC5CC] gap-2">
+                          <TrendingDown className="h-8 w-8 opacity-40" />
+                          <p className="text-[12px]">데이터가 없습니다</p>
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height={220}>
+                          <BarChart data={vendorChartData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#F2F4F6" vertical={false} />
+                            <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#8B95A1" }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11, fill: "#8B95A1" }} axisLine={false} tickLine={false} />
+                            <Tooltip
+                              contentStyle={{ borderRadius: "12px", border: "1px solid #F2F4F6", fontSize: "12px" }}
+                              cursor={{ fill: "#F8F9FA" }}
+                            />
+                            <Bar dataKey="hours" name="손실공수(h)" fill="#8B5CF6" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 상세 집계표 */}
+                <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+                  <div className="px-5 py-3.5 border-b border-[#F2F4F6]">
+                    <p className="text-[13px] font-semibold text-[#191F28]">불량유형 상세 집계</p>
+                  </div>
+                  {(settledSummary?.byFlawType ?? []).length === 0 ? (
+                    <div className="h-32 flex flex-col items-center justify-center text-[#BEC5CC] gap-2">
+                      <Search className="h-6 w-6 opacity-40" />
+                      <p className="text-[12px]">데이터가 없습니다</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-[#F8F9FA] hover:bg-[#F8F9FA]">
+                            <TableHead className="h-10 text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">불량유형</TableHead>
+                            <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide text-right">건수</TableHead>
+                            <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide text-right">손실공수 (h)</TableHead>
+                            <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide text-right">비율</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(settledSummary?.byFlawType ?? []).map((r, i) => (
+                            <TableRow key={i} className="border-[#F2F4F6] hover:bg-[#F8F9FA]">
+                              <TableCell className="text-[13px] font-medium text-[#191F28]">{r.flawTypeCd ?? "미분류"}</TableCell>
+                              <TableCell className="text-[13px] text-[#4E5968] text-right font-semibold">{r.count}</TableCell>
+                              <TableCell className="text-[13px] text-[#4E5968] text-right">{Number(r.totalLostManHours).toFixed(1)}</TableCell>
+                              <TableCell className="text-[12px] text-[#8B95A1] text-right">
+                                {settledSummary && settledSummary.total > 0
+                                  ? `${((r.count / settledSummary.total) * 100).toFixed(1)}%`
+                                  : "—"}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </>
+        )}
       </div>
 
       {/* 모바일 Drawer */}

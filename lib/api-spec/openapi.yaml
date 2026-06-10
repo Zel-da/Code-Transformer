@@ -197,6 +197,45 @@ paths:
                 items:
                   $ref: "#/components/schemas/Report"
 
+  /reports/summary:
+    get:
+      operationId: getReportSummary
+      tags: [reports]
+      summary: 보고서 집계 통계 (대시보드용)
+      description: |
+        상태별 건수, 불량유형별 합산, 업체별 통계를 반환한다.
+        qcStatus=ERP_SYNCED 로 필터하면 확정 통계를 조회할 수 있다.
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: vendorCd
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: qcStatus
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Report summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportSummary"
+
   /reports/{id}:
     put:
       operationId: updateReport
@@ -1929,3 +1968,53 @@ components:
           maxLength: 4000
       required:
         - body
+
+    ReportSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+        totalLostManHours:
+          type: number
+        byQcStatus:
+          type: array
+          items:
+            type: object
+            properties:
+              status:
+                type: ["string", "null"]
+              count:
+                type: integer
+            required: [count]
+        byFlawType:
+          type: array
+          items:
+            type: object
+            properties:
+              flawTypeCd:
+                type: ["string", "null"]
+              count:
+                type: integer
+              totalLostManHours:
+                type: number
+            required: [count, totalLostManHours]
+        byVendor:
+          type: array
+          items:
+            type: object
+            properties:
+              vendorCd:
+                type: ["string", "null"]
+              vendorNm:
+                type: ["string", "null"]
+              count:
+                type: integer
+              totalLostManHours:
+                type: number
+            required: [count, totalLostManHours]
+      required:
+        - total
+        - totalLostManHours
+        - byQcStatus
+        - byFlawType
+        - byVendor

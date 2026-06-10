@@ -327,6 +327,45 @@ export const ListPendingReportsResponse = zod.array(
 );
 
 /**
+ * 상태별 건수, 불량유형별 합산, 업체별 통계를 반환한다.
+qcStatus=ERP_SYNCED 로 필터하면 확정 통계를 조회할 수 있다.
+
+ * @summary 보고서 집계 통계 (대시보드용)
+ */
+export const GetReportSummaryQueryParams = zod.object({
+  from: zod.coerce.date().optional(),
+  to: zod.coerce.date().optional(),
+  vendorCd: zod.coerce.string().optional(),
+  qcStatus: zod.coerce.string().optional(),
+});
+
+export const GetReportSummaryResponse = zod.object({
+  total: zod.number(),
+  totalLostManHours: zod.number(),
+  byQcStatus: zod.array(
+    zod.object({
+      status: zod.string().nullish(),
+      count: zod.number(),
+    }),
+  ),
+  byFlawType: zod.array(
+    zod.object({
+      flawTypeCd: zod.string().nullish(),
+      count: zod.number(),
+      totalLostManHours: zod.number(),
+    }),
+  ),
+  byVendor: zod.array(
+    zod.object({
+      vendorCd: zod.string().nullish(),
+      vendorNm: zod.string().nullish(),
+      count: zod.number(),
+      totalLostManHours: zod.number(),
+    }),
+  ),
+});
+
+/**
  * @summary Update a non-conformity report
  */
 export const UpdateReportParams = zod.object({
