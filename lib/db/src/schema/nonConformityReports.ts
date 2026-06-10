@@ -89,6 +89,7 @@ export const usersTable = pgTable("users", {
   plantCd: text("plant_cd"),
   processName: text("process_name"),
   processCd: text("process_cd"),
+  notifyLevel: text("notify_level").$type<"to" | "cc" | "none">().notNull().default("to"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -22,6 +22,8 @@ const CreateUserBody = z.object({
   processCd: z.string().optional(),
 });
 
+const NOTIFY_LEVELS = ["to", "cc", "none"] as const;
+
 const UpdateUserBody = z.object({
   displayName: z.string().min(1).optional(),
   password: z.string().min(4).optional(),
@@ -31,6 +33,7 @@ const UpdateUserBody = z.object({
   plantCd: z.string().nullable().optional(),
   processName: z.string().nullable().optional(),
   processCd: z.string().nullable().optional(),
+  notifyLevel: z.enum(NOTIFY_LEVELS).optional(),
 });
 
 const ResetPasswordBody = z.object({

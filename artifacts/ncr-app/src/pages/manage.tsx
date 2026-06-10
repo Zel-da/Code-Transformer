@@ -188,6 +188,7 @@ interface NewUserForm {
   factory: string;
   deptCd: string;
   processName: string;
+  notifyLevel: "to" | "cc" | "none";
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -198,9 +199,15 @@ const ROLE_LABELS: Record<string, string> = {
   collaborator: "협업자",
 };
 
+const NOTIFY_LEVEL_LABELS: Record<string, string> = {
+  to: "수신 (To)",
+  cc: "참조 (CC)",
+  none: "수신 안 함",
+};
+
 const EMPTY_USER_FORM: NewUserForm = {
   username: "", password: "", displayName: "", role: "worker",
-  factory: "", deptCd: "", processName: "",
+  factory: "", deptCd: "", processName: "", notifyLevel: "to",
 };
 
 export default function ManagePage() {
@@ -320,6 +327,7 @@ export default function ManagePage() {
             plantCd: plantCd ?? null,
             deptCd: newUserForm.deptCd || null,
             processName: newUserForm.processName || null,
+            notifyLevel: newUserForm.notifyLevel,
             ...(newUserForm.password ? { password: newUserForm.password } : {}),
           }),
         });
@@ -406,6 +414,7 @@ export default function ManagePage() {
       factory: u.factory ?? "",
       deptCd: u.deptCd ?? "",
       processName: u.processName ?? "",
+      notifyLevel: u.notifyLevel ?? "to",
     });
     setShowPw(false);
     setShowUserDialog(true);
@@ -819,6 +828,12 @@ export default function ManagePage() {
                             <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${u.role === "admin" ? "bg-[#1A1A1A] text-white" : u.role === "reviewer" ? "bg-amber-100 text-amber-700" : u.role === "approver" ? "bg-teal-100 text-teal-700" : u.role === "collaborator" ? "bg-purple-100 text-purple-700" : "bg-[#F2F4F6] text-[#4E5968]"}`}>
                               {ROLE_LABELS[u.role] ?? u.role}
                             </span>
+                            {u.notifyLevel === "cc" && (
+                              <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-sky-50 text-sky-600 border border-sky-200">참조</span>
+                            )}
+                            {u.notifyLevel === "none" && (
+                              <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-[#F2F4F6] text-[#BEC5CC] line-through">수신 안 함</span>
+                            )}
                             {!u.isActive && (
                               <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-red-100 text-red-500">
                                 비활성
@@ -1381,6 +1396,20 @@ export default function ManagePage() {
                   <SelectItem value="approver">승인자 (QC팀장)</SelectItem>
                   <SelectItem value="collaborator">협업자</SelectItem>
                   <SelectItem value="admin">관리자</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-[11px] font-semibold text-[#8B95A1]">알림 수신 설정</Label>
+              <Select value={newUserForm.notifyLevel} onValueChange={(v) => setNewUserForm((f) => ({ ...f, notifyLevel: v as "to" | "cc" | "none" }))}>
+                <SelectTrigger className="h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus:ring-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="to">수신 (To) — 주요 알림 수신</SelectItem>
+                  <SelectItem value="cc">참조 (CC) — 요약 알림만 수신</SelectItem>
+                  <SelectItem value="none">수신 안 함 — 알림 차단</SelectItem>
                 </SelectContent>
               </Select>
             </div>

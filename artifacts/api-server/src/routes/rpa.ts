@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and, or, isNull, lte, gt, count } from "drizzle-orm";
 import { db, nonConformityReportsTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../middleware/requireAuth";
+import { notifyStatusTransition } from "../lib/notifications.js";
 
 const router: IRouter = Router();
 
@@ -76,6 +77,12 @@ router.post("/rpa/trigger", requireAuth, requireRole(["admin", "approver"]), asy
       if (updated) {
         results.push(updated);
         completed++;
+        // Fire-and-forget: ERP_SYNCED 알림 발송
+        if (nextQcStatus === "ERP_SYNCED") {
+          notifyStatusTransition({ report: updated, from: "APPROVED", to: "ERP_SYNCED" }).catch((err) =>
+            req.log.error({ err, reportId: report.id }, "ERP_SYNCED notification failed (non-fatal)"),
+          );
+        }
       }
       req.log.info({ reportId: report.id, syncStatus: "COMPLETED" }, "RPA processed report");
     } else {

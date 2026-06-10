@@ -6,6 +6,8 @@ const API = `${BASE}/api`;
 
 export type UserRole = "admin" | "worker" | "reviewer" | "approver" | "collaborator";
 
+export type NotifyLevel = "to" | "cc" | "none";
+
 export interface UserProfile {
   id: number;
   username: string;
@@ -17,6 +19,7 @@ export interface UserProfile {
   plantCd: string | null;
   processName: string | null;
   processCd: string | null;
+  notifyLevel: NotifyLevel;
 }
 
 interface AuthState {

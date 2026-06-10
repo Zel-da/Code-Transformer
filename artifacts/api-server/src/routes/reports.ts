@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, ne, sql, and, gte, lte, count, lt } from "drizzle-orm";
 import * as XLSX from "xlsx";
-import { db, nonConformityReportsTable, departmentsTable } from "@workspace/db";
+import { db, nonConformityReportsTable } from "@workspace/db";
 import {
   ListReportsQueryParams,
   CreateReportBody,
@@ -17,7 +17,7 @@ import {
   UpdateReportQcParams,
 } from "@workspace/api-zod";
 import { requireAdmin, requireAuth, requireRole, type UserRole } from "../middleware/requireAuth.js";
-import { sendSushantalkMessage, sendSushantalkToUrl } from "../lib/sushantalk.js";
+import { notifyStatusTransition } from "../lib/notifications.js";
 import { z } from "zod";
 
 const CloseMonthBody = z.object({
@@ -168,46 +168,26 @@ router.post("/reports", async (req, res): Promise<void> => {
   req.log.info({ reportId: report.id, productType: report.productType }, "Non-conformity report created");
   res.status(201).json(report);
 
-  // Fire-and-forget: 수산톡 웹훅 비동기 발송 (클라이언트 대기 없음)
+  // Fire-and-forget: 지능형 알림 발송 (클라이언트 대기 없음)
   (async () => {
     try {
-      const channel = report.productType === "개발" ? "lab" : "qc";
-      const appUrl = process.env.APP_URL ?? "https://your-app.replit.app";
-      const actionLine = report.actionDirection ? `\n조치 방향: ${report.actionDirection}` : "";
-
-      // 귀책 부서 조회 (QC 메시지 + 부서 알림 공통 사용)
-      let deptName: string | null = null;
-      let deptWebhookUrl: string | null = null;
-      if (report.deptCd) {
-        const [dept] = await db
-          .select({ webhookUrl: departmentsTable.webhookUrl, deptName: departmentsTable.deptName })
-          .from(departmentsTable)
-          .where(eq(departmentsTable.deptCd, report.deptCd));
-        deptName = dept?.deptName ?? null;
-        deptWebhookUrl = dept?.webhookUrl ?? null;
-      }
-
-      const deptLine = deptName ? `\n귀책 부서: ${deptName}` : "";
-      const qcText = `부적합 보고서 접수\n품목: ${report.itemCode}${actionLine}${deptLine}\n링크: ${appUrl}/admin?reportId=${report.id}`;
-      const sentAt = new Date();
-      await sendSushantalkMessage(channel, qcText);
-      await db
-        .update(nonConformityReportsTable)
-        .set({
-          ssushanTalkSentAt: sentAt,
-          ...(channel === "lab" ? { labNotifiedAt: sentAt } : {}),
-        })
-        .where(eq(nonConformityReportsTable.id, report.id));
-      req.log.info({ reportId: report.id, channel }, "Sushantalk QC message sent");
-
-      // 귀책 부서 채널 알림 (webhookUrl 설정된 경우만)
-      if (deptWebhookUrl) {
-        const deptText = `[귀책 부서 알림] 부적합 보고서가 접수되었습니다.\n품목: ${report.itemCode}\n공정: ${report.processName}${actionLine}\n링크: ${appUrl}/admin?reportId=${report.id}`;
-        await sendSushantalkToUrl(deptWebhookUrl, deptText);
-        req.log.info({ reportId: report.id, deptCd: report.deptCd }, "Sushantalk dept message sent");
+      const { sentAt, channel } = await notifyStatusTransition({
+        report,
+        from: null,
+        to: "OPEN",
+      });
+      if (sentAt) {
+        await db
+          .update(nonConformityReportsTable)
+          .set({
+            ssushanTalkSentAt: sentAt,
+            ...(channel === "lab" ? { labNotifiedAt: sentAt } : {}),
+          })
+          .where(eq(nonConformityReportsTable.id, report.id));
+        req.log.info({ reportId: report.id, channel }, "Notification sent for OPEN");
       }
     } catch (err) {
-      req.log.error({ err, reportId: report.id }, "Sushantalk webhook failed (non-fatal)");
+      req.log.error({ err, reportId: report.id }, "Notification failed (non-fatal)");
     }
   })();
 });
@@ -749,6 +729,16 @@ router.patch("/reports/:id/status", requireAuth, async (req, res): Promise<void>
 
   req.log.info({ reportId: id, from, to, by: req.auth!.userId, role }, "QC status transitioned");
   res.json(report);
+
+  // Fire-and-forget: 상태 전이 알림 발송
+  (async () => {
+    try {
+      await notifyStatusTransition({ report, from, to });
+      req.log.info({ reportId: id, from, to }, "Transition notification sent");
+    } catch (err) {
+      req.log.error({ err, reportId: id, to }, "Transition notification failed (non-fatal)");
+    }
+  })();
 });
 
 router.delete("/reports/:id", async (req, res): Promise<void> => {
