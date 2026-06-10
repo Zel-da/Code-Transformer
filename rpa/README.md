@@ -1,4 +1,24 @@
-# NCR RPA 클라이언트
+# ⚠ DEPRECATED — `rpa-ncr/` 가 현행
+
+이 폴더는 초기 스켈레톤입니다. **현재 운영 중인 RPA 워커는 `rpa-ncr/`** 이며,
+- 풀스택 (data_source 추상화 + 웹 UI 진행 상황 + 빌드 스펙)
+- NCR API/DB 두 가지 소스 지원
+- 윈도우 컨트롤러 캘리브레이션 완료
+- 별도 워커 폴링/실행 흐름
+
+이 `rpa/` 폴더는:
+- 창 제목·좌표·필드 매핑이 전부 `TODO_*` 상태로 **캘리브레이션 미완료**
+- 워크플로 폼 입력 시퀀스가 비어 있어 **실제 ERP 입력 불가**
+- `core/` 모듈 일부(WindowController, PopupHandler)는 참고용으로 둠
+
+신규 개발/운영은 `rpa-ncr/` 를 사용하세요. 이 폴더는 곧 정리될 예정이며,
+실수로 `python rpa/main.py` 를 돌리면 즉시 에러로 종료됩니다 (main.py 가드).
+
+---
+
+(이하 옛 문서, 참고용)
+
+# (구) NCR RPA 클라이언트
 
 Windows ERP GUI에 부적합 보고서를 자동 입력하는 Python RPA.
 
