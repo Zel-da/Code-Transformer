@@ -1,0 +1,82 @@
+AI 에이전트(코딩 어시스턴트, 시스템 제너레이터 등)가 명확하게 맥락을 이해하고 코드를 작성하거나 시스템 아키텍처를 설계할 수 있도록, 앞서 정리해주신 기획안을 **'구조화된 시스템 개발 프롬프트(명세서)'** 형태로 변환했습니다.
+
+이 양식을 그대로 복사하여 개발용 AI 에이전트에게 입력하시면, 데이터베이스 스키마, API 설계, 프론트엔드 UI/UX 구조, RPA 연동 스크립트의 초안을 빠르고 정확하게 도출할 수 있습니다.
+
+---
+
+# [System Specification Prompt for AI Agent]
+
+**System Name:** 스마트 부적합 관리 및 ERP 연동 시스템 (Smart Non-Conformity Management System)
+**Role for AI:** 당신은 풀스택 개발자(Full-stack Developer)이자 RPA 아키텍트입니다. 아래 제공된 비즈니스 요구사항과 워크플로우를 바탕으로, 모바일/웹 기반의 신규 부적합 관리 시스템 및 ERP 연동(RPA) 기능의 개발 명세(DB 스키마, API 엔드포인트, UI 컴포넌트, 상태 관리 로직)를 작성하십시오.
+
+## 1. System Overview (시스템 개요)
+
+* **목적:** 복잡한 기존 ERP의 다단계 승인 절차(6~7단계)를 축소하고, 생산 현장에서 모바일로 즉시 부적합을 등록한 뒤, QC의 판정을 거쳐 RPA를 통해 ERP에 최종 데이터를 자동 전송하는 간소화된 통합 시스템(To-Be 3단계)을 구축한다.
+* **주요 플랫폼:** * 생산 현장용: Mobile Web App (단순화된 UI)
+* QC 및 유관부서용: PC Web Dashboard (상세 데이터 입력, 판정 및 RPA 트리거)
+
+
+
+## 2. User Roles & Permissions (사용자 권한)
+
+| Role (역할) | 담당 부서 | 주요 권한 및 Action |
+| --- | --- | --- |
+| **Creator** | 생산팀 | 모바일 기기를 통한 신규 부적합 건 생성 (필수 최소 정보만 입력) |
+| **Reviewer** | 품질관리팀(QC) 담당자 | 현장 확인, 부품 코드(Master Data) 매칭, 불량 유형 판정, 유관부서 담당자 태깅 |
+| **Collaborator** | 설계/구매 등 유관부서 | 태그된 건에 대한 피드백(의견) 작성 및 협의 이력 남기기 |
+| **Approver** | 품질관리팀(QC) 팀장 | 최종 판정 승인, 데이터 마감 처리, RPA 연동 트리거 작동 |
+
+## 3. Core Workflow (상태 전이 모델 - State Machine)
+
+시스템의 티켓(부적합 건)은 다음과 같은 상태(Status)를 가집니다.
+
+1. **`OPEN`**: 생산팀이 모바일로 기초 정보를 등록한 직후 상태. (알림 트리거: QC/구매/생산 담당자에게 발송)
+2. **`IN_REVIEW`**: QC 담당자가 실물 확인 후 부품 코드를 매칭하고 불량 유형을 분류 중인 상태.
+3. **`PENDING_COLLAB`** (Optional): QC가 설계/외주 관련 유관부서를 수동 태그(Targeting)하여 의견을 요청한 상태.
+4. **`RESOLVED`**: QC 판정 및 유관부서 의견 수렴이 완료된 상태.
+5. **`APPROVED`**: QC 팀장이 최종 승인한 상태. (시스템 내 데이터 확정, 수정 불가)
+6. **`ERP_SYNCED`**: 담당자가 ERP 로그인 후 'RPA 등록 버튼'을 클릭하여 ERP에 데이터 입력이 완료된 상태.
+
+## 4. Functional Requirements (핵심 기능 요구사항)
+
+### 4.1. Mobile Input Module (현장용)
+
+* **UI/UX:** 장갑을 낀 상태나 이동 중에도 조작 가능한 큰 버튼과 직관적인 폼.
+* **필수 필드:** `발생 라인명(Dropdown)`, `발생 일시(Auto)`, `간략한 현상/문제점(Text/Voice-to-Text)`.
+
+### 4.2. Smart Notification System (지능형 알림)
+
+* **Targeting Logic:** 전체 공지를 배제하고 해당 제품군/라인 관계자에게만 발송.
+* **To vs CC:** 직접 조치가 필요한 인원은 `수신(To)`, 현황 파악만 필요한 관리자는 `참조(CC)`로 분류하여 알림의 형태(Push/Email 등)를 차등화.
+* **Manual Tagging:** `IN_REVIEW` 상태에서 QC가 특정 연구원/설계자를 @태그하면 해당 인원에게 즉시 알림 발송.
+
+### 4.3. Dashboard & Reporting
+
+* **Live WIP Dashboard:** `OPEN` ~ `APPROVED` 상태의 진행 현황을 실시간 시각화.
+* **Settled Data Dashboard:** `ERP_SYNCED` 완료된 데이터를 기반으로 Q-Cost 및 업체별 불량률 통계 제공.
+* **Export:** 필터링된 데이터를 엑셀(Excel)로 즉시 다운로드하는 기능.
+
+## 5. Integration Requirements (RPA & ERP 연동 시나리오)
+
+* **Human-in-the-loop RPA:** 완전 무인 자동화가 아닌, QC 담당자가 PC에서 ERP 시스템에 로그인하여 창을 띄워둔 상태에서, 신규 Web Dashboard의 **[RPA 등록 (ERP Sync)]** 버튼을 클릭 시 작동.
+* **Data Mapping:** Web Dashboard의 확정 데이터(부품 코드, 판정 결과 등)를 ERP의 지정된 필드에 자동 매핑하여 입력.
+* **Master Data Sync:** ERP의 부품 코드(도번), 업체 정보, 공정 코드를 신규 시스템 DB에 주기적으로 동기화(Read-only)하여 데이터 불일치 방지.
+
+## 6. Business Rules & Constraints (데이터 무결성 규칙)
+
+* **Naming Convention (채번 규칙):** 부적합 관리 번호는 `QC-YYMM-Sequence` (예: QC-2406-0001) 형태로 자동 생성되어 ERP 데이터와 1:1 추적성을 보장.
+* **Input SLA (5-Day Rule):** * 부적합 발생일(`Occurrence_Date`) 기준 **5일 경과 시:** 해당 티켓에 시각적 경고(Yellow Flag) 및 담당자 리마인드 알림.
+* **7일 경과 시:** 시스템 등록 제한(Red Flag) 또는 강제 사유 입력 팝업 노출.
+
+
+* **Closing Policy (마감 통제):** 월초 정해진 마감일 이후에는 이전 달의 상태 변경 및 수정 엄격히 통제(Exception 권한은 시스템 관리자만 보유).
+
+---
+
+**[AI Agent Task Request]**
+위 명세서를 바탕으로 다음을 작성해 주세요.
+
+1. 이 시스템을 구현하기 위한 최적의 기술 스택(Front, Back, DB, RPA 도구) 추천
+2. 주요 엔티티의 Database Schema (ERD 형태의 텍스트 또는 SQL)
+3. 상태 변화(State Transition)를 제어하는 핵심 RESTful API 엔드포인트 설계
+4. RPA 연동 시나리오 처리를 위한 의사 코드(Pseudo-code)
