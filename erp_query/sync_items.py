@@ -47,7 +47,9 @@ def _database_url() -> str:
 
 def fetch_items(scope: str):
     """ERP에서 (code, name, category) 목록을 가져온다."""
-    where = ["i.VALID_FLG <> 'N'"]
+    from filters import FINISHED_GOOD_WHERE
+    # 완성품 필터 (브레이커/부품/공통그룹 제외) — 모든 scope에 공통 적용
+    where = [f"({FINISHED_GOOD_WHERE})"]
     params: list = []
 
     if scope == "produced":
@@ -81,6 +83,7 @@ def fetch_items(scope: str):
 
 
 def upsert_items(rows) -> int:
+    """TRUNCATE + bulk INSERT (트랜잭션). 필터에서 제외된 옛 행도 자연 삭제."""
     url = _database_url()
     if not url:
         raise SystemExit(
@@ -89,18 +92,14 @@ def upsert_items(rows) -> int:
     conn = psycopg2.connect(url)
     try:
         with conn, conn.cursor() as cur:
-            execute_values(
-                cur,
-                """
-                INSERT INTO item_codes (code, name, category)
-                VALUES %s
-                ON CONFLICT (code) DO UPDATE
-                  SET name = EXCLUDED.name,
-                      category = EXCLUDED.category
-                """,
-                rows,
-                page_size=1000,
-            )
+            cur.execute("TRUNCATE TABLE item_codes RESTART IDENTITY")
+            if rows:
+                execute_values(
+                    cur,
+                    "INSERT INTO item_codes (code, name, category) VALUES %s",
+                    rows,
+                    page_size=1000,
+                )
         return len(rows)
     finally:
         conn.close()

@@ -30,13 +30,18 @@ from sync_items import _database_url
 
 
 def fetch_shipments() -> list[tuple]:
-    sql = """
-        SELECT ITEM_CD, OUT_HOGI,
-               TRY_CAST(OUT_HOGI AS INT) AS OUT_HOGI_INT,
-               BP_CD, REAL_OUT_DT, VEHICLE_NO
-        FROM XW_DELIVERY_CAR_INFO
-        WHERE OUT_HOGI IS NOT NULL AND OUT_HOGI <> ''
-          AND ITEM_CD  IS NOT NULL AND ITEM_CD  <> ''
+    from filters import FINISHED_GOOD_WHERE
+    # 완성품 필터: B_ITEM/B_ITEM_GROUP JOIN해서 브레이커/부품 출하 제외
+    sql = f"""
+        SELECT x.ITEM_CD, x.OUT_HOGI,
+               TRY_CAST(x.OUT_HOGI AS INT) AS OUT_HOGI_INT,
+               x.BP_CD, x.REAL_OUT_DT, x.VEHICLE_NO
+        FROM XW_DELIVERY_CAR_INFO x
+        JOIN B_ITEM i ON i.ITEM_CD = x.ITEM_CD
+        LEFT JOIN B_ITEM_GROUP g ON g.ITEM_GROUP_CD = i.ITEM_GROUP_CD
+        WHERE x.OUT_HOGI IS NOT NULL AND x.OUT_HOGI <> ''
+          AND x.ITEM_CD  IS NOT NULL AND x.ITEM_CD  <> ''
+          AND ({FINISHED_GOOD_WHERE})
     """
     conn = erp_db.connect(timeout=60)
     cur = conn.cursor()

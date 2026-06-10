@@ -26,15 +26,20 @@ from sync_items import _database_url
 
 
 def fetch_orders():
-    sql = """
+    from filters import FINISHED_GOOD_WHERE
+    # 완성품 필터: B_ITEM/B_ITEM_GROUP JOIN해서 브레이커/부품 제외
+    sql = f"""
         SELECT h.PRODT_ORDER_NO, h.ITEM_CD, h.PLANT_CD,
                TRY_CAST(h.FROM_HOGI_KO368 AS INT) AS HF,
                TRY_CAST(h.TO_HOGI_KO368   AS INT) AS HT,
                h.ORDER_STATUS,
                CONVERT(varchar(10), h.PLAN_START_DT, 23) AS PS
         FROM P_PRODUCTION_ORDER_HEADER h
+        JOIN B_ITEM i ON i.ITEM_CD = h.ITEM_CD
+        LEFT JOIN B_ITEM_GROUP g ON g.ITEM_GROUP_CD = i.ITEM_GROUP_CD
         WHERE h.FROM_HOGI_KO368 IS NOT NULL AND h.FROM_HOGI_KO368 <> ''
           AND TRY_CAST(h.FROM_HOGI_KO368 AS INT) IS NOT NULL
+          AND ({FINISHED_GOOD_WHERE})
     """
     conn = erp_db.connect(timeout=60)
     cur = conn.cursor()
@@ -58,30 +63,25 @@ def fetch_orders():
 
 
 def upsert(rows) -> int:
+    """TRUNCATE + bulk INSERT (트랜잭션). 필터에서 제외된 옛 행도 자연 삭제."""
     url = _database_url()
     if not url:
         raise SystemExit("DATABASE_URL 미설정 — PRIVATE/app_db.json 또는 환경변수.")
     conn = psycopg2.connect(url)
     try:
         with conn, conn.cursor() as cur:
-            execute_values(
-                cur,
-                """
-                INSERT INTO production_orders
-                  (prodt_order_no, item_code, plant_cd, hogi_from, hogi_to, order_status, plan_start)
-                VALUES %s
-                ON CONFLICT (prodt_order_no) DO UPDATE SET
-                  item_code    = EXCLUDED.item_code,
-                  plant_cd     = EXCLUDED.plant_cd,
-                  hogi_from    = EXCLUDED.hogi_from,
-                  hogi_to      = EXCLUDED.hogi_to,
-                  order_status = EXCLUDED.order_status,
-                  plan_start   = EXCLUDED.plan_start,
-                  synced_at    = now()
-                """,
-                rows,
-                page_size=1000,
-            )
+            cur.execute("TRUNCATE TABLE production_orders")
+            if rows:
+                execute_values(
+                    cur,
+                    """
+                    INSERT INTO production_orders
+                      (prodt_order_no, item_code, plant_cd, hogi_from, hogi_to, order_status, plan_start)
+                    VALUES %s
+                    """,
+                    rows,
+                    page_size=1000,
+                )
         return len(rows)
     finally:
         conn.close()
