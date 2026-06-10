@@ -74,6 +74,10 @@ export const ListReportsResponse = zod.object({
   data: zod.array(
     zod.object({
       id: zod.number(),
+      ncrNumber: zod
+        .string()
+        .nullish()
+        .describe("NCR 추적 번호 (QC-YYMM-NNNN)"),
       reportDate: zod.coerce.date(),
       itemCode: zod.string(),
       modelName: zod.string().nullish(),
@@ -230,6 +234,7 @@ export const GetReportStatsResponse = zod.object({
  */
 export const ListPendingReportsResponseItem = zod.object({
   id: zod.number(),
+  ncrNumber: zod.string().nullish().describe("NCR 추적 번호 (QC-YYMM-NNNN)"),
   reportDate: zod.coerce.date(),
   itemCode: zod.string(),
   modelName: zod.string().nullish(),
@@ -341,6 +346,7 @@ export const UpdateReportBody = zod.object({
 
 export const UpdateReportResponse = zod.object({
   id: zod.number(),
+  ncrNumber: zod.string().nullish().describe("NCR 추적 번호 (QC-YYMM-NNNN)"),
   reportDate: zod.coerce.date(),
   itemCode: zod.string(),
   modelName: zod.string().nullish(),
@@ -425,6 +431,7 @@ export const GetReportParams = zod.object({
 
 export const GetReportResponse = zod.object({
   id: zod.number(),
+  ncrNumber: zod.string().nullish().describe("NCR 추적 번호 (QC-YYMM-NNNN)"),
   reportDate: zod.coerce.date(),
   itemCode: zod.string(),
   modelName: zod.string().nullish(),
@@ -511,6 +518,7 @@ export const UpdateReportSyncStatusBody = zod.object({
 
 export const UpdateReportSyncStatusResponse = zod.object({
   id: zod.number(),
+  ncrNumber: zod.string().nullish().describe("NCR 추적 번호 (QC-YYMM-NNNN)"),
   reportDate: zod.coerce.date(),
   itemCode: zod.string(),
   modelName: zod.string().nullish(),
@@ -624,6 +632,7 @@ export const UpdateReportQcBody = zod.object({
 
 export const UpdateReportQcResponse = zod.object({
   id: zod.number(),
+  ncrNumber: zod.string().nullish().describe("NCR 추적 번호 (QC-YYMM-NNNN)"),
   reportDate: zod.coerce.date(),
   itemCode: zod.string(),
   modelName: zod.string().nullish(),
@@ -693,6 +702,21 @@ export const UpdateReportQcResponse = zod.object({
 });
 
 /**
+ * 지정한 연월 이전 보고서를 일괄 isLocked=true 처리한다. 관리자만 호출 가능.
+ * @summary 월 마감 (관리자 전용)
+ */
+export const CloseMonthBody = zod.object({
+  year: zod.number().describe("마감 대상 연도 (예: 2024)"),
+  month: zod.number().describe("마감 대상 월 (1~12)"),
+});
+
+export const CloseMonthResponse = zod.object({
+  lockedCount: zod.number().describe("이번 마감으로 잠금 처리된 보고서 수"),
+  year: zod.number(),
+  month: zod.number(),
+});
+
+/**
  * QC 담당자가 현장 확인 후 최종 조치 결과를 확정한다. 보고서가 isLocked인 경우에도 조치 가능.
  * @summary QC 조치 결과 확정 (admin 전용)
  */
@@ -708,6 +732,7 @@ export const SubmitQcActionBody = zod.object({
 
 export const SubmitQcActionResponse = zod.object({
   id: zod.number(),
+  ncrNumber: zod.string().nullish().describe("NCR 추적 번호 (QC-YYMM-NNNN)"),
   reportDate: zod.coerce.date(),
   itemCode: zod.string(),
   modelName: zod.string().nullish(),
@@ -788,6 +813,10 @@ export const TriggerRpaResponse = zod.object({
   reports: zod.array(
     zod.object({
       id: zod.number(),
+      ncrNumber: zod
+        .string()
+        .nullish()
+        .describe("NCR 추적 번호 (QC-YYMM-NNNN)"),
       reportDate: zod.coerce.date(),
       itemCode: zod.string(),
       modelName: zod.string().nullish(),

@@ -82,6 +82,11 @@ export const ReportProductType = {
 
 export interface Report {
   id: number;
+  /**
+   * NCR 추적 번호 (QC-YYMM-NNNN)
+   * @nullable
+   */
+  ncrNumber?: string | null;
   reportDate: string;
   itemCode: string;
   /** @nullable */
@@ -550,6 +555,20 @@ export interface QcAnalysisBody {
    * @nullable
    */
   managerNm?: string | null;
+}
+
+export interface CloseMonthBody {
+  /** 마감 대상 연도 (예: 2024) */
+  year: number;
+  /** 마감 대상 월 (1~12) */
+  month: number;
+}
+
+export interface CloseMonthResult {
+  /** 이번 마감으로 잠금 처리된 보고서 수 */
+  lockedCount: number;
+  year: number;
+  month: number;
 }
 
 export interface QcActionBody {

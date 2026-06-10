@@ -21,8 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/layout";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format } from "date-fns";
-import { ChevronLeft, RefreshCw, Save } from "lucide-react";
+import { differenceInDays, format } from "date-fns";
+import { AlertTriangle, ChevronLeft, RefreshCw, Save } from "lucide-react";
 
 const QC_STATUSES = ["접수", "분석 중", "조치 완료", "종결"] as const;
 const ACTION_DIRECTIONS = ["업체 방문 수정", "생산팀 자체 수정", "업체 반출 및 수정 입고"] as const;
@@ -338,9 +338,45 @@ export default function QcPage() {
           </button>
           <div>
             <h1 className="text-[18px] font-bold text-[#191F28]">QC 분석 입력</h1>
-            <p className="text-[12px] text-[#8B95A1]">보고서 #{String(report.id).padStart(4, "0")} · 접수 {format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}</p>
+            <p className="text-[12px] text-[#8B95A1]">
+              보고서 #{String(report.id).padStart(4, "0")}
+              {report.ncrNumber && (
+                <span className="ml-1.5 font-bold text-[#4E5968] bg-[#F2F4F6] rounded px-1.5 py-0.5">{report.ncrNumber}</span>
+              )}
+              {" "}· 접수 {format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}
+            </p>
           </div>
         </div>
+
+        {/* SLA 경고 배너: 발생일 기준 7일 이상 경과 */}
+        {report.occurrenceDate && differenceInDays(new Date(), new Date(report.occurrenceDate)) >= 7 && (
+          <div className="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 flex items-start gap-2.5">
+            <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[13px] font-bold text-red-700">발생일 기준 7일 경과</p>
+              <p className="text-[12px] text-red-500 mt-0.5">
+                일반 사용자는 보고서 수정이 제한됩니다. 관리자 권한으로 계속 저장할 수 있습니다.
+              </p>
+            </div>
+          </div>
+        )}
+        {/* SLA 경고 배너: 발생일 기준 5~6일 경과 */}
+        {report.occurrenceDate && (() => {
+          const d = differenceInDays(new Date(), new Date(report.occurrenceDate));
+          return d >= 5 && d < 7;
+        })() && (
+          <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-2.5">
+            <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[13px] font-bold text-amber-700">
+                발생일 기준 {differenceInDays(new Date(), new Date(report.occurrenceDate))}일 경과
+              </p>
+              <p className="text-[12px] text-amber-600 mt-0.5">
+                7일 이후 일반 사용자는 수정이 제한됩니다.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl border border-[#F2F4F6] px-4">
           <Form {...form}>

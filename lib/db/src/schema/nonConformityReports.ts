@@ -145,6 +145,8 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
   qcCorrectiveResult: text("qc_corrective_result"),
   qcSubmittedAt: timestamp("qc_submitted_at", { withTimezone: true }),
   qcSubmittedBy: integer("qc_submitted_by").references(() => usersTable.id, { onDelete: "set null" }),
+  // Task #34: NCR 채번 (QC-YYMM-NNNN)
+  ncrNumber: text("ncr_number").unique(),
   // ERP 누락 필드 (Task #33)
   remarks: text("remarks"),
   shipmentDateFrom: timestamp("shipment_date_from", { withTimezone: true }),

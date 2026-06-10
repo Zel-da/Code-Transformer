@@ -1,7 +1,7 @@
 import { Layout } from "@/components/layout";
 import { useListReports, getListReportsQueryKey, useGetReport, useUpdateReportSyncStatus, getGetReportQueryKey, getGetReportStatsQueryKey } from "@workspace/api-client-react";
 import { StatusBadge } from "@/components/status-badge";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -11,7 +11,29 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/auth";
 import { useLocation } from "wouter";
-import { Search, RefreshCw, X, XCircle, ChevronLeft, ChevronRight, ImageIcon, Lock, ClipboardCheck } from "lucide-react";
+import { Search, RefreshCw, X, XCircle, ChevronLeft, ChevronRight, ImageIcon, Lock, ClipboardCheck, AlertTriangle } from "lucide-react";
+
+function SlaBadge({ occurrenceDate }: { occurrenceDate?: string | null }) {
+  if (!occurrenceDate) return null;
+  const days = differenceInDays(new Date(), new Date(occurrenceDate));
+  if (days >= 7) {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold rounded-full px-2 py-0.5 bg-red-100 text-red-600 border border-red-200">
+        <AlertTriangle className="h-2.5 w-2.5" />
+        {days}일 경과
+      </span>
+    );
+  }
+  if (days >= 5) {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold rounded-full px-2 py-0.5 bg-amber-100 text-amber-600 border border-amber-200">
+        <AlertTriangle className="h-2.5 w-2.5" />
+        {days}일 경과
+      </span>
+    );
+  }
+  return null;
+}
 
 const QC_STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   "접수": { label: "QC 접수", cls: "bg-blue-50 text-blue-700 border border-blue-200" },
@@ -106,7 +128,12 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
 
       <div className="flex items-start justify-between gap-3 pb-4 border-b border-[#F2F4F6] mb-1">
         <div>
-          <p className="text-[11px] text-[#8B95A1] mb-1">보고서 #{report.id.toString().padStart(4, "0")}</p>
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-[11px] text-[#8B95A1]">보고서 #{report.id.toString().padStart(4, "0")}</p>
+            {report.ncrNumber && (
+              <span className="text-[11px] font-bold text-[#4E5968] bg-[#F2F4F6] rounded px-1.5 py-0.5">{report.ncrNumber}</span>
+            )}
+          </div>
           <h2 className="text-[18px] font-bold text-[#191F28]">{report.itemCode}</h2>
           <p className="text-[13px] text-[#8B95A1] mt-0.5">{report.processName}</p>
         </div>
@@ -346,14 +373,22 @@ export default function LedgerPage() {
                       onClick={() => setSelectedReportId(report.id)}
                     >
                       <div className="flex justify-between items-start mb-1.5">
-                        <div>
-                          <span className="font-semibold text-[14px] text-[#191F28]">{report.itemCode}</span>
-                          <span className="text-[12px] text-[#8B95A1] ml-2">{report.processName}</span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-semibold text-[14px] text-[#191F28]">{report.itemCode}</span>
+                            {report.ncrNumber && (
+                              <span className="text-[10px] font-bold text-[#4E5968] bg-[#F2F4F6] rounded px-1 py-0.5">{report.ncrNumber}</span>
+                            )}
+                          </div>
+                          <span className="text-[12px] text-[#8B95A1]">{report.processName}</span>
                         </div>
                         <StatusBadge status={report.syncStatus} />
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-[13px] font-medium text-[#191F28]">{report.defectType}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[13px] font-medium text-[#191F28]">{report.defectType}</span>
+                          <SlaBadge occurrenceDate={report.occurrenceDate} />
+                        </div>
                         <span className="text-[11px] text-[#8B95A1]">{format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}</span>
                       </div>
                     </div>
@@ -364,10 +399,11 @@ export default function LedgerPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-[#F8F9FA] hover:bg-[#F8F9FA]">
-                        <TableHead className="h-10 text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[140px]">접수 일시</TableHead>
+                        <TableHead className="h-10 text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[130px]">NCR 번호</TableHead>
+                        <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[130px]">접수 일시</TableHead>
                         <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide w-[110px]">품목코드</TableHead>
                         <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">공정명</TableHead>
-                        <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide hidden lg:table-cell">불량 유형</TableHead>
+                        <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide hidden lg:table-cell">SLA</TableHead>
                         <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide text-center w-[110px]">상태</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -382,12 +418,17 @@ export default function LedgerPage() {
                           }`}
                           onClick={() => setSelectedReportId(report.id)}
                         >
+                          <TableCell className="font-mono font-semibold text-[12px] text-[#4E5968]">
+                            {report.ncrNumber ?? "—"}
+                          </TableCell>
                           <TableCell className="text-[12px] text-[#8B95A1]">
                             {format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}
                           </TableCell>
                           <TableCell className="font-semibold text-[13px] text-[#191F28]">{report.itemCode}</TableCell>
                           <TableCell className="text-[13px] text-[#8B95A1]">{report.processName}</TableCell>
-                          <TableCell className="text-[13px] font-medium text-[#191F28] hidden lg:table-cell">{report.defectType}</TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            <SlaBadge occurrenceDate={report.occurrenceDate} />
+                          </TableCell>
                           <TableCell className="text-center">
                             <div className="flex flex-col items-center gap-1">
                               <StatusBadge status={report.syncStatus} />

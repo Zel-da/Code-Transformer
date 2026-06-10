@@ -17,6 +17,8 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  CloseMonthBody,
+  CloseMonthResult,
   CreateReportBody,
   CreateUserBody,
   DepartmentItem,
@@ -1090,6 +1092,93 @@ export const useUpdateReportQc = <
   TContext
 > => {
   return useMutation(getUpdateReportQcMutationOptions(options));
+};
+
+/**
+ * 지정한 연월 이전 보고서를 일괄 isLocked=true 처리한다. 관리자만 호출 가능.
+ * @summary 월 마감 (관리자 전용)
+ */
+export const getCloseMonthUrl = () => {
+  return `/api/admin/close-month`;
+};
+
+export const closeMonth = async (
+  closeMonthBody: CloseMonthBody,
+  options?: RequestInit,
+): Promise<CloseMonthResult> => {
+  return customFetch<CloseMonthResult>(getCloseMonthUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(closeMonthBody),
+  });
+};
+
+export const getCloseMonthMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof closeMonth>>,
+    TError,
+    { data: BodyType<CloseMonthBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof closeMonth>>,
+  TError,
+  { data: BodyType<CloseMonthBody> },
+  TContext
+> => {
+  const mutationKey = ["closeMonth"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof closeMonth>>,
+    { data: BodyType<CloseMonthBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return closeMonth(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CloseMonthMutationResult = NonNullable<
+  Awaited<ReturnType<typeof closeMonth>>
+>;
+export type CloseMonthMutationBody = BodyType<CloseMonthBody>;
+export type CloseMonthMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary 월 마감 (관리자 전용)
+ */
+export const useCloseMonth = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof closeMonth>>,
+    TError,
+    { data: BodyType<CloseMonthBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof closeMonth>>,
+  TError,
+  { data: BodyType<CloseMonthBody> },
+  TContext
+> => {
+  return useMutation(getCloseMonthMutationOptions(options));
 };
 
 /**

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, and, gte, lte, count } from "drizzle-orm";
+import { eq, sql, and, gte, lte, count, lt } from "drizzle-orm";
 import { db, nonConformityReportsTable, departmentsTable } from "@workspace/db";
 import {
   ListReportsQueryParams,
@@ -17,6 +17,32 @@ import {
 } from "@workspace/api-zod";
 import { requireAdmin, requireAuth } from "../middleware/requireAuth.js";
 import { sendSushantalkMessage, sendSushantalkToUrl } from "../lib/sushantalk.js";
+import { z } from "zod";
+
+const CloseMonthBody = z.object({
+  year: z.number().int().min(2020).max(2099),
+  month: z.number().int().min(1).max(12),
+});
+
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+async function generateNcrNumber(tx: Parameters<Parameters<typeof db.transaction>[0]>[0]): Promise<string> {
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(-2);
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const prefix = `QC-${yy}${mm}-`;
+
+  // Advisory lock: ensures only one concurrent numbering per DB session
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(8675309)`);
+
+  const [{ cnt }] = await tx
+    .select({ cnt: count() })
+    .from(nonConformityReportsTable)
+    .where(sql`${nonConformityReportsTable.ncrNumber} LIKE ${prefix + "%"}`);
+
+  const seq = (Number(cnt) + 1).toString().padStart(4, "0");
+  return `${prefix}${seq}`;
+}
 
 const router: IRouter = Router();
 
@@ -78,42 +104,46 @@ router.post("/reports", async (req, res): Promise<void> => {
   const reportDate = d.reportDate ? new Date(d.reportDate) : new Date();
   const slaDeadlineAt = new Date(reportDate.getTime() + 24 * 60 * 60 * 1000);
 
-  const [report] = await db
-    .insert(nonConformityReportsTable)
-    .values({
-      reportDate,
-      itemCode: d.itemCode,
-      modelName: d.modelName ?? null,
-      processName: d.processName,
-      defectType: d.defectType,
-      description: d.description,
-      imageUrl: d.imageUrl ?? null,
-      syncStatus: "PENDING",
-      registrantName: d.registrantName ?? null,
-      ncrType: d.ncrType ?? null,
-      factory: d.factory ?? null,
-      shipmentUnit: d.shipmentUnit ?? null,
-      lostManHours: d.lostManHours ?? null,
-      defectQty: d.defectQty ?? null,
-      occurrenceDate: d.occurrenceDate ?? null,
-      issuingTeam: d.issuingTeam ?? null,
-      plantCd: d.plantCd ?? null,
-      processCd: d.processCd ?? null,
-      flawTypeCd: d.flawTypeCd ?? null,
-      deptCd: d.deptCd ?? null,
-      ncrGbnCd: d.ncrGbnCd ?? null,
-      vendorCd: d.vendorCd ?? null,
-      vendorNm: d.vendorNm ?? null,
-      productType: d.productType ?? null,
-      actionDirection: d.actionDirection ?? null,
-      remarks: d.remarks ?? null,
-      shipmentDateFrom: d.shipmentDateFrom ? new Date(d.shipmentDateFrom) : null,
-      shipmentDateTo: d.shipmentDateTo ? new Date(d.shipmentDateTo) : null,
-      managerCd: d.managerCd ?? null,
-      managerNm: d.managerNm ?? null,
-      slaDeadlineAt,
-    })
-    .returning();
+  const [report] = await db.transaction(async (tx) => {
+    const ncrNumber = await generateNcrNumber(tx);
+    return tx
+      .insert(nonConformityReportsTable)
+      .values({
+        ncrNumber,
+        reportDate,
+        itemCode: d.itemCode,
+        modelName: d.modelName ?? null,
+        processName: d.processName,
+        defectType: d.defectType,
+        description: d.description,
+        imageUrl: d.imageUrl ?? null,
+        syncStatus: "PENDING",
+        registrantName: d.registrantName ?? null,
+        ncrType: d.ncrType ?? null,
+        factory: d.factory ?? null,
+        shipmentUnit: d.shipmentUnit ?? null,
+        lostManHours: d.lostManHours ?? null,
+        defectQty: d.defectQty ?? null,
+        occurrenceDate: d.occurrenceDate ?? null,
+        issuingTeam: d.issuingTeam ?? null,
+        plantCd: d.plantCd ?? null,
+        processCd: d.processCd ?? null,
+        flawTypeCd: d.flawTypeCd ?? null,
+        deptCd: d.deptCd ?? null,
+        ncrGbnCd: d.ncrGbnCd ?? null,
+        vendorCd: d.vendorCd ?? null,
+        vendorNm: d.vendorNm ?? null,
+        productType: d.productType ?? null,
+        actionDirection: d.actionDirection ?? null,
+        remarks: d.remarks ?? null,
+        shipmentDateFrom: d.shipmentDateFrom ? new Date(d.shipmentDateFrom) : null,
+        shipmentDateTo: d.shipmentDateTo ? new Date(d.shipmentDateTo) : null,
+        managerCd: d.managerCd ?? null,
+        managerNm: d.managerNm ?? null,
+        slaDeadlineAt,
+      })
+      .returning();
+  });
 
   req.log.info({ reportId: report.id, productType: report.productType }, "Non-conformity report created");
   res.status(201).json(report);
@@ -417,7 +447,11 @@ router.put("/reports/:id", requireAuth, async (req, res): Promise<void> => {
 
   // V2.0: Lock 가드 — isLocked=true인 보고서는 수정 불가
   const [existing] = await db
-    .select({ id: nonConformityReportsTable.id, isLocked: nonConformityReportsTable.isLocked })
+    .select({
+      id: nonConformityReportsTable.id,
+      isLocked: nonConformityReportsTable.isLocked,
+      occurrenceDate: nonConformityReportsTable.occurrenceDate,
+    })
     .from(nonConformityReportsTable)
     .where(eq(nonConformityReportsTable.id, params.data.id));
 
@@ -429,6 +463,15 @@ router.put("/reports/:id", requireAuth, async (req, res): Promise<void> => {
   if (existing.isLocked) {
     res.status(403).json({ error: "보고서가 잠금 상태입니다. SLA가 초과되어 수정이 제한됩니다." });
     return;
+  }
+
+  // Task #34: 발생일 기준 7일 경과 시 일반 사용자 수정 제한
+  if (req.auth?.role !== "admin" && existing.occurrenceDate) {
+    const elapsed = Date.now() - new Date(existing.occurrenceDate).getTime();
+    if (elapsed > SEVEN_DAYS_MS) {
+      res.status(403).json({ error: "발생일 기준 7일이 경과하여 수정이 제한됩니다. 관리자에게 문의하세요." });
+      return;
+    }
   }
 
   const updates: Record<string, unknown> = {};
@@ -467,6 +510,36 @@ router.put("/reports/:id", requireAuth, async (req, res): Promise<void> => {
 
   req.log.info({ reportId: report.id }, "Report updated");
   res.json(report);
+});
+
+// Task #34: 월 마감 API (admin 전용)
+router.post("/admin/close-month", requireAdmin, async (req, res): Promise<void> => {
+  const parsed = CloseMonthBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { year, month } = parsed.data;
+
+  // 해당 월의 시작/종료 타임스탬프
+  const monthStart = new Date(year, month - 1, 1);
+  const monthEnd = new Date(year, month, 1); // exclusive
+
+  const result = await db
+    .update(nonConformityReportsTable)
+    .set({ isLocked: true })
+    .where(
+      and(
+        eq(nonConformityReportsTable.isLocked, false),
+        gte(nonConformityReportsTable.reportDate, monthStart),
+        lt(nonConformityReportsTable.reportDate, monthEnd),
+      ),
+    )
+    .returning({ id: nonConformityReportsTable.id });
+
+  req.log.info({ year, month, lockedCount: result.length, by: req.auth!.userId }, "Month closed");
+  res.json({ lockedCount: result.length, year, month });
 });
 
 router.delete("/reports/:id", async (req, res): Promise<void> => {
