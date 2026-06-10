@@ -9,6 +9,7 @@ import { z } from "zod";
 const router: IRouter = Router();
 
 const ROLES = ["admin", "worker", "reviewer", "approver", "collaborator"] as const;
+const NOTIFY_LEVELS = ["to", "cc", "none"] as const;
 
 const CreateUserBody = z.object({
   username: z.string().min(2, "아이디는 2자 이상"),
@@ -20,9 +21,8 @@ const CreateUserBody = z.object({
   plantCd: z.string().optional(),
   processName: z.string().optional(),
   processCd: z.string().optional(),
+  notifyLevel: z.enum(NOTIFY_LEVELS).default("to"),
 });
-
-const NOTIFY_LEVELS = ["to", "cc", "none"] as const;
 
 const UpdateUserBody = z.object({
   displayName: z.string().min(1).optional(),
