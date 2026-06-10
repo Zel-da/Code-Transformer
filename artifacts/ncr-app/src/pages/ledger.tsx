@@ -603,6 +603,7 @@ export default function LedgerPage() {
         if (dateTo) params.set("to", new Date(dateTo + "T23:59:59").toISOString());
         if (syncStatus !== "all") params.set("syncStatus", syncStatus);
         if (qcStatusFilter !== "all") params.set("qcStatus", qcStatusFilter);
+        if (excludeErp && qcStatusFilter === "all") params.set("excludeErpSynced", "true");
       } else {
         params.set("qcStatus", "ERP_SYNCED");
         if (settledFrom) params.set("from", new Date(settledFrom).toISOString());

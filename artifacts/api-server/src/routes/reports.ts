@@ -292,12 +292,16 @@ router.get("/reports/summary", requireAuth, async (req, res): Promise<void> => {
   const flawTypeCd  = typeof req.query.flawTypeCd  === "string" && req.query.flawTypeCd  ? req.query.flawTypeCd  : null;
   const qcStatusRaw = typeof req.query.qcStatus === "string" && req.query.qcStatus ? req.query.qcStatus : null;
 
+  const validSummaryQcStatuses = ["OPEN", "IN_REVIEW", "PENDING_COLLAB", "RESOLVED", "APPROVED", "ERP_SYNCED"] as const;
+  const qcStatus = validSummaryQcStatuses.includes(qcStatusRaw as typeof validSummaryQcStatuses[number]) ? qcStatusRaw as typeof validSummaryQcStatuses[number] : null;
+  if (qcStatusRaw && !qcStatus) { res.status(400).json({ error: `Invalid qcStatus: ${qcStatusRaw}` }); return; }
+
   const conds: ReturnType<typeof eq>[] = [];
   if (from && !isNaN(from.getTime())) conds.push(gte(nonConformityReportsTable.reportDate, from));
   if (to   && !isNaN(to.getTime()))   conds.push(lte(nonConformityReportsTable.reportDate, to));
   if (vendorCd)   conds.push(eq(nonConformityReportsTable.vendorCd, vendorCd));
   if (flawTypeCd) conds.push(eq(nonConformityReportsTable.flawTypeCd, flawTypeCd));
-  if (qcStatusRaw) conds.push(eq(nonConformityReportsTable.qcStatus, qcStatusRaw as "OPEN" | "IN_REVIEW" | "PENDING_COLLAB" | "RESOLVED" | "APPROVED" | "ERP_SYNCED"));
+  if (qcStatus)   conds.push(eq(nonConformityReportsTable.qcStatus, qcStatus));
   const where = conds.length > 0 ? and(...conds) : undefined;
 
   const [byQcStatus, byFlawType, byVendor, totals] = await Promise.all([
@@ -341,18 +345,27 @@ router.get("/reports/summary", requireAuth, async (req, res): Promise<void> => {
 router.get("/reports/export.xlsx", requireAuth, async (req, res): Promise<void> => {
   const from = typeof req.query.from === "string" && req.query.from ? new Date(req.query.from) : null;
   const to   = typeof req.query.to   === "string" && req.query.to   ? new Date(req.query.to)   : null;
-  const vendorCd      = typeof req.query.vendorCd    === "string" && req.query.vendorCd    ? req.query.vendorCd    : null;
-  const flawTypeCd    = typeof req.query.flawTypeCd  === "string" && req.query.flawTypeCd  ? req.query.flawTypeCd  : null;
-  const qcStatusRaw   = typeof req.query.qcStatus    === "string" && req.query.qcStatus    ? req.query.qcStatus    : null;
-  const syncStatusRaw = typeof req.query.syncStatus  === "string" && req.query.syncStatus  ? req.query.syncStatus  : null;
+  const vendorCd          = typeof req.query.vendorCd    === "string" && req.query.vendorCd    ? req.query.vendorCd    : null;
+  const flawTypeCd        = typeof req.query.flawTypeCd  === "string" && req.query.flawTypeCd  ? req.query.flawTypeCd  : null;
+  const qcStatusRaw       = typeof req.query.qcStatus    === "string" && req.query.qcStatus    ? req.query.qcStatus    : null;
+  const syncStatusRaw     = typeof req.query.syncStatus  === "string" && req.query.syncStatus  ? req.query.syncStatus  : null;
+  const excludeErpSynced  = req.query.excludeErpSynced === "true";
+
+  const validExportQcStatuses = ["OPEN", "IN_REVIEW", "PENDING_COLLAB", "RESOLVED", "APPROVED", "ERP_SYNCED"] as const;
+  const validExportSyncStatuses = ["PENDING", "PROCESSING", "COMPLETED", "FAILED"] as const;
+  const qcStatus   = validExportQcStatuses.includes(qcStatusRaw as typeof validExportQcStatuses[number]) ? qcStatusRaw as typeof validExportQcStatuses[number] : null;
+  const syncStatus = validExportSyncStatuses.includes(syncStatusRaw as typeof validExportSyncStatuses[number]) ? syncStatusRaw as typeof validExportSyncStatuses[number] : null;
+  if (qcStatusRaw && !qcStatus) { res.status(400).json({ error: `Invalid qcStatus: ${qcStatusRaw}` }); return; }
+  if (syncStatusRaw && !syncStatus) { res.status(400).json({ error: `Invalid syncStatus: ${syncStatusRaw}` }); return; }
 
   const conds: ReturnType<typeof eq>[] = [];
   if (from && !isNaN(from.getTime())) conds.push(gte(nonConformityReportsTable.reportDate, from));
   if (to   && !isNaN(to.getTime()))   conds.push(lte(nonConformityReportsTable.reportDate, to));
-  if (vendorCd)     conds.push(eq(nonConformityReportsTable.vendorCd, vendorCd));
-  if (flawTypeCd)   conds.push(eq(nonConformityReportsTable.flawTypeCd, flawTypeCd));
-  if (qcStatusRaw)  conds.push(eq(nonConformityReportsTable.qcStatus, qcStatusRaw as "OPEN" | "IN_REVIEW" | "PENDING_COLLAB" | "RESOLVED" | "APPROVED" | "ERP_SYNCED"));
-  if (syncStatusRaw) conds.push(eq(nonConformityReportsTable.syncStatus, syncStatusRaw as "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"));
+  if (vendorCd)    conds.push(eq(nonConformityReportsTable.vendorCd, vendorCd));
+  if (flawTypeCd)  conds.push(eq(nonConformityReportsTable.flawTypeCd, flawTypeCd));
+  if (qcStatus)    conds.push(eq(nonConformityReportsTable.qcStatus, qcStatus));
+  else if (excludeErpSynced) conds.push(ne(nonConformityReportsTable.qcStatus, "ERP_SYNCED"));
+  if (syncStatus)  conds.push(eq(nonConformityReportsTable.syncStatus, syncStatus));
   const where = conds.length > 0 ? and(...conds) : undefined;
 
   const reports = await db

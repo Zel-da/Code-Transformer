@@ -287,6 +287,13 @@ paths:
           required: false
           schema:
             type: string
+        - name: excludeErpSynced
+          in: query
+          required: false
+          description: true 이면 ERP_SYNCED 상태 보고서를 제외한다 (진행 현황 탭 전용)
+          schema:
+            type: string
+            enum: ["true", "false"]
       responses:
         "200":
           description: Excel file (xlsx)
