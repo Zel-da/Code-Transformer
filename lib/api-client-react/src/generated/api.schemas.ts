@@ -151,7 +151,7 @@ export interface Report {
    */
   vendorNm?: string | null;
   /**
-   * 품목그룹 (ERP B_ITEM_GROUP.ITEM_GROUP_NM)
+   * 품목그룹 (ERP B_ITEM_GROUP.ITEM_GROUP_NM, 모델별 분석/필터용)
    * @nullable
    */
   itemGroup?: string | null;
@@ -322,6 +322,11 @@ export interface CreateReportBody {
    * @nullable
    */
   vendorNm?: string | null;
+  /**
+   * 품목그룹 (ERP B_ITEM_GROUP.ITEM_GROUP_NM)
+   * @nullable
+   */
+  itemGroup?: string | null;
   /** 양산 or 개발 */
   productType?: CreateReportBodyProductType;
   /** 조치 방향 */
@@ -401,8 +406,6 @@ export interface UpdateReportBody {
   vendorCd?: string | null;
   /** @nullable */
   vendorNm?: string | null;
-  /** @nullable */
-  itemGroup?: string | null;
   /**
    * 비고
    * @nullable
@@ -901,7 +904,19 @@ export type ExportReportsXlsxParams = {
   flawTypeCd?: string;
   qcStatus?: string;
   syncStatus?: string;
+  /**
+   * true 이면 ERP_SYNCED 상태 보고서를 제외한다 (진행 현황 탭 전용)
+   */
+  excludeErpSynced?: ExportReportsXlsxExcludeErpSynced;
 };
+
+export type ExportReportsXlsxExcludeErpSynced =
+  (typeof ExportReportsXlsxExcludeErpSynced)[keyof typeof ExportReportsXlsxExcludeErpSynced];
+
+export const ExportReportsXlsxExcludeErpSynced = {
+  true: "true",
+  false: "false",
+} as const;
 
 export type ListProcessesParams = {
   plantCd?: string;
