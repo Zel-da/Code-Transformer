@@ -789,7 +789,7 @@ export default function QcPage() {
                               title={`${QC_STATUS_LABELS[prevStatus] ?? prevStatus}(으)로 되돌리기`}
                               className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all disabled:opacity-50 opacity-50 hover:opacity-100 ${QC_STATUS_COLORS[prevStatus] ?? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"}`}
                             >
-                              ← {QC_STATUS_LABELS[prevStatus] ?? prevStatus}
+                              {QC_STATUS_LABELS[prevStatus] ?? prevStatus}
                             </button>
                           ) : (
                             <span className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border opacity-40 ${QC_STATUS_COLORS[prevStatus] ?? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"}`}>
