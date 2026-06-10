@@ -779,6 +779,36 @@ export interface UpdateDepartmentBody {
   webhookUrl?: string | null;
 }
 
+export interface ReportComment {
+  id: number;
+  reportId: number;
+  /** @nullable */
+  authorId?: number | null;
+  authorName: string;
+  body: string;
+  taggedUserIds: number[];
+  isEdited: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCommentBody {
+  /**
+   * @minLength 1
+   * @maxLength 4000
+   */
+  body: string;
+  taggedUserIds?: number[];
+}
+
+export interface UpdateCommentBody {
+  /**
+   * @minLength 1
+   * @maxLength 4000
+   */
+  body: string;
+}
+
 export type ListItemsParams = {
   search?: string;
   limit?: number;

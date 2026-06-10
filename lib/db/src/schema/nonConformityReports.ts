@@ -164,6 +164,24 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
     .$onUpdate(() => new Date()),
 });
 
+export const reportCommentsTable = pgTable("report_comments", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id")
+    .notNull()
+    .references(() => nonConformityReportsTable.id, { onDelete: "cascade" }),
+  authorId: integer("author_id").references(() => usersTable.id, { onDelete: "set null" }),
+  authorName: text("author_name").notNull(),
+  body: text("body").notNull(),
+  taggedUserIds: integer("tagged_user_ids").array().notNull().default([]),
+  isEdited: boolean("is_edited").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+export type ReportComment = typeof reportCommentsTable.$inferSelect;
+
 export const auditLogsTable = pgTable("audit_logs", {
   id: serial("id").primaryKey(),
   actorId: integer("actor_id").references(() => usersTable.id, { onDelete: "set null" }),

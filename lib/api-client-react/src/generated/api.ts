@@ -19,6 +19,7 @@ import type {
 import type {
   CloseMonthBody,
   CloseMonthResult,
+  CreateCommentBody,
   CreateReportBody,
   CreateUserBody,
   DepartmentItem,
@@ -38,12 +39,14 @@ import type {
   QcActionBody,
   QcAnalysisBody,
   Report,
+  ReportComment,
   ReportListResponse,
   ReportStats,
   ResetUserPassword200,
   ResetUserPasswordBody,
   RpaRunResult,
   SetUserActiveBody,
+  UpdateCommentBody,
   UpdateDepartmentBody,
   UpdateReportBody,
   UpdateStatusBody,
@@ -1360,6 +1363,353 @@ export const useSubmitQcAction = <
   TContext
 > => {
   return useMutation(getSubmitQcActionMutationOptions(options));
+};
+
+/**
+ * @summary 보고서 의견 목록 조회
+ */
+export const getListReportCommentsUrl = (id: number) => {
+  return `/api/reports/${id}/comments`;
+};
+
+export const listReportComments = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ReportComment[]> => {
+  return customFetch<ReportComment[]>(getListReportCommentsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListReportCommentsQueryKey = (id: number) => {
+  return [`/api/reports/${id}/comments`] as const;
+};
+
+export const getListReportCommentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listReportComments>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listReportComments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListReportCommentsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listReportComments>>
+  > = ({ signal }) => listReportComments(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listReportComments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListReportCommentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listReportComments>>
+>;
+export type ListReportCommentsQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary 보고서 의견 목록 조회
+ */
+
+export function useListReportComments<
+  TData = Awaited<ReturnType<typeof listReportComments>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listReportComments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListReportCommentsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary 보고서 의견 등록
+ */
+export const getCreateReportCommentUrl = (id: number) => {
+  return `/api/reports/${id}/comments`;
+};
+
+export const createReportComment = async (
+  id: number,
+  createCommentBody: CreateCommentBody,
+  options?: RequestInit,
+): Promise<ReportComment> => {
+  return customFetch<ReportComment>(getCreateReportCommentUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createCommentBody),
+  });
+};
+
+export const getCreateReportCommentMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createReportComment>>,
+    TError,
+    { id: number; data: BodyType<CreateCommentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createReportComment>>,
+  TError,
+  { id: number; data: BodyType<CreateCommentBody> },
+  TContext
+> => {
+  const mutationKey = ["createReportComment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createReportComment>>,
+    { id: number; data: BodyType<CreateCommentBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createReportComment(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateReportCommentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createReportComment>>
+>;
+export type CreateReportCommentMutationBody = BodyType<CreateCommentBody>;
+export type CreateReportCommentMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary 보고서 의견 등록
+ */
+export const useCreateReportComment = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createReportComment>>,
+    TError,
+    { id: number; data: BodyType<CreateCommentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createReportComment>>,
+  TError,
+  { id: number; data: BodyType<CreateCommentBody> },
+  TContext
+> => {
+  return useMutation(getCreateReportCommentMutationOptions(options));
+};
+
+/**
+ * @summary 보고서 의견 수정 (본인 또는 admin)
+ */
+export const getUpdateReportCommentUrl = (id: number, cid: number) => {
+  return `/api/reports/${id}/comments/${cid}`;
+};
+
+export const updateReportComment = async (
+  id: number,
+  cid: number,
+  updateCommentBody: UpdateCommentBody,
+  options?: RequestInit,
+): Promise<ReportComment> => {
+  return customFetch<ReportComment>(getUpdateReportCommentUrl(id, cid), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateCommentBody),
+  });
+};
+
+export const getUpdateReportCommentMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateReportComment>>,
+    TError,
+    { id: number; cid: number; data: BodyType<UpdateCommentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateReportComment>>,
+  TError,
+  { id: number; cid: number; data: BodyType<UpdateCommentBody> },
+  TContext
+> => {
+  const mutationKey = ["updateReportComment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateReportComment>>,
+    { id: number; cid: number; data: BodyType<UpdateCommentBody> }
+  > = (props) => {
+    const { id, cid, data } = props ?? {};
+
+    return updateReportComment(id, cid, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateReportCommentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateReportComment>>
+>;
+export type UpdateReportCommentMutationBody = BodyType<UpdateCommentBody>;
+export type UpdateReportCommentMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary 보고서 의견 수정 (본인 또는 admin)
+ */
+export const useUpdateReportComment = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateReportComment>>,
+    TError,
+    { id: number; cid: number; data: BodyType<UpdateCommentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateReportComment>>,
+  TError,
+  { id: number; cid: number; data: BodyType<UpdateCommentBody> },
+  TContext
+> => {
+  return useMutation(getUpdateReportCommentMutationOptions(options));
+};
+
+/**
+ * @summary 보고서 의견 삭제 (본인 또는 admin)
+ */
+export const getDeleteReportCommentUrl = (id: number, cid: number) => {
+  return `/api/reports/${id}/comments/${cid}`;
+};
+
+export const deleteReportComment = async (
+  id: number,
+  cid: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteReportCommentUrl(id, cid), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteReportCommentMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteReportComment>>,
+    TError,
+    { id: number; cid: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteReportComment>>,
+  TError,
+  { id: number; cid: number },
+  TContext
+> => {
+  const mutationKey = ["deleteReportComment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteReportComment>>,
+    { id: number; cid: number }
+  > = (props) => {
+    const { id, cid } = props ?? {};
+
+    return deleteReportComment(id, cid, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteReportCommentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteReportComment>>
+>;
+
+export type DeleteReportCommentMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary 보고서 의견 삭제 (본인 또는 admin)
+ */
+export const useDeleteReportComment = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteReportComment>>,
+    TError,
+    { id: number; cid: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteReportComment>>,
+  TError,
+  { id: number; cid: number },
+  TContext
+> => {
+  return useMutation(getDeleteReportCommentMutationOptions(options));
 };
 
 /**

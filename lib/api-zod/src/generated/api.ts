@@ -985,6 +985,80 @@ export const SubmitQcActionResponse = zod.object({
 });
 
 /**
+ * @summary 보고서 의견 목록 조회
+ */
+export const ListReportCommentsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListReportCommentsResponseItem = zod.object({
+  id: zod.number(),
+  reportId: zod.number(),
+  authorId: zod.number().nullish(),
+  authorName: zod.string(),
+  body: zod.string(),
+  taggedUserIds: zod.array(zod.number()),
+  isEdited: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListReportCommentsResponse = zod.array(
+  ListReportCommentsResponseItem,
+);
+
+/**
+ * @summary 보고서 의견 등록
+ */
+export const CreateReportCommentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const createReportCommentBodyBodyMax = 4000;
+
+export const createReportCommentBodyTaggedUserIdsDefault = [];
+
+export const CreateReportCommentBody = zod.object({
+  body: zod.string().min(1).max(createReportCommentBodyBodyMax),
+  taggedUserIds: zod
+    .array(zod.number())
+    .default(createReportCommentBodyTaggedUserIdsDefault),
+});
+
+/**
+ * @summary 보고서 의견 수정 (본인 또는 admin)
+ */
+export const UpdateReportCommentParams = zod.object({
+  id: zod.coerce.number(),
+  cid: zod.coerce.number(),
+});
+
+export const updateReportCommentBodyBodyMax = 4000;
+
+export const UpdateReportCommentBody = zod.object({
+  body: zod.string().min(1).max(updateReportCommentBodyBodyMax),
+});
+
+export const UpdateReportCommentResponse = zod.object({
+  id: zod.number(),
+  reportId: zod.number(),
+  authorId: zod.number().nullish(),
+  authorName: zod.string(),
+  body: zod.string(),
+  taggedUserIds: zod.array(zod.number()),
+  isEdited: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary 보고서 의견 삭제 (본인 또는 admin)
+ */
+export const DeleteReportCommentParams = zod.object({
+  id: zod.coerce.number(),
+  cid: zod.coerce.number(),
+});
+
+/**
  * Simulates RPA bot execution - processes all PENDING reports and marks them COMPLETED or FAILED
  * @summary Trigger RPA processing on all PENDING reports
  */

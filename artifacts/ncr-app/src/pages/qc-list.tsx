@@ -7,20 +7,41 @@ import { format } from "date-fns";
 import { ChevronRight, FlaskConical, RefreshCw } from "lucide-react";
 
 const QC_STATUS_COLORS: Record<string, string> = {
-  "접수": "bg-blue-50 text-blue-700",
-  "분석 중": "bg-amber-50 text-amber-700",
-  "조치 완료": "bg-emerald-50 text-emerald-700",
-  "종결": "bg-[#F2F4F6] text-[#4E5968]",
+  OPEN:           "bg-blue-50 text-blue-700",
+  IN_REVIEW:      "bg-amber-50 text-amber-700",
+  PENDING_COLLAB: "bg-purple-50 text-purple-700",
+  RESOLVED:       "bg-emerald-50 text-emerald-700",
+  APPROVED:       "bg-teal-50 text-teal-700",
+  ERP_SYNCED:     "bg-[#F2F4F6] text-[#4E5968]",
 };
 
-type FilterKey = "미완료" | "접수" | "분석 중" | "조치 완료" | "종결" | "전체";
+const QC_STATUS_LABELS: Record<string, string> = {
+  OPEN:           "접수",
+  IN_REVIEW:      "검토 중",
+  PENDING_COLLAB: "협업 대기",
+  RESOLVED:       "조치 완료",
+  APPROVED:       "승인 완료",
+  ERP_SYNCED:     "ERP 등록",
+};
 
-const FILTERS: FilterKey[] = ["미완료", "접수", "분석 중", "조치 완료", "종결", "전체"];
+type QcStatusEnum = "OPEN" | "IN_REVIEW" | "PENDING_COLLAB" | "RESOLVED" | "APPROVED" | "ERP_SYNCED";
+type FilterKey = "미완료" | QcStatusEnum | "전체";
+
+const FILTERS: FilterKey[] = ["미완료", "OPEN", "IN_REVIEW", "PENDING_COLLAB", "RESOLVED", "APPROVED", "전체"];
+const FILTER_LABELS: Record<FilterKey, string> = {
+  "미완료": "미완료",
+  "OPEN": "접수",
+  "IN_REVIEW": "검토 중",
+  "PENDING_COLLAB": "협업 대기",
+  "RESOLVED": "조치 완료",
+  "APPROVED": "승인 완료",
+  "전체": "전체",
+};
 
 function matchesFilter(report: Report, filter: FilterKey): boolean {
   const qs = report.qcStatus ?? null;
   if (filter === "전체") return true;
-  if (filter === "미완료") return qs === null || qs === "접수" || qs === "분석 중";
+  if (filter === "미완료") return qs === null || qs === "OPEN" || qs === "IN_REVIEW" || qs === "PENDING_COLLAB";
   return qs === filter;
 }
 
@@ -33,9 +54,10 @@ function QcStatusChip({ status }: { status: string | null | undefined }) {
     );
   }
   const cls = QC_STATUS_COLORS[status] ?? "bg-[#F2F4F6] text-[#4E5968]";
+  const label = QC_STATUS_LABELS[status] ?? status;
   return (
     <span className={`text-[11px] font-semibold rounded-full px-2.5 py-1 ${cls}`}>
-      {status}
+      {label}
     </span>
   );
 }
@@ -58,7 +80,7 @@ export default function QcListPage() {
 
   const pendingCount = allReports.filter((r) => matchesFilter(r, "미완료")).length;
   const doneCount = allReports.filter(
-    (r) => r.qcStatus === "조치 완료" || r.qcStatus === "종결"
+    (r) => r.qcStatus === "RESOLVED" || r.qcStatus === "APPROVED" || r.qcStatus === "ERP_SYNCED"
   ).length;
 
   return (
@@ -107,7 +129,7 @@ export default function QcListPage() {
                     : "bg-white border border-[#F2F4F6] text-[#8B95A1] hover:text-[#191F28]"
                 }`}
               >
-                {f}
+                {FILTER_LABELS[f]}
                 {!isLoading && (
                   <span className={`text-[11px] font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center ${
                     isActive ? "bg-white/20 text-white" : "bg-[#F2F4F6] text-[#4E5968]"
@@ -131,7 +153,7 @@ export default function QcListPage() {
             <div className="h-48 flex flex-col items-center justify-center gap-2 text-center">
               <FlaskConical className="h-8 w-8 text-[#BEC5CC]" />
               <p className="text-[14px] font-semibold text-[#191F28]">
-                {filter === "미완료" ? "분석 대기 중인 보고서가 없습니다" : `"${filter}" 항목이 없습니다`}
+                {filter === "미완료" ? "분석 대기 중인 보고서가 없습니다" : `"${FILTER_LABELS[filter]}" 항목이 없습니다`}
               </p>
               <p className="text-[12px] text-[#8B95A1]">다른 필터를 선택해 보세요</p>
             </div>
@@ -143,14 +165,12 @@ export default function QcListPage() {
                   onClick={() => navigate(`/qc/${report.id}`)}
                   className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-[#F8F9FA] active:bg-[#F2F4F6] transition-colors text-left"
                 >
-                  {/* 번호 */}
                   <div className="w-11 h-11 rounded-xl bg-[#F8F9FA] flex items-center justify-center shrink-0">
                     <span className="text-[12px] font-bold text-[#8B95A1]">
                       #{String(report.id).padStart(3, "0")}
                     </span>
                   </div>
 
-                  {/* 메인 정보 */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="text-[14px] font-semibold text-[#191F28] truncate">
@@ -171,7 +191,6 @@ export default function QcListPage() {
                     </p>
                   </div>
 
-                  {/* QC 상태 + 화살표 */}
                   <div className="flex items-center gap-2 shrink-0">
                     <QcStatusChip status={report.qcStatus} />
                     <ChevronRight className="h-4 w-4 text-[#BEC5CC]" />

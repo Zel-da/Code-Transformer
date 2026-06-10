@@ -9,6 +9,7 @@ import masterRouter from "./master";
 import authRouter from "./auth";
 import usersRouter from "./users";
 import erpRouter from "./erp";
+import commentsRouter from "./comments";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(vendorsRouter);
 router.use(rpaRouter);
 router.use(masterRouter);
 router.use(erpRouter);
+router.use(commentsRouter);
 
 export default router;

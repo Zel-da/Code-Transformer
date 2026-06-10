@@ -1,4 +1,5 @@
 import { Layout } from "@/components/layout";
+import { CommentThread } from "@/components/comment-thread";
 import { useListReports, getListReportsQueryKey, useGetReport, useUpdateReportSyncStatus, useUpdateReportStatus, useTriggerRpa, getGetReportQueryKey, getGetReportStatsQueryKey } from "@workspace/api-client-react";
 import { StatusBadge } from "@/components/status-badge";
 import { format, differenceInDays } from "date-fns";
@@ -11,7 +12,8 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/auth";
 import { useLocation } from "wouter";
-import { Search, RefreshCw, X, XCircle, ChevronLeft, ChevronRight, ImageIcon, Lock, ClipboardCheck, AlertTriangle, Zap } from "lucide-react";
+import { useListUsers, useCreateReportComment } from "@workspace/api-client-react";
+import { Search, RefreshCw, X, XCircle, ChevronLeft, ChevronRight, ImageIcon, Lock, ClipboardCheck, AlertTriangle, Zap, Users } from "lucide-react";
 
 function SlaBadge({ occurrenceDate }: { occurrenceDate?: string | null }) {
   if (!occurrenceDate) return null;
@@ -93,6 +95,14 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
   const resetRetry = useUpdateReportSyncStatus();
   const updateStatus = useUpdateReportStatus();
   const triggerRpa = useTriggerRpa();
+  const createComment = useCreateReportComment();
+
+  // PENDING_COLLAB 협업 요청 모달
+  const [collabModalOpen, setCollabModalOpen] = useState(false);
+  const [selectedCollabIds, setSelectedCollabIds] = useState<number[]>([]);
+  const [collabNote, setCollabNote] = useState("");
+  const { data: allUsers = [] } = useListUsers();
+  const collaborators = allUsers.filter((u) => u.isActive && u.id !== user?.id);
 
   const handleResetRetry = async () => {
     if (!report) return;
@@ -128,17 +138,49 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
     }
   };
 
+  const doTransition = async (to: QcStatus) => {
+    if (!report) return;
+    await updateStatus.mutateAsync({ id: report.id, data: { status: to } });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getListReportsQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetReportQueryKey(report.id) }),
+    ]);
+    toast({ title: "상태 변경 완료", description: `${QC_STATUS_BADGE[to]?.label ?? to}(으)로 변경되었습니다.` });
+  };
+
   const handleTransition = async (to: QcStatus) => {
     if (!report) return;
+    if (to === "PENDING_COLLAB") {
+      setSelectedCollabIds([]);
+      setCollabNote("");
+      setCollabModalOpen(true);
+      return;
+    }
     try {
-      await updateStatus.mutateAsync({ id: report.id, data: { status: to } });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getListReportsQueryKey() }),
-        queryClient.invalidateQueries({ queryKey: getGetReportQueryKey(report.id) }),
-      ]);
-      toast({ title: "상태 변경 완료", description: `${QC_STATUS_BADGE[to]?.label ?? to}(으)로 변경되었습니다.` });
+      await doTransition(to);
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "상태 변경에 실패했습니다.";
+      toast({ title: "오류", description: msg, variant: "destructive" });
+    }
+  };
+
+  const handleCollabConfirm = async () => {
+    if (!report) return;
+    try {
+      if (selectedCollabIds.length > 0) {
+        const names = selectedCollabIds.map((id) => allUsers.find((u) => u.id === id)?.displayName ?? "").filter(Boolean).join(", ");
+        const body = collabNote.trim()
+          ? `[협업 요청] ${collabNote.trim()}`
+          : `[협업 요청] ${names}님의 검토를 요청합니다.`;
+        await createComment.mutateAsync({
+          id: report.id,
+          data: { body, taggedUserIds: selectedCollabIds },
+        });
+      }
+      await doTransition("PENDING_COLLAB");
+      setCollabModalOpen(false);
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "처리에 실패했습니다.";
       toast({ title: "오류", description: msg, variant: "destructive" });
     }
   };
@@ -353,6 +395,9 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
         </div>
       )}
 
+      {/* 협업 의견 스레드 */}
+      <CommentThread reportId={report.id} />
+
       <div className="pt-3 md:hidden">
         <button
           onClick={onClose}
@@ -361,6 +406,93 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
           닫기
         </button>
       </div>
+
+      {/* PENDING_COLLAB 협업 담당자 지정 모달 */}
+      {collabModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-[#F2F4F6] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-purple-600" />
+                <h3 className="text-[16px] font-bold text-[#191F28]">협업 담당자 지정</h3>
+              </div>
+              <button
+                onClick={() => setCollabModalOpen(false)}
+                className="h-8 w-8 rounded-xl bg-[#F2F4F6] flex items-center justify-center text-[#4E5968] hover:bg-[#E5E8EB]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="px-5 py-4 max-h-[50vh] overflow-y-auto">
+              <p className="text-[12px] text-[#8B95A1] mb-3">검토를 요청할 담당자를 선택하세요. 선택한 담당자에게 알림이 발송됩니다.</p>
+              <div className="space-y-1.5">
+                {collaborators.map((u) => {
+                  const checked = selectedCollabIds.includes(u.id);
+                  return (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() =>
+                        setSelectedCollabIds((prev) =>
+                          checked ? prev.filter((id) => id !== u.id) : [...prev, u.id]
+                        )
+                      }
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all ${
+                        checked
+                          ? "border-purple-300 bg-purple-50"
+                          : "border-[#E5E8EB] bg-white hover:border-[#D0D5DD]"
+                      }`}
+                    >
+                      <div className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 ${checked ? "bg-purple-600 border-purple-600" : "border-[#D0D5DD]"}`}>
+                        {checked && <svg className="h-2.5 w-2.5 text-white" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      </div>
+                      <div className="h-7 w-7 rounded-full bg-[#E5E8EB] flex items-center justify-center shrink-0">
+                        <span className="text-[11px] font-bold text-[#4E5968]">{u.displayName.slice(0, 1)}</span>
+                      </div>
+                      <div className="text-left min-w-0">
+                        <p className="text-[13px] font-semibold text-[#191F28] truncate">{u.displayName}</p>
+                        <p className="text-[10px] text-[#8B95A1]">{u.role}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+                {collaborators.length === 0 && (
+                  <p className="text-center text-[12px] text-[#BEC5CC] py-4">등록된 사용자가 없습니다.</p>
+                )}
+              </div>
+
+              <div className="mt-4">
+                <p className="text-[11px] font-semibold text-[#8B95A1] mb-1.5">협업 요청 메모 <span className="font-normal text-[#BEC5CC]">(선택)</span></p>
+                <textarea
+                  className="w-full rounded-xl bg-[#F8F9FA] px-3 py-2.5 text-[13px] text-[#191F28] outline-none focus:ring-2 focus:ring-[#1A1A1A]/10 resize-none"
+                  rows={2}
+                  placeholder="검토 요청 내용을 입력하세요"
+                  value={collabNote}
+                  onChange={(e) => setCollabNote(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="px-5 py-4 border-t border-[#F2F4F6] flex gap-2">
+              <button
+                onClick={() => setCollabModalOpen(false)}
+                className="flex-1 py-2.5 rounded-xl bg-[#F2F4F6] text-[#191F28] font-semibold text-[13px]"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleCollabConfirm}
+                disabled={updateStatus.isPending || createComment.isPending}
+                className="flex-1 py-2.5 rounded-xl bg-purple-600 text-white font-semibold text-[13px] disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {(updateStatus.isPending || createComment.isPending) && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
+                협업 요청
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

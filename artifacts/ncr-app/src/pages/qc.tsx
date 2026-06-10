@@ -1,4 +1,5 @@
 import { useParams, useLocation } from "wouter";
+import { CommentThread } from "@/components/comment-thread";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -460,7 +461,10 @@ export default function QcPage() {
           </div>
         )}
 
-        <div className="bg-white rounded-2xl border border-[#F2F4F6] px-4">
+        {/* 협업 의견 스레드 */}
+        <CommentThread reportId={id} />
+
+        <div className="bg-white rounded-2xl border border-[#F2F4F6] px-4 mt-4">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
 
