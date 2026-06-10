@@ -27,7 +27,38 @@ import { Layout } from "@/components/layout";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { differenceInDays, format } from "date-fns";
-import { AlertTriangle, ChevronLeft, RefreshCw, Save, Users, X } from "lucide-react";
+import { AlertTriangle, ChevronLeft, RefreshCw, Save, Search, Loader2, Users, X } from "lucide-react";
+
+const ERP_API_BASE =
+  ((import.meta.env.VITE_ERP_API_BASE as string | undefined) ?? "").replace(/\/+$/, "");
+
+function parseHogi(raw?: string): number | null {
+  if (!raw) return null;
+  const m = raw.match(/\d+/);
+  return m ? Number(m[0]) : null;
+}
+
+type ErpCandidate = { code: string; name: string; category: string; id: number; createdAt: string };
+
+type ErpLookup = {
+  ok: boolean;
+  itemCode?: string;
+  modelName?: string;
+  itemGroup?: string;
+  itemGroupCd?: string;
+  factory?: string;
+  plantCd?: string;
+  shipmentUnit?: string;
+  vendorCd?: string | null;
+  vendorNm?: string | null;
+  orderCount?: number;
+  matchedOrders?: { PRODT_ORDER_NO: string; ORDER_STATUS: string; PLAN_START: string | null }[];
+  matchedVendors?: { vendorCd: string; vendorNm: string; taxNo: string | null }[];
+  reason?: string;
+  candidates?: ErpCandidate[];
+};
+
+const FACTORY_TO_PLANT_CD: Record<string, string> = { 아산: "SA00", 화성: "SH00" };
 import {
   AlertDialog,
   AlertDialogAction,
@@ -69,6 +100,7 @@ const formSchema = z.object({
   qcCorrectiveResult: z.string().nullable().optional(),
   vendorCd: z.string().nullable().optional(),
   vendorNm: z.string().nullable().optional(),
+  itemGroup: z.string().nullable().optional(),
   remarks: z.string().nullable().optional(),
   shipmentDateFrom: z.string().nullable().optional(),
   shipmentDateTo: z.string().nullable().optional(),
@@ -301,6 +333,7 @@ export default function QcPage() {
       qcCorrectiveResult: null,
       vendorCd: null,
       vendorNm: null,
+      itemGroup: null,
       remarks: null,
       shipmentDateFrom: null,
       shipmentDateTo: null,
@@ -308,6 +341,12 @@ export default function QcPage() {
       managerNm: null,
     },
   });
+
+  // ERP 자동조회 패널 state
+  const [erpSearchProduct, setErpSearchProduct] = useState("");
+  const [erpSearchHogi, setErpSearchHogi] = useState("");
+  const [erpSearchResult, setErpSearchResult] = useState<ErpLookup | null>(null);
+  const [erpSearchLoading, setErpSearchLoading] = useState(false);
 
   const selectedPlantCd = form.watch("plantCd");
   const { data: processes = [] } = useListProcesses(
@@ -338,6 +377,7 @@ export default function QcPage() {
         qcCorrectiveResult: report.qcCorrectiveResult ?? null,
         vendorCd: report.vendorCd ?? null,
         vendorNm: report.vendorNm ?? null,
+        itemGroup: report.itemGroup ?? null,
         remarks: report.remarks ?? null,
         shipmentDateFrom: report.shipmentDateFrom
           ? format(new Date(report.shipmentDateFrom), "yyyy-MM-dd")
@@ -350,6 +390,59 @@ export default function QcPage() {
       });
     }
   }, [report]);
+
+  // ERP 결과(또는 후보)로 QC 폼 자동 입력
+  const fillFromErp = (result: ErpLookup | ErpCandidate) => {
+    const isCandidate = "code" in result;
+    const itemCode = isCandidate ? result.code : result.itemCode;
+    const modelName = isCandidate ? result.name : result.modelName;
+    const factory = isCandidate ? undefined : result.factory;
+    const plantCd = isCandidate ? undefined : result.plantCd;
+    const shipmentUnit = isCandidate ? undefined : result.shipmentUnit;
+    const vendorCd = isCandidate ? undefined : result.vendorCd;
+    const vendorNm = isCandidate ? undefined : result.vendorNm;
+    const itemGroup = isCandidate ? result.category : result.itemGroup;
+    if (itemCode) form.setValue("itemCode", itemCode, { shouldValidate: true });
+    if (modelName) form.setValue("modelName", modelName, { shouldValidate: true });
+    if (factory) form.setValue("factory", factory, { shouldValidate: true });
+    if (plantCd) form.setValue("plantCd", plantCd, { shouldValidate: true });
+    else if (factory && FACTORY_TO_PLANT_CD[factory]) {
+      form.setValue("plantCd", FACTORY_TO_PLANT_CD[factory], { shouldValidate: true });
+    }
+    if (shipmentUnit) form.setValue("shipmentUnit", shipmentUnit, { shouldValidate: true });
+    if (vendorCd) form.setValue("vendorCd", vendorCd, { shouldValidate: true });
+    if (vendorNm) form.setValue("vendorNm", vendorNm, { shouldValidate: true });
+    if (itemGroup) form.setValue("itemGroup", itemGroup, { shouldValidate: true });
+    setErpSearchResult(null);
+    setErpSearchProduct("");
+    setErpSearchHogi("");
+  };
+
+  // 부품코드/제품/품목그룹/거래처/호기 ─ 아무거나 입력 → 단건 자동입력, 다건 후보
+  const searchErpByProduct = async () => {
+    const product = erpSearchProduct.trim();
+    const hogi = parseHogi(erpSearchHogi);
+    if (!product && hogi == null) return;
+    setErpSearchLoading(true);
+    setErpSearchResult(null);
+    try {
+      const params = new URLSearchParams();
+      if (product) params.set("product", product);
+      if (hogi != null) params.set("hogi", String(hogi));
+      const res = await fetch(`${ERP_API_BASE}/api/erp/input-data?${params}`);
+      const data: ErpLookup = await res.json();
+      if (data.ok) {
+        fillFromErp(data);
+        toast({ title: "자동 입력됨", description: `${data.itemCode ?? ""} ${data.modelName ?? ""}` });
+      } else {
+        setErpSearchResult(data);
+      }
+    } catch {
+      setErpSearchResult({ ok: false, reason: "네트워크 오류가 발생했습니다." });
+    } finally {
+      setErpSearchLoading(false);
+    }
+  };
 
   const onSubmit = async (values: FormValues) => {
     try {
@@ -378,6 +471,7 @@ export default function QcPage() {
           qcCorrectiveResult: values.qcCorrectiveResult || null,
           vendorCd: values.vendorCd || null,
           vendorNm: values.vendorNm || null,
+          itemGroup: values.itemGroup || null,
           remarks: values.remarks || null,
           shipmentDateFrom: values.shipmentDateFrom
             ? new Date(values.shipmentDateFrom).toISOString()
@@ -595,6 +689,91 @@ export default function QcPage() {
 
               {/* ── 부적합 내용 ── */}
               <GroupDivider title="부적합 내용" />
+
+              {/* ERP 자동 조회 */}
+              <div className="px-5 py-4 border-b border-[#F2F4F6]">
+                <div className="mb-3">
+                  <p className="text-[13px] font-semibold text-[#191F28] mb-0.5">제품 정보 조회</p>
+                  <p className="text-[11px] text-[#8B95A1]">부품코드·제품명·품목그룹·거래처 중 아무거나 + (선택) 호기 — 단건이면 자동 입력</p>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={erpSearchProduct}
+                    onChange={(e) => setErpSearchProduct(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), searchErpByProduct())}
+                    placeholder="부품코드/제품/품목그룹/거래처"
+                    className="flex-1 h-11 rounded-xl bg-[#F8F9FA] px-3 text-[14px] outline-none text-[#191F28] placeholder-[#BEC5CC] border-2 border-transparent focus:border-[#1A1A1A]"
+                  />
+                  <input
+                    type="text"
+                    value={erpSearchHogi}
+                    onChange={(e) => setErpSearchHogi(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), searchErpByProduct())}
+                    placeholder="호기"
+                    className="w-20 h-11 rounded-xl bg-[#F8F9FA] px-3 text-[14px] outline-none text-[#191F28] placeholder-[#BEC5CC] border-2 border-transparent focus:border-[#1A1A1A] text-center"
+                  />
+                  <button
+                    type="button"
+                    onClick={searchErpByProduct}
+                    disabled={erpSearchLoading || (!erpSearchProduct.trim() && !erpSearchHogi.trim())}
+                    className="h-11 px-4 rounded-xl bg-[#1A1A1A] text-white text-[13px] font-semibold flex items-center gap-1.5 disabled:opacity-40 shrink-0"
+                  >
+                    {erpSearchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    조회
+                  </button>
+                </div>
+
+                {erpSearchResult && (
+                  <div className="mt-3">
+                    {erpSearchResult.ok ? (
+                      <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-bold text-[14px] text-[#191F28] truncate">{erpSearchResult.itemCode}</p>
+                          <p className="text-[12px] text-[#4E5968] mt-0.5 truncate">{erpSearchResult.modelName}</p>
+                          <div className="flex gap-3 mt-1 flex-wrap">
+                            {erpSearchResult.itemGroup && <span className="text-[11px] text-[#8B95A1]">품목그룹 {erpSearchResult.itemGroup}</span>}
+                            {erpSearchResult.factory && <span className="text-[11px] text-[#8B95A1]">공장 {erpSearchResult.factory}</span>}
+                            {erpSearchResult.shipmentUnit && <span className="text-[11px] text-[#8B95A1]">호기 {erpSearchResult.shipmentUnit}</span>}
+                            {erpSearchResult.vendorNm && <span className="text-[11px] text-[#8B95A1]">거래처 {erpSearchResult.vendorNm}</span>}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => fillFromErp(erpSearchResult!)}
+                          className="shrink-0 px-3 py-2 bg-[#1A1A1A] text-white text-[12px] font-bold rounded-xl min-h-[44px]"
+                        >
+                          이대로<br />입력
+                        </button>
+                      </div>
+                    ) : erpSearchResult.candidates && erpSearchResult.candidates.length > 0 ? (
+                      <div className="rounded-xl border border-[#E5E8EB] overflow-hidden">
+                        <div className="px-3 py-2 bg-[#F8F9FA] flex items-center justify-between">
+                          <span className="text-[12px] font-semibold text-[#4E5968]">{erpSearchResult.candidates.length}건 검색됨</span>
+                          <span className="text-[11px] text-[#8B95A1]">항목을 선택하면 자동 입력됩니다</span>
+                        </div>
+                        <div className="max-h-52 overflow-y-auto divide-y divide-[#F2F4F6]">
+                          {erpSearchResult.candidates.map((c) => (
+                            <button
+                              key={c.code}
+                              type="button"
+                              onClick={() => fillFromErp(c)}
+                              className="w-full px-3 py-2.5 text-left hover:bg-[#F8F9FA]"
+                            >
+                              <p className="font-semibold text-[13px] text-[#191F28]">{c.code}</p>
+                              <p className="text-[11px] text-[#8B95A1] truncate">{c.name} · {c.category}</p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl bg-[#F8F9FA] border border-[#F2F4F6] px-3 py-2.5">
+                        <p className="text-[12px] text-[#8B95A1]">{erpSearchResult.reason || "검색 결과가 없습니다."}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* 부품코드 */}
               <FormField
