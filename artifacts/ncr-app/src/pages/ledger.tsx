@@ -16,7 +16,7 @@ import {
 } from "@workspace/api-client-react";
 import { StatusBadge } from "@/components/status-badge";
 import { format, differenceInDays } from "date-fns";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -539,7 +539,11 @@ export default function LedgerPage() {
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [page, setPage] = useState(1);
-  const [selectedReportId, setSelectedReportId] = useState<number | null>(null);
+  const [selectedReportId, setSelectedReportId] = useState<number | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = parseInt(params.get("reportId") ?? "", 10);
+    return isNaN(id) ? null : id;
+  });
 
   const [settledFrom, setSettledFrom] = useState<string>("");
   const [settledTo, setSettledTo] = useState<string>("");
