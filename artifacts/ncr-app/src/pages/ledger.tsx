@@ -11,7 +11,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/auth";
 import { useLocation } from "wouter";
-import { Search, RefreshCw, X, XCircle, ChevronLeft, ChevronRight, ImageIcon, Lock, ClipboardCheck, AlertTriangle } from "lucide-react";
+import { Search, RefreshCw, X, XCircle, ChevronLeft, ChevronRight, ImageIcon, Lock, ClipboardCheck, AlertTriangle, Zap } from "lucide-react";
 
 function SlaBadge({ occurrenceDate }: { occurrenceDate?: string | null }) {
   if (!occurrenceDate) return null;
@@ -64,11 +64,13 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 type QcStatus = "OPEN" | "IN_REVIEW" | "PENDING_COLLAB" | "RESOLVED" | "APPROVED" | "ERP_SYNCED";
 
 // ERP_SYNCED는 RPA 성공 시 자동 전이만 — 수동 전이 불가
+// RESOLVED → APPROVED: approver 전용 (spec: "QC 팀장(approver)만 최종 승인")
+// PENDING_COLLAB → RESOLVED: collaborator는 직접 종결 불가
 const TRANSITION_MATRIX: Record<QcStatus, Partial<Record<QcStatus, string[]>>> = {
   OPEN:           { IN_REVIEW: ["admin", "reviewer", "approver"] },
   IN_REVIEW:      { PENDING_COLLAB: ["admin", "reviewer"], RESOLVED: ["admin", "reviewer"], OPEN: ["admin"] },
-  PENDING_COLLAB: { RESOLVED: ["admin", "reviewer", "collaborator"], IN_REVIEW: ["admin", "reviewer"] },
-  RESOLVED:       { APPROVED: ["admin", "approver"], IN_REVIEW: ["admin", "reviewer"] },
+  PENDING_COLLAB: { RESOLVED: ["admin", "reviewer"], IN_REVIEW: ["admin", "reviewer"] },
+  RESOLVED:       { APPROVED: ["approver"], IN_REVIEW: ["admin", "reviewer"] },
   APPROVED:       {},
   ERP_SYNCED:     {},
 };
@@ -90,6 +92,7 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
   const [, navigate] = useLocation();
   const resetRetry = useUpdateReportSyncStatus();
   const updateStatus = useUpdateReportStatus();
+  const [rpaTriggering, setRpaTriggering] = useState(false);
 
   const handleResetRetry = async () => {
     if (!report) return;
@@ -103,6 +106,29 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
       toast({ title: "재시도 초기화 완료", description: "보고서가 PENDING으로 재설정되었습니다." });
     } catch {
       toast({ title: "오류", description: "재시도 초기화에 실패했습니다.", variant: "destructive" });
+    }
+  };
+
+  const handleRpaTrigger = async () => {
+    if (!report) return;
+    setRpaTriggering(true);
+    try {
+      const resp = await fetch("/api/rpa/trigger", { method: "POST" });
+      const json = await resp.json() as { completed?: number; failed?: number; processed?: number };
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListReportsQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetReportQueryKey(report.id) }),
+        queryClient.invalidateQueries({ queryKey: getGetReportStatsQueryKey() }),
+      ]);
+      if ((json.completed ?? 0) > 0) {
+        toast({ title: "RPA 등록 완료", description: "ERP 연동이 성공적으로 처리되었습니다." });
+      } else {
+        toast({ title: "RPA 처리 중", description: "처리 중이거나 대기 중입니다. 잠시 후 확인하세요." });
+      }
+    } catch {
+      toast({ title: "오류", description: "RPA 트리거에 실패했습니다.", variant: "destructive" });
+    } finally {
+      setRpaTriggering(false);
     }
   };
 
@@ -295,6 +321,29 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
         </div>
       )}
 
+      {/* RPA 등록 버튼: qcStatus=APPROVED && syncStatus=PENDING 조건 (spec: APPROVED일 때만 활성화) */}
+      {report.qcStatus === "APPROVED" && report.syncStatus === "PENDING" && (
+        <div className="mt-4 rounded-xl border border-teal-200 bg-teal-50 overflow-hidden">
+          <div className="px-3 py-2.5 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Zap className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold text-teal-800">ERP 자동 등록 준비 완료</p>
+                <p className="text-[11px] text-teal-600">승인이 확정되었습니다. RPA를 통해 ERP에 등록하세요.</p>
+              </div>
+            </div>
+            <button
+              onClick={handleRpaTrigger}
+              disabled={rpaTriggering}
+              className="shrink-0 h-8 px-3.5 rounded-xl bg-teal-700 text-white text-[12px] font-semibold disabled:opacity-50 flex items-center gap-1.5 transition-colors hover:bg-teal-800"
+            >
+              {rpaTriggering ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+              RPA 등록
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* QC 분석 입력 버튼: 관리자/검토자/승인자 */}
       {(user?.role === "admin" || user?.role === "reviewer" || user?.role === "approver") && (
         <div className="pt-4">
@@ -320,10 +369,13 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
   );
 }
 
+const QC_STATUS_OPTIONS = ["OPEN", "IN_REVIEW", "PENDING_COLLAB", "RESOLVED", "APPROVED", "ERP_SYNCED"] as const;
+
 interface QueryParams {
   page: number;
   pageSize: number;
   syncStatus?: string;
+  qcStatus?: string;
   dateFrom?: string;
   dateTo?: string;
 }
@@ -332,6 +384,7 @@ export default function LedgerPage() {
   const isMobile = useIsMobile();
 
   const [syncStatus, setSyncStatus] = useState<string>("all");
+  const [qcStatusFilter, setQcStatusFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [page, setPage] = useState(1);
@@ -340,25 +393,27 @@ export default function LedgerPage() {
   const queryParams = useMemo<QueryParams>(() => {
     const p: QueryParams = { page, pageSize: 20 };
     if (syncStatus !== "all") p.syncStatus = syncStatus;
+    if (qcStatusFilter !== "all") p.qcStatus = qcStatusFilter;
     if (dateFrom) p.dateFrom = new Date(dateFrom).toISOString();
     if (dateTo) p.dateTo = new Date(dateTo + "T23:59:59").toISOString();
     return p;
-  }, [syncStatus, dateFrom, dateTo, page]);
+  }, [syncStatus, qcStatusFilter, dateFrom, dateTo, page]);
 
-  const { data: reportsData, isLoading: isLoadingReports } = useListReports(queryParams, {
-    query: { queryKey: getListReportsQueryKey(queryParams), enabled: true },
+  const { data: reportsData, isLoading: isLoadingReports } = useListReports(queryParams as Parameters<typeof useListReports>[0], {
+    query: { queryKey: getListReportsQueryKey(queryParams as Parameters<typeof useListReports>[0]), enabled: true },
   });
 
   const reports = reportsData?.data ?? [];
 
   const handleReset = () => {
     setSyncStatus("all");
+    setQcStatusFilter("all");
     setDateFrom("");
     setDateTo("");
     setPage(1);
   };
 
-  const hasFilters = syncStatus !== "all" || dateFrom || dateTo;
+  const hasFilters = syncStatus !== "all" || qcStatusFilter !== "all" || dateFrom || dateTo;
 
   return (
     <Layout>
@@ -371,7 +426,7 @@ export default function LedgerPage() {
 
         {/* Filters */}
         <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden mb-5">
-          <div className="p-4 grid gap-3 grid-cols-1 md:grid-cols-3">
+          <div className="p-4 grid gap-3 grid-cols-1 md:grid-cols-4">
             <div className="space-y-1.5">
               <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">동기화 상태</p>
               <Select value={syncStatus} onValueChange={(val) => { setSyncStatus(val); setPage(1); }}>
@@ -382,6 +437,20 @@ export default function LedgerPage() {
                   <SelectItem value="all">전체</SelectItem>
                   {SYNC_STATUSES.map((s) => (
                     <SelectItem key={s} value={s}>{SYNC_STATUS_LABELS[s] ?? s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">QC 처리 상태</p>
+              <Select value={qcStatusFilter} onValueChange={(val) => { setQcStatusFilter(val); setPage(1); }}>
+                <SelectTrigger className="h-9 rounded-xl text-[13px] bg-[#F8F9FA] border-0 focus:ring-0">
+                  <SelectValue placeholder="전체" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all">전체</SelectItem>
+                  {QC_STATUS_OPTIONS.map((s) => (
+                    <SelectItem key={s} value={s}>{QC_STATUS_BADGE[s]?.label ?? s}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

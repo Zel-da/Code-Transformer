@@ -63,12 +63,21 @@ router.get("/reports", async (req, res): Promise<void> => {
   const { defectType, syncStatus, dateFrom, dateTo, page, pageSize } =
     parsed.data;
 
+  // qcStatus는 openapi spec 미생성 파라미터 — req.query에서 직접 추출
+  const qcStatusRaw = typeof req.query.qcStatus === "string" ? req.query.qcStatus : undefined;
+  const validQcStatuses = ["OPEN", "IN_REVIEW", "PENDING_COLLAB", "RESOLVED", "APPROVED", "ERP_SYNCED"] as const;
+  type QcStatusFilter = (typeof validQcStatuses)[number];
+  const qcStatus = validQcStatuses.includes(qcStatusRaw as QcStatusFilter) ? (qcStatusRaw as QcStatusFilter) : undefined;
+
   const conditions = [];
   if (defectType) {
     conditions.push(eq(nonConformityReportsTable.defectType, defectType));
   }
   if (syncStatus) {
     conditions.push(eq(nonConformityReportsTable.syncStatus, syncStatus as "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"));
+  }
+  if (qcStatus) {
+    conditions.push(eq(nonConformityReportsTable.qcStatus, qcStatus));
   }
   if (dateFrom) {
     conditions.push(gte(nonConformityReportsTable.reportDate, dateFrom));
@@ -546,11 +555,13 @@ router.post("/admin/close-month", requireAdmin, async (req, res): Promise<void> 
 type QcStatus = "OPEN" | "IN_REVIEW" | "PENDING_COLLAB" | "RESOLVED" | "APPROVED" | "ERP_SYNCED";
 
 // ERP_SYNCED는 RPA 성공 시 자동 전이만 허용 — 수동 전이 불가
+// RESOLVED → APPROVED: approver 전용 (spec: "QC 팀장(approver)만 최종 승인")
+// PENDING_COLLAB → RESOLVED: collaborator는 직접 종결 불가
 const TRANSITION_MATRIX: Record<QcStatus, Partial<Record<QcStatus, UserRole[]>>> = {
   OPEN:           { IN_REVIEW: ["admin", "reviewer", "approver"] },
   IN_REVIEW:      { PENDING_COLLAB: ["admin", "reviewer"], RESOLVED: ["admin", "reviewer"], OPEN: ["admin"] },
-  PENDING_COLLAB: { RESOLVED: ["admin", "reviewer", "collaborator"], IN_REVIEW: ["admin", "reviewer"] },
-  RESOLVED:       { APPROVED: ["admin", "approver"], IN_REVIEW: ["admin", "reviewer"] },
+  PENDING_COLLAB: { RESOLVED: ["admin", "reviewer"], IN_REVIEW: ["admin", "reviewer"] },
+  RESOLVED:       { APPROVED: ["approver"], IN_REVIEW: ["admin", "reviewer"] },
   APPROVED:       {},
   ERP_SYNCED:     {},
 };
