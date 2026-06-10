@@ -19,12 +19,14 @@ ERP 조회 REST API (FastAPI) — 이 PC(ERP DB 접근 가능)에서 실행.
             요청 헤더 X-ERP-KEY 가 일치해야 한다. 미설정이면 인증 없음(내부망 전용).
 """
 
+import ipaddress
 import json
 import os
 
-from fastapi import FastAPI, HTTPException, Query, Header
+from fastapi import FastAPI, HTTPException, Query, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from starlette.middleware.base import BaseHTTPMiddleware
 
 import db
 import find_order
@@ -35,6 +37,50 @@ app = FastAPI(
     description="제품+출하호기로 NCR 자동입력 데이터를 ERP 본 DB(읽기 전용)에서 조회",
     version="1.0.0",
 )
+
+# 사설 IP 대역 (RFC 1918 + loopback + link-local). 기본 허용 대상.
+# ERP_ALLOWED_CIDRS 환경변수로 추가 허용 가능 (콤마 구분, 예: "203.0.113.10/32").
+_PRIVATE_NETS = [
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+    ipaddress.ip_network("fe80::/10"),
+]
+for cidr in (os.getenv("ERP_ALLOWED_CIDRS") or "").split(","):
+    cidr = cidr.strip()
+    if cidr:
+        try:
+            _PRIVATE_NETS.append(ipaddress.ip_network(cidr, strict=False))
+        except ValueError:
+            pass
+
+
+def _is_lan(client_host: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(client_host)
+    except ValueError:
+        return False
+    return any(ip in net for net in _PRIVATE_NETS)
+
+
+class LanOnlyMiddleware(BaseHTTPMiddleware):
+    """공인 IP에서 오는 요청을 거부. ERP 자료 누출 방지의 1차 방어선."""
+    async def dispatch(self, request: Request, call_next):
+        client = request.client.host if request.client else ""
+        if not _is_lan(client):
+            return Response(
+                content=json.dumps({"detail": "사내망에서만 접근 가능", "client": client}, ensure_ascii=False),
+                status_code=403,
+                media_type="application/json",
+            )
+        return await call_next(request)
+
+
+app.add_middleware(LanOnlyMiddleware)
 
 # 내부망 전용. 프런트/노드 API에서 직접 호출 가능하도록 CORS 허용.
 app.add_middleware(
@@ -54,8 +100,14 @@ def _api_key() -> str:
 
 
 def _check_auth(x_erp_key: str | None) -> None:
+    """API 키 강제. PRIVATE/erp_db.json 의 api_key 또는 ERP_API_KEY 환경변수 필수."""
     key = _api_key()
-    if key and x_erp_key != key:
+    if not key:
+        raise HTTPException(
+            status_code=503,
+            detail="ERP API 키 미설정 — PRIVATE/erp_db.json 의 api_key 또는 ERP_API_KEY 환경변수를 설정하세요",
+        )
+    if x_erp_key != key:
         raise HTTPException(status_code=401, detail="X-ERP-KEY 불일치 또는 누락")
 
 
