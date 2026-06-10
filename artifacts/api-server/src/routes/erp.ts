@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, or, ilike, asc, desc, sql, type SQL } from "drizzle-orm";
+import { eq, and, or, ilike, asc, desc, inArray, sql, type SQL } from "drizzle-orm";
 import {
   db,
   itemCodesTable,
@@ -160,6 +160,32 @@ function buildResult(
   };
 }
 
+// itemCode 의 임의 production_order 로부터 plantCd 폴백 (출하된 호기는 production_orders 매칭이
+// 없어 plantCd null 이 되는 케이스 보정).
+async function plantCdFallbackFor(itemCode: string): Promise<string | null> {
+  const [row] = await db
+    .select({ plantCd: productionOrdersTable.plantCd })
+    .from(productionOrdersTable)
+    .where(eq(productionOrdersTable.itemCode, itemCode))
+    .limit(1);
+  return row?.plantCd ?? null;
+}
+
+type BuiltResult = ReturnType<typeof buildResult>;
+
+async function buildResultWithPlantFallback(
+  item: ItemRow,
+  hogi: number | null,
+  orders: (typeof productionOrdersTable.$inferSelect)[],
+  vendor: VendorMatch | null,
+): Promise<BuiltResult> {
+  const r = buildResult(item, hogi, orders, vendor);
+  if (r.plantCd) return r;
+  const fb = await plantCdFallbackFor(item.code);
+  if (!fb) return r;
+  return { ...r, plantCd: fb, factory: PLANT_TO_FACTORY[fb] ?? null };
+}
+
 async function ordersFor(itemCode: string, hogi: number | null) {
   if (hogi != null) {
     return db
@@ -200,7 +226,7 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
       return;
     }
     const vendor = await resolveVendor(item, hogi, []);
-    res.json(buildResult(item, hogi, await ordersFor(item.code, hogi), vendor));
+    res.json(await buildResultWithPlantFallback(item, hogi, await ordersFor(item.code, hogi), vendor));
     return;
   }
 
@@ -239,7 +265,7 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
     if (rows.length === 1) {
       const item = rows[0];
       const vendor = await resolveVendor(item, hogi, []);
-      res.json(buildResult(item, hogi, await ordersFor(item.code, hogi), vendor));
+      res.json(await buildResultWithPlantFallback(item, hogi, await ordersFor(item.code, hogi), vendor));
       return;
     }
     res.json({
@@ -304,7 +330,7 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
         .innerJoin(shipmentsTable, eq(shipmentsTable.itemCode, itemCodesTable.code))
         .where(
           and(
-            sql`${shipmentsTable.bpCd} = ANY(${bpCds})`,
+            inArray(shipmentsTable.bpCd, bpCds),
             eq(shipmentsTable.outHogiInt, hogi),
           ),
         )
@@ -319,7 +345,7 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
     if (narrowed.length === 1) {
       const item = narrowed[0];
       const vendor = await resolveVendor(item, hogi, vendorMatches);
-      res.json(buildResult(item, hogi, await ordersFor(item.code, hogi), vendor));
+      res.json(await buildResultWithPlantFallback(item, hogi, await ordersFor(item.code, hogi), vendor));
       return;
     }
     if (narrowed.length > 1) {
@@ -355,7 +381,7 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
       })
       .from(itemCodesTable)
       .innerJoin(shipmentsTable, eq(shipmentsTable.itemCode, itemCodesTable.code))
-      .where(sql`${shipmentsTable.bpCd} = ANY(${bpCds})`)
+      .where(inArray(shipmentsTable.bpCd, bpCds))
       .orderBy(asc(itemCodesTable.code))
       .limit(25);
   }
@@ -367,7 +393,7 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
   if (candidates.length === 1) {
     const item = candidates[0];
     const vendor = await resolveVendor(item, hogi, vendorMatches);
-    res.json(buildResult(item, hogi, await ordersFor(item.code, hogi), vendor));
+    res.json(await buildResultWithPlantFallback(item, hogi, await ordersFor(item.code, hogi), vendor));
     return;
   }
   res.json({
