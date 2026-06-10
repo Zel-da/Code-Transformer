@@ -96,12 +96,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await fetch(`${API}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) { logout(); return; }
+      if (res.status === 401) { logout(); return; }
+      if (!res.ok) {
+        const cached = localStorage.getItem(USER_KEY);
+        if (cached) setState({ user: JSON.parse(cached) as UserProfile, token, loading: false });
+        return;
+      }
       const user = (await res.json()) as UserProfile;
       localStorage.setItem(USER_KEY, JSON.stringify(user));
       setState({ user, token, loading: false });
     } catch {
-      logout();
+      const cached = localStorage.getItem(USER_KEY);
+      if (cached) setState({ user: JSON.parse(cached) as UserProfile, token, loading: false });
     }
   };
 
