@@ -72,7 +72,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <div className="bg-[#1A1A1A] text-white p-1.5 rounded-lg">
               <ClipboardList className="h-4 w-4" strokeWidth={2} />
             </div>
-            <Link href={user?.role === "admin" ? "/admin" : "/submit"} className="flex flex-col cursor-pointer">
+            <Link href="/ledger" className="flex flex-col cursor-pointer">
               <span className="font-bold text-[15px] leading-none text-[#191F28] tracking-tight">부적합 보고</span>
               <span className="text-[10px] text-[#8B95A1] leading-tight mt-0.5">NCR 관리 시스템</span>
             </Link>
