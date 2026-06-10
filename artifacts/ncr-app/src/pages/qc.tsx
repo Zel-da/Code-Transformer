@@ -118,6 +118,14 @@ const QC_STATUS_COLORS: Record<string, string> = {
   ERP_SYNCED:     "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]",
 };
 
+const QC_STATUS_PREV: Partial<Record<string, string>> = {
+  IN_REVIEW:      "OPEN",
+  PENDING_COLLAB: "IN_REVIEW",
+  RESOLVED:       "IN_REVIEW",
+  APPROVED:       "RESOLVED",
+  ERP_SYNCED:     "APPROVED",
+};
+
 const INPUT_CLS = "w-full h-11 rounded-xl bg-[#F8F9FA] px-3.5 text-[14px] text-[#191F28] outline-none focus:ring-2 focus:ring-[#1A1A1A]/10";
 const CHIP_SEL = "border-[#1A1A1A] bg-[#F2F4F6] text-[#1A1A1A]";
 const CHIP_UNSEL = "border-[#E5E8EB] text-[#4E5968] hover:border-[#1A1A1A]/30";
@@ -762,14 +770,25 @@ export default function QcPage() {
               {/* ── QC 분석 내용 ── */}
               <GroupDivider title="QC 분석 내용" />
 
-              {/* 처리 상태 — 현재 상태 배지 + 역할별 전이 버튼 */}
+              {/* 처리 상태 — 이전 상태 → 현재 상태 → 역할별 전이 버튼 */}
               <FieldRow label="처리 상태">
                 <div className="flex flex-wrap items-center gap-2">
+                  {/* 이전 상태 (있을 때만) */}
+                  {QC_STATUS_PREV[reportStatus] && (
+                    <>
+                      <span className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border opacity-40 ${QC_STATUS_COLORS[QC_STATUS_PREV[reportStatus]!] ?? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"}`}>
+                        {QC_STATUS_LABELS[QC_STATUS_PREV[reportStatus]!] ?? QC_STATUS_PREV[reportStatus]}
+                      </span>
+                      <span className="text-[13px] text-[#8B95A1]">→</span>
+                    </>
+                  )}
+                  {/* 현재 상태 */}
                   <span className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border ${QC_STATUS_COLORS[reportStatus] ?? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"}`}>
                     {QC_STATUS_LABELS[reportStatus] ?? reportStatus}
                   </span>
+                  {/* 전이 버튼들 */}
                   {availableTransitions.length > 0 && (
-                    <span className="text-[11px] text-[#8B95A1]">→</span>
+                    <span className="text-[13px] text-[#8B95A1]">→</span>
                   )}
                   {availableTransitions.map((to) => (
                     <button
