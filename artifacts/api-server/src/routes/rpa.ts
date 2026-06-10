@@ -57,12 +57,15 @@ router.post("/rpa/trigger", async (req, res): Promise<void> => {
     const success = Math.random() > 0.1;
 
     if (success) {
+      // APPROVED 상태인 경우 ERP_SYNCED로 전이
+      const nextQcStatus = report.qcStatus === "APPROVED" ? "ERP_SYNCED" : report.qcStatus;
       const [updated] = await db
         .update(nonConformityReportsTable)
         .set({
           syncStatus: "COMPLETED",
           syncLastError: null,
           syncNextRetryAt: null,
+          qcStatus: nextQcStatus as "OPEN" | "IN_REVIEW" | "PENDING_COLLAB" | "RESOLVED" | "APPROVED" | "ERP_SYNCED" | null,
         })
         .where(eq(nonConformityReportsTable.id, report.id))
         .returning();

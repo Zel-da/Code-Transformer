@@ -116,9 +116,19 @@ export const ListReportsResponse = zod.object({
       qcActionAt: zod.coerce.date().nullish(),
       qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
       qcStatus: zod
-        .string()
+        .union([
+          zod.literal("OPEN"),
+          zod.literal("IN_REVIEW"),
+          zod.literal("PENDING_COLLAB"),
+          zod.literal("RESOLVED"),
+          zod.literal("APPROVED"),
+          zod.literal("ERP_SYNCED"),
+          zod.literal(null),
+        ])
         .nullish()
-        .describe("QC 처리 상태 (접수\/분석 중\/조치 완료\/종결)"),
+        .describe(
+          "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
+        ),
       qcCorrectiveResult: zod
         .string()
         .nullish()
@@ -273,9 +283,19 @@ export const ListPendingReportsResponseItem = zod.object({
   qcActionAt: zod.coerce.date().nullish(),
   qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
   qcStatus: zod
-    .string()
+    .union([
+      zod.literal("OPEN"),
+      zod.literal("IN_REVIEW"),
+      zod.literal("PENDING_COLLAB"),
+      zod.literal("RESOLVED"),
+      zod.literal("APPROVED"),
+      zod.literal("ERP_SYNCED"),
+      zod.literal(null),
+    ])
     .nullish()
-    .describe("QC 처리 상태 (접수\/분석 중\/조치 완료\/종결)"),
+    .describe(
+      "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
+    ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
@@ -385,9 +405,19 @@ export const UpdateReportResponse = zod.object({
   qcActionAt: zod.coerce.date().nullish(),
   qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
   qcStatus: zod
-    .string()
+    .union([
+      zod.literal("OPEN"),
+      zod.literal("IN_REVIEW"),
+      zod.literal("PENDING_COLLAB"),
+      zod.literal("RESOLVED"),
+      zod.literal("APPROVED"),
+      zod.literal("ERP_SYNCED"),
+      zod.literal(null),
+    ])
     .nullish()
-    .describe("QC 처리 상태 (접수\/분석 중\/조치 완료\/종결)"),
+    .describe(
+      "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
+    ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
@@ -470,9 +500,19 @@ export const GetReportResponse = zod.object({
   qcActionAt: zod.coerce.date().nullish(),
   qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
   qcStatus: zod
-    .string()
+    .union([
+      zod.literal("OPEN"),
+      zod.literal("IN_REVIEW"),
+      zod.literal("PENDING_COLLAB"),
+      zod.literal("RESOLVED"),
+      zod.literal("APPROVED"),
+      zod.literal("ERP_SYNCED"),
+      zod.literal(null),
+    ])
     .nullish()
-    .describe("QC 처리 상태 (접수\/분석 중\/조치 완료\/종결)"),
+    .describe(
+      "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
+    ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
@@ -557,9 +597,19 @@ export const UpdateReportSyncStatusResponse = zod.object({
   qcActionAt: zod.coerce.date().nullish(),
   qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
   qcStatus: zod
-    .string()
+    .union([
+      zod.literal("OPEN"),
+      zod.literal("IN_REVIEW"),
+      zod.literal("PENDING_COLLAB"),
+      zod.literal("RESOLVED"),
+      zod.literal("APPROVED"),
+      zod.literal("ERP_SYNCED"),
+      zod.literal(null),
+    ])
     .nullish()
-    .describe("QC 처리 상태 (접수\/분석 중\/조치 완료\/종결)"),
+    .describe(
+      "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
+    ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
@@ -615,9 +665,16 @@ export const UpdateReportQcBody = zod.object({
   lostManHours: zod.number().nullish().describe("손실공수 (시간)"),
   qcCorrectiveResult: zod.string().nullish().describe("조치결과 상세 내용"),
   qcStatus: zod
-    .enum(["접수", "분석 중", "조치 완료", "종결"])
+    .enum([
+      "OPEN",
+      "IN_REVIEW",
+      "PENDING_COLLAB",
+      "RESOLVED",
+      "APPROVED",
+      "ERP_SYNCED",
+    ])
     .optional()
-    .describe("QC 처리 상태"),
+    .describe("QC 워크플로우 상태"),
   deptCd: zod.string().nullish().describe("귀책부서 코드 (원본 수정)"),
   issuingTeam: zod.string().nullish().describe("귀책부서명 (원본 수정)"),
   ncrGbnCd: zod.string().nullish().describe("NCR 구분코드 (원본 수정)"),
@@ -671,9 +728,125 @@ export const UpdateReportQcResponse = zod.object({
   qcActionAt: zod.coerce.date().nullish(),
   qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
   qcStatus: zod
+    .union([
+      zod.literal("OPEN"),
+      zod.literal("IN_REVIEW"),
+      zod.literal("PENDING_COLLAB"),
+      zod.literal("RESOLVED"),
+      zod.literal("APPROVED"),
+      zod.literal("ERP_SYNCED"),
+      zod.literal(null),
+    ])
+    .nullish()
+    .describe(
+      "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
+    ),
+  qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
+  qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
+  qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
+  actionDirection: zod
     .string()
     .nullish()
-    .describe("QC 처리 상태 (접수\/분석 중\/조치 완료\/종결)"),
+    .describe(
+      "조치 방향 (업체 방문 수정\/생산팀 자체 수정\/업체 반출 및 수정 입고)",
+    ),
+  remarks: zod.string().nullish().describe("비고"),
+  shipmentDateFrom: zod.coerce.date().nullish().describe("출하 기간 시작일"),
+  shipmentDateTo: zod.coerce.date().nullish().describe("출하 기간 종료일"),
+  managerCd: zod.string().nullish().describe("담당자 코드 (ERP 담당자)"),
+  managerNm: zod.string().nullish().describe("담당자명 (ERP 담당자)"),
+  syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
+  syncLastError: zod
+    .string()
+    .nullish()
+    .describe("마지막 동기화 실패 오류 메시지"),
+  syncNextRetryAt: zod.coerce
+    .date()
+    .nullish()
+    .describe("다음 재시도 허용 시각"),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * 역할 기반 상태 전이 매트릭스를 적용한다.
+- reviewer: OPEN→IN_REVIEW, IN_REVIEW→PENDING_COLLAB, PENDING_COLLAB→RESOLVED
+- approver: RESOLVED→APPROVED
+- admin: 모든 전이 허용
+
+ * @summary QC 워크플로우 상태 전이
+ */
+export const UpdateReportStatusParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateReportStatusBody = zod.object({
+  status: zod
+    .enum([
+      "OPEN",
+      "IN_REVIEW",
+      "PENDING_COLLAB",
+      "RESOLVED",
+      "APPROVED",
+      "ERP_SYNCED",
+    ])
+    .describe("전이할 목표 상태"),
+});
+
+export const UpdateReportStatusResponse = zod.object({
+  id: zod.number(),
+  ncrNumber: zod.string().nullish().describe("NCR 추적 번호 (QC-YYMM-NNNN)"),
+  reportDate: zod.coerce.date(),
+  itemCode: zod.string(),
+  modelName: zod.string().nullish(),
+  processName: zod.string(),
+  defectType: zod.string(),
+  description: zod.string(),
+  imageUrl: zod.string().nullable(),
+  syncStatus: zod.enum(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]),
+  registrantName: zod.string().nullish(),
+  ncrType: zod.string().nullish(),
+  factory: zod.string().nullish(),
+  shipmentUnit: zod.string().nullish(),
+  lostManHours: zod.number().nullish(),
+  defectQty: zod.number().nullish(),
+  occurrenceDate: zod.coerce.date().nullish(),
+  issuingTeam: zod.string().nullish(),
+  plantCd: zod.string().nullish(),
+  processCd: zod.string().nullish(),
+  flawTypeCd: zod.string().nullish(),
+  deptCd: zod.string().nullish(),
+  ncrGbnCd: zod.string().nullish(),
+  vendorCd: zod
+    .string()
+    .nullish()
+    .describe("거래처 코드 (vendors.vendor_cd 또는 사업자번호)"),
+  vendorNm: zod.string().nullish().describe("거래처명 (보고 시점 스냅샷)"),
+  productType: zod
+    .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
+    .nullish()
+    .describe("양산 or 개발"),
+  labNotifiedAt: zod.coerce.date().nullish(),
+  ssushanTalkSentAt: zod.coerce.date().nullish(),
+  slaDeadlineAt: zod.coerce.date().nullish(),
+  isLocked: zod.boolean().describe("SLA 초과 시 true로 설정, 수정 불가"),
+  qcAction: zod.string().nullish().describe("QC 최종 조치 결과"),
+  qcActionAt: zod.coerce.date().nullish(),
+  qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
+  qcStatus: zod
+    .union([
+      zod.literal("OPEN"),
+      zod.literal("IN_REVIEW"),
+      zod.literal("PENDING_COLLAB"),
+      zod.literal("RESOLVED"),
+      zod.literal("APPROVED"),
+      zod.literal("ERP_SYNCED"),
+      zod.literal(null),
+    ])
+    .nullish()
+    .describe(
+      "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
+    ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
@@ -771,9 +944,19 @@ export const SubmitQcActionResponse = zod.object({
   qcActionAt: zod.coerce.date().nullish(),
   qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
   qcStatus: zod
-    .string()
+    .union([
+      zod.literal("OPEN"),
+      zod.literal("IN_REVIEW"),
+      zod.literal("PENDING_COLLAB"),
+      zod.literal("RESOLVED"),
+      zod.literal("APPROVED"),
+      zod.literal("ERP_SYNCED"),
+      zod.literal(null),
+    ])
     .nullish()
-    .describe("QC 처리 상태 (접수\/분석 중\/조치 완료\/종결)"),
+    .describe(
+      "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
+    ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
@@ -855,9 +1038,19 @@ export const TriggerRpaResponse = zod.object({
       qcActionAt: zod.coerce.date().nullish(),
       qcActionedBy: zod.number().nullish().describe("QC 조치 담당자 userId"),
       qcStatus: zod
-        .string()
+        .union([
+          zod.literal("OPEN"),
+          zod.literal("IN_REVIEW"),
+          zod.literal("PENDING_COLLAB"),
+          zod.literal("RESOLVED"),
+          zod.literal("APPROVED"),
+          zod.literal("ERP_SYNCED"),
+          zod.literal(null),
+        ])
         .nullish()
-        .describe("QC 처리 상태 (접수\/분석 중\/조치 완료\/종결)"),
+        .describe(
+          "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
+        ),
       qcCorrectiveResult: zod
         .string()
         .nullish()
@@ -1010,7 +1203,7 @@ export const ListUsersResponseItem = zod.object({
   id: zod.number(),
   username: zod.string(),
   displayName: zod.string(),
-  role: zod.enum(["admin", "worker"]),
+  role: zod.enum(["admin", "worker", "reviewer", "approver", "collaborator"]),
   isActive: zod
     .boolean()
     .describe(
@@ -1038,7 +1231,9 @@ export const CreateUserBody = zod.object({
   username: zod.string().min(createUserBodyUsernameMin),
   password: zod.string().min(createUserBodyPasswordMin),
   displayName: zod.string().min(1),
-  role: zod.enum(["admin", "worker"]).default(createUserBodyRoleDefault),
+  role: zod
+    .enum(["admin", "worker", "reviewer", "approver", "collaborator"])
+    .default(createUserBodyRoleDefault),
   deptCd: zod.string().optional(),
   factory: zod.string().optional(),
   plantCd: zod.string().optional(),
@@ -1059,7 +1254,9 @@ export const updateUserBodyPasswordMin = 4;
 export const UpdateUserBody = zod.object({
   displayName: zod.string().min(1).optional(),
   password: zod.string().min(updateUserBodyPasswordMin).optional(),
-  role: zod.enum(["admin", "worker"]).optional(),
+  role: zod
+    .enum(["admin", "worker", "reviewer", "approver", "collaborator"])
+    .optional(),
   deptCd: zod.string().nullish(),
   factory: zod.string().nullish(),
   plantCd: zod.string().nullish(),
@@ -1071,7 +1268,7 @@ export const UpdateUserResponse = zod.object({
   id: zod.number(),
   username: zod.string(),
   displayName: zod.string(),
-  role: zod.enum(["admin", "worker"]),
+  role: zod.enum(["admin", "worker", "reviewer", "approver", "collaborator"]),
   isActive: zod
     .boolean()
     .describe(
@@ -1126,7 +1323,7 @@ export const SetUserActiveResponse = zod.object({
   id: zod.number(),
   username: zod.string(),
   displayName: zod.string(),
-  role: zod.enum(["admin", "worker"]),
+  role: zod.enum(["admin", "worker", "reviewer", "approver", "collaborator"]),
   isActive: zod
     .boolean()
     .describe(
@@ -1153,7 +1350,7 @@ export const LoginResponse = zod.object({
     id: zod.number(),
     username: zod.string(),
     displayName: zod.string(),
-    role: zod.enum(["admin", "worker"]),
+    role: zod.enum(["admin", "worker", "reviewer", "approver", "collaborator"]),
     isActive: zod
       .boolean()
       .describe(
@@ -1174,7 +1371,7 @@ export const GetMeResponse = zod.object({
   id: zod.number(),
   username: zod.string(),
   displayName: zod.string(),
-  role: zod.enum(["admin", "worker"]),
+  role: zod.enum(["admin", "worker", "reviewer", "approver", "collaborator"]),
   isActive: zod
     .boolean()
     .describe(

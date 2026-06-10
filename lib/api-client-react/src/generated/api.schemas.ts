@@ -80,6 +80,23 @@ export const ReportProductType = {
   개발: "개발",
 } as const;
 
+/**
+ * QC 워크플로우 상태 (OPEN/IN_REVIEW/PENDING_COLLAB/RESOLVED/APPROVED/ERP_SYNCED)
+ * @nullable
+ */
+export type ReportQcStatus =
+  | (typeof ReportQcStatus)[keyof typeof ReportQcStatus]
+  | null;
+
+export const ReportQcStatus = {
+  OPEN: "OPEN",
+  IN_REVIEW: "IN_REVIEW",
+  PENDING_COLLAB: "PENDING_COLLAB",
+  RESOLVED: "RESOLVED",
+  APPROVED: "APPROVED",
+  ERP_SYNCED: "ERP_SYNCED",
+} as const;
+
 export interface Report {
   id: number;
   /**
@@ -159,10 +176,10 @@ export interface Report {
    */
   qcActionedBy?: number | null;
   /**
-   * QC 처리 상태 (접수/분석 중/조치 완료/종결)
+   * QC 워크플로우 상태 (OPEN/IN_REVIEW/PENDING_COLLAB/RESOLVED/APPROVED/ERP_SYNCED)
    * @nullable
    */
-  qcStatus?: string | null;
+  qcStatus?: ReportQcStatus;
   /**
    * QC 조치결과 상세 내용
    * @nullable
@@ -421,16 +438,18 @@ export const QcAnalysisBodyActionDirection = {
 } as const;
 
 /**
- * QC 처리 상태
+ * QC 워크플로우 상태
  */
 export type QcAnalysisBodyQcStatus =
   (typeof QcAnalysisBodyQcStatus)[keyof typeof QcAnalysisBodyQcStatus];
 
 export const QcAnalysisBodyQcStatus = {
-  접수: "접수",
-  분석_중: "분석 중",
-  조치_완료: "조치 완료",
-  종결: "종결",
+  OPEN: "OPEN",
+  IN_REVIEW: "IN_REVIEW",
+  PENDING_COLLAB: "PENDING_COLLAB",
+  RESOLVED: "RESOLVED",
+  APPROVED: "APPROVED",
+  ERP_SYNCED: "ERP_SYNCED",
 } as const;
 
 export interface QcAnalysisBody {
@@ -503,7 +522,7 @@ export interface QcAnalysisBody {
    * @nullable
    */
   qcCorrectiveResult?: string | null;
-  /** QC 처리 상태 */
+  /** QC 워크플로우 상태 */
   qcStatus?: QcAnalysisBodyQcStatus;
   /**
    * 귀책부서 코드 (원본 수정)
@@ -637,12 +656,35 @@ export interface ErrorEnvelope {
   error: string;
 }
 
+/**
+ * 전이할 목표 상태
+ */
+export type UpdateStatusBodyStatus =
+  (typeof UpdateStatusBodyStatus)[keyof typeof UpdateStatusBodyStatus];
+
+export const UpdateStatusBodyStatus = {
+  OPEN: "OPEN",
+  IN_REVIEW: "IN_REVIEW",
+  PENDING_COLLAB: "PENDING_COLLAB",
+  RESOLVED: "RESOLVED",
+  APPROVED: "APPROVED",
+  ERP_SYNCED: "ERP_SYNCED",
+} as const;
+
+export interface UpdateStatusBody {
+  /** 전이할 목표 상태 */
+  status: UpdateStatusBodyStatus;
+}
+
 export type CreateUserBodyRole =
   (typeof CreateUserBodyRole)[keyof typeof CreateUserBodyRole];
 
 export const CreateUserBodyRole = {
   admin: "admin",
   worker: "worker",
+  reviewer: "reviewer",
+  approver: "approver",
+  collaborator: "collaborator",
 } as const;
 
 export interface CreateUserBody {
@@ -666,6 +708,9 @@ export type UpdateUserBodyRole =
 export const UpdateUserBodyRole = {
   admin: "admin",
   worker: "worker",
+  reviewer: "reviewer",
+  approver: "approver",
+  collaborator: "collaborator",
 } as const;
 
 export interface UpdateUserBody {
@@ -697,6 +742,9 @@ export type UserProfileRole =
 export const UserProfileRole = {
   admin: "admin",
   worker: "worker",
+  reviewer: "reviewer",
+  approver: "approver",
+  collaborator: "collaborator",
 } as const;
 
 export interface UserProfile {

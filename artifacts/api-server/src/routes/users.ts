@@ -8,11 +8,13 @@ import { z } from "zod";
 
 const router: IRouter = Router();
 
+const ROLES = ["admin", "worker", "reviewer", "approver", "collaborator"] as const;
+
 const CreateUserBody = z.object({
   username: z.string().min(2, "아이디는 2자 이상"),
   password: z.string().min(4, "비밀번호는 4자 이상"),
   displayName: z.string().min(1, "이름을 입력해주세요"),
-  role: z.enum(["admin", "worker"]).default("worker"),
+  role: z.enum(ROLES).default("worker"),
   deptCd: z.string().optional(),
   factory: z.string().optional(),
   plantCd: z.string().optional(),
@@ -23,7 +25,7 @@ const CreateUserBody = z.object({
 const UpdateUserBody = z.object({
   displayName: z.string().min(1).optional(),
   password: z.string().min(4).optional(),
-  role: z.enum(["admin", "worker"]).optional(),
+  role: z.enum(ROLES).optional(),
   deptCd: z.string().nullable().optional(),
   factory: z.string().nullable().optional(),
   plantCd: z.string().nullable().optional(),

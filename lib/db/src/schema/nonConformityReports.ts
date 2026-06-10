@@ -82,7 +82,7 @@ export const usersTable = pgTable("users", {
   username: text("username").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   displayName: text("display_name").notNull(),
-  role: text("role").$type<"admin" | "worker">().notNull().default("worker"),
+  role: text("role").$type<"admin" | "worker" | "reviewer" | "approver" | "collaborator">().notNull().default("worker"),
   isActive: boolean("is_active").notNull().default(true),
   deptCd: text("dept_cd"),
   factory: text("factory"),
@@ -141,7 +141,7 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
   // 조치 방향 (등록 시 필수 선택)
   actionDirection: text("action_direction"),
   // QC 분석 전용 컬럼
-  qcStatus: text("qc_status").default("접수"),
+  qcStatus: text("qc_status").$type<"OPEN" | "IN_REVIEW" | "PENDING_COLLAB" | "RESOLVED" | "APPROVED" | "ERP_SYNCED" | null>().default("OPEN"),
   qcCorrectiveResult: text("qc_corrective_result"),
   qcSubmittedAt: timestamp("qc_submitted_at", { withTimezone: true }),
   qcSubmittedBy: integer("qc_submitted_by").references(() => usersTable.id, { onDelete: "set null" }),

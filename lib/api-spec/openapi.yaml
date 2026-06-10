@@ -364,6 +364,54 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /reports/{id}/status:
+    patch:
+      operationId: updateReportStatus
+      tags: [reports]
+      summary: QC 워크플로우 상태 전이
+      description: |
+        역할 기반 상태 전이 매트릭스를 적용한다.
+        - reviewer: OPEN→IN_REVIEW, IN_REVIEW→PENDING_COLLAB, PENDING_COLLAB→RESOLVED
+        - approver: RESOLVED→APPROVED
+        - admin: 모든 전이 허용
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStatusBody"
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "400":
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Role not permitted for this transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /admin/close-month:
     post:
       operationId: closeMonth
@@ -1102,7 +1150,8 @@ components:
           description: "QC 조치 담당자 userId"
         qcStatus:
           type: ["string", "null"]
-          description: "QC 처리 상태 (접수/분석 중/조치 완료/종결)"
+          enum: [OPEN, IN_REVIEW, PENDING_COLLAB, RESOLVED, APPROVED, ERP_SYNCED, null]
+          description: "QC 워크플로우 상태 (OPEN/IN_REVIEW/PENDING_COLLAB/RESOLVED/APPROVED/ERP_SYNCED)"
         qcCorrectiveResult:
           type: ["string", "null"]
           description: "QC 조치결과 상세 내용"
@@ -1381,8 +1430,8 @@ components:
           description: "조치결과 상세 내용"
         qcStatus:
           type: string
-          enum: ["접수", "분석 중", "조치 완료", "종결"]
-          description: "QC 처리 상태"
+          enum: [OPEN, IN_REVIEW, PENDING_COLLAB, RESOLVED, APPROVED, ERP_SYNCED]
+          description: "QC 워크플로우 상태"
         deptCd:
           type: ["string", "null"]
           description: "귀책부서 코드 (원본 수정)"
@@ -1562,6 +1611,16 @@ components:
         error:
           type: string
 
+    UpdateStatusBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [OPEN, IN_REVIEW, PENDING_COLLAB, RESOLVED, APPROVED, ERP_SYNCED]
+          description: "전이할 목표 상태"
+      required:
+        - status
+
     CreateUserBody:
       type: object
       properties:
@@ -1576,7 +1635,7 @@ components:
           minLength: 1
         role:
           type: string
-          enum: [admin, worker]
+          enum: [admin, worker, reviewer, approver, collaborator]
           default: worker
         deptCd:
           type: string
@@ -1604,7 +1663,7 @@ components:
           minLength: 4
         role:
           type: string
-          enum: [admin, worker]
+          enum: [admin, worker, reviewer, approver, collaborator]
         deptCd:
           type: ["string", "null"]
         factory:
@@ -1649,7 +1708,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, worker]
+          enum: [admin, worker, reviewer, approver, collaborator]
         isActive:
           type: boolean
           description: Whether the account is active. Inactive accounts cannot log in and existing tokens are rejected.

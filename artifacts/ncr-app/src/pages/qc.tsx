@@ -33,7 +33,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const QC_STATUSES = ["접수", "분석 중", "조치 완료", "종결"] as const;
+const QC_STATUSES = ["OPEN", "IN_REVIEW", "PENDING_COLLAB", "RESOLVED", "APPROVED", "ERP_SYNCED"] as const;
+const QC_STATUS_LABELS: Record<string, string> = {
+  OPEN:           "접수",
+  IN_REVIEW:      "검토 중",
+  PENDING_COLLAB: "협업 대기",
+  RESOLVED:       "조치 완료",
+  APPROVED:       "승인 완료",
+  ERP_SYNCED:     "ERP 등록",
+};
 const ACTION_DIRECTIONS = ["업체 방문 수정", "생산팀 자체 수정", "업체 반출 및 수정 입고"] as const;
 
 const formSchema = z.object({
@@ -98,10 +106,12 @@ function FieldRow({
 }
 
 const QC_STATUS_COLORS: Record<string, string> = {
-  "접수": "bg-blue-50 text-blue-700 border-blue-200",
-  "분석 중": "bg-amber-50 text-amber-700 border-amber-200",
-  "조치 완료": "bg-green-50 text-green-700 border-green-200",
-  "종결": "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]",
+  OPEN:           "bg-blue-50 text-blue-700 border-blue-200",
+  IN_REVIEW:      "bg-amber-50 text-amber-700 border-amber-200",
+  PENDING_COLLAB: "bg-purple-50 text-purple-700 border-purple-200",
+  RESOLVED:       "bg-green-50 text-green-700 border-green-200",
+  APPROVED:       "bg-teal-50 text-teal-700 border-teal-200",
+  ERP_SYNCED:     "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]",
 };
 
 const INPUT_CLS = "w-full h-11 rounded-xl bg-[#F8F9FA] px-3.5 text-[14px] text-[#191F28] outline-none focus:ring-2 focus:ring-[#1A1A1A]/10";
@@ -209,7 +219,7 @@ export default function QcPage() {
       flawTypeCd: null,
       lostManHours: null,
       qcCorrectiveResult: null,
-      qcStatus: "접수",
+      qcStatus: "OPEN",
       vendorCd: null,
       vendorNm: null,
       remarks: null,
@@ -247,7 +257,7 @@ export default function QcPage() {
         flawTypeCd: report.flawTypeCd ?? null,
         lostManHours: report.lostManHours ?? null,
         qcCorrectiveResult: report.qcCorrectiveResult ?? null,
-        qcStatus: (report.qcStatus as (typeof QC_STATUSES)[number]) ?? "접수",
+        qcStatus: (report.qcStatus as (typeof QC_STATUSES)[number]) ?? "OPEN",
         vendorCd: report.vendorCd ?? null,
         vendorNm: report.vendorNm ?? null,
         remarks: report.remarks ?? null,
@@ -688,7 +698,7 @@ export default function QcPage() {
                           : "bg-[#F8F9FA] text-[#8B95A1] border-transparent"
                       }`}
                     >
-                      {status}
+                      {QC_STATUS_LABELS[status] ?? status}
                     </button>
                   ))}
                 </div>

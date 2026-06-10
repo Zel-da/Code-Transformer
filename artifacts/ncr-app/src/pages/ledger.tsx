@@ -1,5 +1,5 @@
 import { Layout } from "@/components/layout";
-import { useListReports, getListReportsQueryKey, useGetReport, useUpdateReportSyncStatus, getGetReportQueryKey, getGetReportStatsQueryKey } from "@workspace/api-client-react";
+import { useListReports, getListReportsQueryKey, useGetReport, useUpdateReportSyncStatus, useUpdateReportStatus, getGetReportQueryKey, getGetReportStatsQueryKey } from "@workspace/api-client-react";
 import { StatusBadge } from "@/components/status-badge";
 import { format, differenceInDays } from "date-fns";
 import { useState, useMemo } from "react";
@@ -36,10 +36,12 @@ function SlaBadge({ occurrenceDate }: { occurrenceDate?: string | null }) {
 }
 
 const QC_STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  "접수": { label: "QC 접수", cls: "bg-blue-50 text-blue-700 border border-blue-200" },
-  "분석 중": { label: "QC 분석 중", cls: "bg-amber-50 text-amber-700 border border-amber-200" },
-  "조치 완료": { label: "QC 완료", cls: "bg-green-50 text-green-700 border border-green-200" },
-  "종결": { label: "QC 종결", cls: "bg-[#F2F4F6] text-[#4E5968] border border-[#E5E8EB]" },
+  OPEN:           { label: "접수",       cls: "bg-blue-50 text-blue-700 border border-blue-200" },
+  IN_REVIEW:      { label: "검토 중",    cls: "bg-amber-50 text-amber-700 border border-amber-200" },
+  PENDING_COLLAB: { label: "협업 대기",  cls: "bg-purple-50 text-purple-700 border border-purple-200" },
+  RESOLVED:       { label: "조치 완료",  cls: "bg-green-50 text-green-700 border border-green-200" },
+  APPROVED:       { label: "승인 완료",  cls: "bg-teal-50 text-teal-700 border border-teal-200" },
+  ERP_SYNCED:     { label: "ERP 등록",   cls: "bg-[#F2F4F6] text-[#4E5968] border border-[#E5E8EB]" },
 };
 
 const SYNC_STATUSES = ["PENDING", "PROCESSING", "COMPLETED", "FAILED"];
@@ -59,6 +61,26 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
+type QcStatus = "OPEN" | "IN_REVIEW" | "PENDING_COLLAB" | "RESOLVED" | "APPROVED" | "ERP_SYNCED";
+
+const TRANSITION_MATRIX: Record<QcStatus, Partial<Record<QcStatus, string[]>>> = {
+  OPEN:           { IN_REVIEW: ["admin", "reviewer", "approver"] },
+  IN_REVIEW:      { PENDING_COLLAB: ["admin", "reviewer"], RESOLVED: ["admin", "reviewer"], OPEN: ["admin"] },
+  PENDING_COLLAB: { RESOLVED: ["admin", "reviewer", "collaborator"], IN_REVIEW: ["admin", "reviewer"] },
+  RESOLVED:       { APPROVED: ["admin", "approver"], IN_REVIEW: ["admin", "reviewer"] },
+  APPROVED:       { ERP_SYNCED: ["admin"] },
+  ERP_SYNCED:     {},
+};
+
+const TRANSITION_LABELS: Partial<Record<QcStatus, string>> = {
+  OPEN:           "접수로 되돌리기",
+  IN_REVIEW:      "검토 시작",
+  PENDING_COLLAB: "협업 요청",
+  RESOLVED:       "조치 완료",
+  APPROVED:       "승인",
+  ERP_SYNCED:     "ERP 등록",
+};
+
 function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => void }) {
   const { data: report, isLoading } = useGetReport(reportId);
   const queryClient = useQueryClient();
@@ -66,6 +88,7 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const resetRetry = useUpdateReportSyncStatus();
+  const updateStatus = useUpdateReportStatus();
 
   const handleResetRetry = async () => {
     if (!report) return;
@@ -81,6 +104,30 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
       toast({ title: "오류", description: "재시도 초기화에 실패했습니다.", variant: "destructive" });
     }
   };
+
+  const handleTransition = async (to: QcStatus) => {
+    if (!report) return;
+    try {
+      await updateStatus.mutateAsync({ id: report.id, data: { status: to } });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListReportsQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetReportQueryKey(report.id) }),
+      ]);
+      toast({ title: "상태 변경 완료", description: `${QC_STATUS_BADGE[to]?.label ?? to}(으)로 변경되었습니다.` });
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "상태 변경에 실패했습니다.";
+      toast({ title: "오류", description: msg, variant: "destructive" });
+    }
+  };
+
+  const availableTransitions: QcStatus[] = (() => {
+    if (!report || !user) return [];
+    const from = (report.qcStatus ?? "OPEN") as QcStatus;
+    const row = TRANSITION_MATRIX[from] ?? {};
+    return (Object.entries(row) as [QcStatus, string[]][])
+      .filter(([, roles]) => roles.includes(user.role))
+      .map(([to]) => to);
+  })();
 
   if (isLoading) {
     return (
@@ -219,8 +266,36 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
         </div>
       )}
 
-      {/* Admin: QC 분석 입력 버튼 */}
-      {user?.role === "admin" && (
+      {/* 역할별 상태 전이 버튼 */}
+      {availableTransitions.length > 0 && (
+        <div className="mt-4 rounded-xl border border-[#F2F4F6] overflow-hidden">
+          <div className="bg-[#F8F9FA] px-3 py-2 border-b border-[#F2F4F6]">
+            <span className="text-[11px] font-semibold text-[#8B95A1]">상태 전이</span>
+          </div>
+          <div className="px-3 py-3 flex flex-wrap gap-2">
+            {availableTransitions.map((to) => (
+              <button
+                key={to}
+                type="button"
+                onClick={() => handleTransition(to)}
+                disabled={updateStatus.isPending}
+                className={`px-4 py-2 rounded-xl text-[13px] font-semibold border transition-all disabled:opacity-50 ${
+                  to === "APPROVED" || to === "ERP_SYNCED"
+                    ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
+                    : to === "OPEN"
+                    ? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"
+                    : "bg-white text-[#191F28] border-[#E5E8EB] hover:border-[#1A1A1A]/30"
+                }`}
+              >
+                {TRANSITION_LABELS[to] ?? to}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* QC 분석 입력 버튼: 관리자/검토자/승인자 */}
+      {(user?.role === "admin" || user?.role === "reviewer" || user?.role === "approver") && (
         <div className="pt-4">
           <button
             onClick={() => { onClose(); navigate(`/qc/${report.id}`); }}

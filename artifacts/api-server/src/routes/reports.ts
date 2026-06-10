@@ -15,7 +15,7 @@ import {
   UpdateReportQcBody,
   UpdateReportQcParams,
 } from "@workspace/api-zod";
-import { requireAdmin, requireAuth } from "../middleware/requireAuth.js";
+import { requireAdmin, requireAuth, requireRole, type UserRole } from "../middleware/requireAuth.js";
 import { sendSushantalkMessage, sendSushantalkToUrl } from "../lib/sushantalk.js";
 import { z } from "zod";
 
@@ -332,7 +332,7 @@ router.patch("/reports/:id/sync-status", async (req, res): Promise<void> => {
 });
 
 // V2.0: QC 조치 결과 확정 (admin 전용)
-router.put("/reports/:id/qc", requireAdmin, async (req, res): Promise<void> => {
+router.put("/reports/:id/qc", requireRole(["admin", "reviewer", "approver"]), async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = UpdateReportQcParams.safeParse({ id: raw });
   if (!params.success) {
@@ -400,7 +400,7 @@ router.put("/reports/:id/qc", requireAdmin, async (req, res): Promise<void> => {
   res.json(report);
 });
 
-router.post("/reports/:id/qc-action", requireAdmin, async (req, res): Promise<void> => {
+router.post("/reports/:id/qc-action", requireRole(["admin", "reviewer", "approver"]), async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = SubmitQcActionParams.safeParse({ id: raw });
   if (!params.success) {
@@ -546,6 +546,68 @@ router.post("/admin/close-month", requireAdmin, async (req, res): Promise<void> 
 
   req.log.info({ year, month, lockedCount: result.length, by: req.auth!.userId }, "Month closed");
   res.json({ lockedCount: result.length, year, month });
+});
+
+// Task #35: 역할 기반 QC 워크플로우 상태 전이 매트릭스
+type QcStatus = "OPEN" | "IN_REVIEW" | "PENDING_COLLAB" | "RESOLVED" | "APPROVED" | "ERP_SYNCED";
+
+const TRANSITION_MATRIX: Record<QcStatus, Partial<Record<QcStatus, UserRole[]>>> = {
+  OPEN:           { IN_REVIEW: ["admin", "reviewer", "approver"] },
+  IN_REVIEW:      { PENDING_COLLAB: ["admin", "reviewer"], RESOLVED: ["admin", "reviewer"], OPEN: ["admin"] },
+  PENDING_COLLAB: { RESOLVED: ["admin", "reviewer", "collaborator"], IN_REVIEW: ["admin", "reviewer"] },
+  RESOLVED:       { APPROVED: ["admin", "approver"], IN_REVIEW: ["admin", "reviewer"] },
+  APPROVED:       { ERP_SYNCED: ["admin"] },
+  ERP_SYNCED:     {},
+};
+
+const UpdateStatusBody = z.object({
+  status: z.enum(["OPEN", "IN_REVIEW", "PENDING_COLLAB", "RESOLVED", "APPROVED", "ERP_SYNCED"]),
+});
+
+router.patch("/reports/:id/status", requireAuth, async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "잘못된 ID" }); return; }
+
+  const body = UpdateStatusBody.safeParse(req.body);
+  if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
+
+  const [existing] = await db
+    .select({ id: nonConformityReportsTable.id, qcStatus: nonConformityReportsTable.qcStatus })
+    .from(nonConformityReportsTable)
+    .where(eq(nonConformityReportsTable.id, id));
+
+  if (!existing) { res.status(404).json({ error: "Report not found" }); return; }
+
+  const from = (existing.qcStatus ?? "OPEN") as QcStatus;
+  const to = body.data.status as QcStatus;
+  const role = req.auth!.role as UserRole;
+
+  if (from === to) { res.status(400).json({ error: "이미 해당 상태입니다" }); return; }
+
+  const allowed = TRANSITION_MATRIX[from]?.[to];
+  if (!allowed) {
+    res.status(400).json({ error: `유효하지 않은 상태 전이입니다: ${from} → ${to}` });
+    return;
+  }
+  if (!allowed.includes(role)) {
+    res.status(403).json({ error: `이 전이(${from} → ${to})를 수행할 권한이 없습니다` });
+    return;
+  }
+
+  const updates: Record<string, unknown> = { qcStatus: to };
+  if (to === "APPROVED" || to === "RESOLVED") {
+    updates.qcSubmittedAt = new Date();
+    updates.qcSubmittedBy = req.auth!.userId;
+  }
+
+  const [report] = await db
+    .update(nonConformityReportsTable)
+    .set(updates)
+    .where(eq(nonConformityReportsTable.id, id))
+    .returning();
+
+  req.log.info({ reportId: id, from, to, by: req.auth!.userId, role }, "QC status transitioned");
+  res.json(report);
 });
 
 router.delete("/reports/:id", async (req, res): Promise<void> => {

@@ -4,11 +4,13 @@ import { setAuthTokenGetter, setUnauthorizedHandler } from "@workspace/api-clien
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const API = `${BASE}/api`;
 
+export type UserRole = "admin" | "worker" | "reviewer" | "approver" | "collaborator";
+
 export interface UserProfile {
   id: number;
   username: string;
   displayName: string;
-  role: "admin" | "worker";
+  role: UserRole;
   isActive: boolean;
   deptCd: string | null;
   factory: string | null;

@@ -5,10 +5,12 @@ import { db, usersTable } from "@workspace/db";
 
 const JWT_SECRET = process.env.JWT_SECRET || "ncr-dev-secret-2026";
 
+export type UserRole = "admin" | "worker" | "reviewer" | "approver" | "collaborator";
+
 export interface AuthPayload {
   userId: number;
   username: string;
-  role: "admin" | "worker";
+  role: UserRole;
 }
 
 declare global {
@@ -63,6 +65,18 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
     }
     next();
   });
+}
+
+export function requireRole(roles: UserRole[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    requireAuth(req, res, () => {
+      if (!roles.includes(req.auth!.role as UserRole)) {
+        res.status(403).json({ error: "이 작업을 수행할 권한이 없습니다" });
+        return;
+      }
+      next();
+    });
+  };
 }
 
 export function signToken(payload: AuthPayload): string {

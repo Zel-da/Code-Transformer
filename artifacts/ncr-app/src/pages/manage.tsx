@@ -184,11 +184,19 @@ interface NewUserForm {
   username: string;
   password: string;
   displayName: string;
-  role: "admin" | "worker";
+  role: "admin" | "worker" | "reviewer" | "approver" | "collaborator";
   factory: string;
   deptCd: string;
   processName: string;
 }
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: "관리자",
+  worker: "작업자",
+  reviewer: "검토자",
+  approver: "승인자",
+  collaborator: "협업자",
+};
 
 const EMPTY_USER_FORM: NewUserForm = {
   username: "", password: "", displayName: "", role: "worker",
@@ -808,8 +816,8 @@ export default function ManagePage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className={`text-[14px] font-semibold ${u.isActive ? "text-[#191F28]" : "text-[#8B95A1]"}`}>{u.displayName}</span>
-                            <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${u.role === "admin" ? "bg-[#1A1A1A] text-white" : "bg-[#F2F4F6] text-[#4E5968]"}`}>
-                              {u.role === "admin" ? "관리자" : "작업자"}
+                            <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${u.role === "admin" ? "bg-[#1A1A1A] text-white" : u.role === "reviewer" ? "bg-amber-100 text-amber-700" : u.role === "approver" ? "bg-teal-100 text-teal-700" : u.role === "collaborator" ? "bg-purple-100 text-purple-700" : "bg-[#F2F4F6] text-[#4E5968]"}`}>
+                              {ROLE_LABELS[u.role] ?? u.role}
                             </span>
                             {!u.isActive && (
                               <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-red-100 text-red-500">
@@ -1363,12 +1371,15 @@ export default function ManagePage() {
             </div>
             <div className="space-y-1">
               <Label className="text-[11px] font-semibold text-[#8B95A1]">권한</Label>
-              <Select value={newUserForm.role} onValueChange={(v) => setNewUserForm((f) => ({ ...f, role: v as "admin" | "worker" }))}>
+              <Select value={newUserForm.role} onValueChange={(v) => setNewUserForm((f) => ({ ...f, role: v as "admin" | "worker" | "reviewer" | "approver" | "collaborator" }))}>
                 <SelectTrigger className="h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus:ring-0">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
                   <SelectItem value="worker">작업자</SelectItem>
+                  <SelectItem value="reviewer">검토자 (QC담당자)</SelectItem>
+                  <SelectItem value="approver">승인자 (QC팀장)</SelectItem>
+                  <SelectItem value="collaborator">협업자</SelectItem>
                   <SelectItem value="admin">관리자</SelectItem>
                 </SelectContent>
               </Select>

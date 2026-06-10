@@ -46,6 +46,7 @@ import type {
   SetUserActiveBody,
   UpdateDepartmentBody,
   UpdateReportBody,
+  UpdateStatusBody,
   UpdateSyncStatusBody,
   UpdateUserBody,
   UploadUrlRequest,
@@ -1092,6 +1093,98 @@ export const useUpdateReportQc = <
   TContext
 > => {
   return useMutation(getUpdateReportQcMutationOptions(options));
+};
+
+/**
+ * 역할 기반 상태 전이 매트릭스를 적용한다.
+- reviewer: OPEN→IN_REVIEW, IN_REVIEW→PENDING_COLLAB, PENDING_COLLAB→RESOLVED
+- approver: RESOLVED→APPROVED
+- admin: 모든 전이 허용
+
+ * @summary QC 워크플로우 상태 전이
+ */
+export const getUpdateReportStatusUrl = (id: number) => {
+  return `/api/reports/${id}/status`;
+};
+
+export const updateReportStatus = async (
+  id: number,
+  updateStatusBody: UpdateStatusBody,
+  options?: RequestInit,
+): Promise<Report> => {
+  return customFetch<Report>(getUpdateReportStatusUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateStatusBody),
+  });
+};
+
+export const getUpdateReportStatusMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateReportStatus>>,
+    TError,
+    { id: number; data: BodyType<UpdateStatusBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateReportStatus>>,
+  TError,
+  { id: number; data: BodyType<UpdateStatusBody> },
+  TContext
+> => {
+  const mutationKey = ["updateReportStatus"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateReportStatus>>,
+    { id: number; data: BodyType<UpdateStatusBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateReportStatus(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateReportStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateReportStatus>>
+>;
+export type UpdateReportStatusMutationBody = BodyType<UpdateStatusBody>;
+export type UpdateReportStatusMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary QC 워크플로우 상태 전이
+ */
+export const useUpdateReportStatus = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateReportStatus>>,
+    TError,
+    { id: number; data: BodyType<UpdateStatusBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateReportStatus>>,
+  TError,
+  { id: number; data: BodyType<UpdateStatusBody> },
+  TContext
+> => {
+  return useMutation(getUpdateReportStatusMutationOptions(options));
 };
 
 /**
