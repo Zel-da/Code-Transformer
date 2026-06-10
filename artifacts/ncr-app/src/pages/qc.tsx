@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import {
   useGetReport,
   useUpdateReportQc,
+  useUpdateReportStatus,
   useListFlawTypes,
   useListItems,
   useListDepartments,
@@ -16,6 +17,7 @@ import {
   getGetReportQueryKey,
   getListVendorsQueryKey,
 } from "@workspace/api-client-react";
+import { useAuth } from "@/contexts/auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/layout";
@@ -62,7 +64,6 @@ const formSchema = z.object({
   flawTypeCd: z.string().nullable().optional(),
   lostManHours: z.coerce.number().min(0).nullable().optional(),
   qcCorrectiveResult: z.string().nullable().optional(),
-  qcStatus: z.enum(QC_STATUSES),
   vendorCd: z.string().nullable().optional(),
   vendorNm: z.string().nullable().optional(),
   remarks: z.string().nullable().optional(),
@@ -197,7 +198,34 @@ export default function QcPage() {
   const { data: itemsData = [] } = useListItems({ limit: 100 });
   const { data: departments = [] } = useListDepartments();
   const { data: plants = [] } = useListPlants();
+  const { user } = useAuth();
   const updateQc = useUpdateReportQc();
+  const updateStatus = useUpdateReportStatus();
+
+  // 역할 기반 전이 매트릭스 (서버와 동일)
+  type QcStatus = "OPEN" | "IN_REVIEW" | "PENDING_COLLAB" | "RESOLVED" | "APPROVED" | "ERP_SYNCED";
+  const TRANSITION_MATRIX: Record<QcStatus, Partial<Record<QcStatus, string[]>>> = {
+    OPEN:           { IN_REVIEW: ["admin", "reviewer", "approver"] },
+    IN_REVIEW:      { PENDING_COLLAB: ["admin", "reviewer"], RESOLVED: ["admin", "reviewer"], OPEN: ["admin"] },
+    PENDING_COLLAB: { RESOLVED: ["admin", "reviewer", "collaborator"], IN_REVIEW: ["admin", "reviewer"] },
+    RESOLVED:       { APPROVED: ["admin", "approver"], IN_REVIEW: ["admin", "reviewer"] },
+    APPROVED:       { ERP_SYNCED: ["admin"] },
+    ERP_SYNCED:     {},
+  };
+
+  const handleTransition = async (to: QcStatus) => {
+    try {
+      await updateStatus.mutateAsync({ id, data: { status: to } });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListReportsQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetReportQueryKey(id) }),
+      ]);
+      toast({ title: "상태 변경 완료", description: `${QC_STATUS_LABELS[to] ?? to}(으)로 변경되었습니다.` });
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "상태 변경에 실패했습니다.";
+      toast({ title: "오류", description: msg, variant: "destructive" });
+    }
+  };
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -219,7 +247,6 @@ export default function QcPage() {
       flawTypeCd: null,
       lostManHours: null,
       qcCorrectiveResult: null,
-      qcStatus: "OPEN",
       vendorCd: null,
       vendorNm: null,
       remarks: null,
@@ -257,7 +284,6 @@ export default function QcPage() {
         flawTypeCd: report.flawTypeCd ?? null,
         lostManHours: report.lostManHours ?? null,
         qcCorrectiveResult: report.qcCorrectiveResult ?? null,
-        qcStatus: (report.qcStatus as (typeof QC_STATUSES)[number]) ?? "OPEN",
         vendorCd: report.vendorCd ?? null,
         vendorNm: report.vendorNm ?? null,
         remarks: report.remarks ?? null,
@@ -298,7 +324,6 @@ export default function QcPage() {
           flawTypeCd: values.flawTypeCd || null,
           lostManHours: values.lostManHours ?? null,
           qcCorrectiveResult: values.qcCorrectiveResult || null,
-          qcStatus: values.qcStatus,
           vendorCd: values.vendorCd || null,
           vendorNm: values.vendorNm || null,
           remarks: values.remarks || null,
@@ -349,8 +374,14 @@ export default function QcPage() {
     );
   }
 
-  const currentStatus = form.watch("qcStatus");
   const currentAction = form.watch("actionDirection");
+
+  const reportStatus = (report?.qcStatus ?? "OPEN") as QcStatus;
+  const availableTransitions = user
+    ? (Object.entries(TRANSITION_MATRIX[reportStatus] ?? {}) as [QcStatus, string[]][])
+        .filter(([, roles]) => roles.includes(user.role))
+        .map(([to]) => to)
+    : [];
 
   return (
     <Layout>
@@ -684,23 +715,35 @@ export default function QcPage() {
               {/* ── QC 분석 내용 ── */}
               <GroupDivider title="QC 분석 내용" />
 
-              {/* 처리 상태 */}
+              {/* 처리 상태 — 현재 상태 배지 + 역할별 전이 버튼 */}
               <FieldRow label="처리 상태">
-                <div className="flex flex-wrap gap-2">
-                  {QC_STATUSES.map((status) => (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border ${QC_STATUS_COLORS[reportStatus] ?? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"}`}>
+                    {QC_STATUS_LABELS[reportStatus] ?? reportStatus}
+                  </span>
+                  {availableTransitions.length > 0 && (
+                    <span className="text-[11px] text-[#8B95A1]">→</span>
+                  )}
+                  {availableTransitions.map((to) => (
                     <button
-                      key={status}
+                      key={to}
                       type="button"
-                      onClick={() => form.setValue("qcStatus", status)}
-                      className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all ${
-                        currentStatus === status
-                          ? QC_STATUS_COLORS[status]
-                          : "bg-[#F8F9FA] text-[#8B95A1] border-transparent"
+                      onClick={() => handleTransition(to)}
+                      disabled={updateStatus.isPending}
+                      className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all disabled:opacity-50 ${
+                        to === "APPROVED" || to === "ERP_SYNCED"
+                          ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
+                          : to === "OPEN"
+                          ? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"
+                          : "bg-white text-[#191F28] border-[#E5E8EB] hover:border-[#1A1A1A]/30"
                       }`}
                     >
-                      {QC_STATUS_LABELS[status] ?? status}
+                      {QC_STATUS_LABELS[to] ?? to}
                     </button>
                   ))}
+                  {availableTransitions.length === 0 && reportStatus === "ERP_SYNCED" && (
+                    <span className="text-[11px] text-[#8B95A1]">ERP 연동 완료</span>
+                  )}
                 </div>
               </FieldRow>
 

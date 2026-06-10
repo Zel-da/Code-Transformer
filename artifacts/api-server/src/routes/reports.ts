@@ -382,13 +382,7 @@ router.put("/reports/:id/qc", requireRole(["admin", "reviewer", "approver"]), as
   if (body.data.shipmentDateTo !== undefined) updates.shipmentDateTo = body.data.shipmentDateTo ? new Date(body.data.shipmentDateTo) : null;
   if (body.data.managerCd !== undefined) updates.managerCd = body.data.managerCd;
   if (body.data.managerNm !== undefined) updates.managerNm = body.data.managerNm;
-  if (body.data.qcStatus !== undefined) {
-    updates.qcStatus = body.data.qcStatus;
-    if (body.data.qcStatus === "종결" || body.data.qcStatus === "조치 완료") {
-      updates.qcSubmittedAt = new Date();
-      updates.qcSubmittedBy = req.auth!.userId;
-    }
-  }
+  // qcStatus는 PATCH /reports/:id/status 전용 — 여기서는 무시
 
   const [report] = await db
     .update(nonConformityReportsTable)

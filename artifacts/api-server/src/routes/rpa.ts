@@ -25,12 +25,14 @@ router.post("/rpa/trigger", async (req, res): Promise<void> => {
     );
   const skipped = Number(skippedResult?.count ?? 0);
 
+  // RPA 처리 대상: syncStatus=PENDING AND qcStatus=APPROVED
   const pending = await db
     .select()
     .from(nonConformityReportsTable)
     .where(
       and(
         eq(nonConformityReportsTable.syncStatus, "PENDING"),
+        eq(nonConformityReportsTable.qcStatus, "APPROVED"),
         or(
           isNull(nonConformityReportsTable.syncNextRetryAt),
           lte(nonConformityReportsTable.syncNextRetryAt, now),
