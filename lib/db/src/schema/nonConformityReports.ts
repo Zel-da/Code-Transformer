@@ -130,6 +130,8 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
   // vendor_nm은 보고 시점의 거래처명을 그대로 보관(감사용).
   vendorCd: text("vendor_cd"),
   vendorNm: text("vendor_nm"),
+  // 품목그룹(ITEM_GROUP_NM, ERP B_ITEM_GROUP). 모델별 분석/필터용. 보고 시점 값 그대로 보관.
+  itemGroup: text("item_group"),
   // V2.0 columns
   productType: productTypeEnum("product_type"),
   labNotifiedAt: timestamp("lab_notified_at", { withTimezone: true }),

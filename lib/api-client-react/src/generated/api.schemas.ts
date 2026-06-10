@@ -151,6 +151,11 @@ export interface Report {
    */
   vendorNm?: string | null;
   /**
+   * 품목그룹 (ERP B_ITEM_GROUP.ITEM_GROUP_NM)
+   * @nullable
+   */
+  itemGroup?: string | null;
+  /**
    * 양산 or 개발
    * @nullable
    */
@@ -396,6 +401,8 @@ export interface UpdateReportBody {
   vendorCd?: string | null;
   /** @nullable */
   vendorNm?: string | null;
+  /** @nullable */
+  itemGroup?: string | null;
   /**
    * 비고
    * @nullable
@@ -549,6 +556,11 @@ export interface QcAnalysisBody {
    * @nullable
    */
   vendorNm?: string | null;
+  /**
+   * 품목그룹 (원본 수정)
+   * @nullable
+   */
+  itemGroup?: string | null;
   /**
    * 비고
    * @nullable

@@ -153,6 +153,7 @@ router.post("/reports", async (req, res): Promise<void> => {
         ncrGbnCd: d.ncrGbnCd ?? null,
         vendorCd: d.vendorCd ?? null,
         vendorNm: d.vendorNm ?? null,
+        itemGroup: d.itemGroup ?? null,
         productType: d.productType ?? null,
         actionDirection: d.actionDirection ?? null,
         remarks: d.remarks ?? null,
@@ -501,6 +502,7 @@ router.put("/reports/:id/qc", requireRole(["admin", "reviewer", "approver"]), as
   if (body.data.ncrGbnCd !== undefined) updates.ncrGbnCd = body.data.ncrGbnCd;
   if (body.data.vendorCd !== undefined) updates.vendorCd = body.data.vendorCd;
   if (body.data.vendorNm !== undefined) updates.vendorNm = body.data.vendorNm;
+  if (body.data.itemGroup !== undefined) updates.itemGroup = body.data.itemGroup;
   if (body.data.remarks !== undefined) updates.remarks = body.data.remarks;
   if (body.data.shipmentDateFrom !== undefined) updates.shipmentDateFrom = body.data.shipmentDateFrom ? new Date(body.data.shipmentDateFrom) : null;
   if (body.data.shipmentDateTo !== undefined) updates.shipmentDateTo = body.data.shipmentDateTo ? new Date(body.data.shipmentDateTo) : null;
@@ -621,6 +623,7 @@ router.put("/reports/:id", requireAuth, async (req, res): Promise<void> => {
   if (body.data.ncrGbnCd !== undefined) updates.ncrGbnCd = body.data.ncrGbnCd;
   if (body.data.vendorCd !== undefined) updates.vendorCd = body.data.vendorCd;
   if (body.data.vendorNm !== undefined) updates.vendorNm = body.data.vendorNm;
+  if (body.data.itemGroup !== undefined) updates.itemGroup = body.data.itemGroup;
   if (body.data.remarks !== undefined) updates.remarks = body.data.remarks;
   if (body.data.shipmentDateFrom !== undefined) updates.shipmentDateFrom = body.data.shipmentDateFrom ? new Date(body.data.shipmentDateFrom) : null;
   if (body.data.shipmentDateTo !== undefined) updates.shipmentDateTo = body.data.shipmentDateTo ? new Date(body.data.shipmentDateTo) : null;

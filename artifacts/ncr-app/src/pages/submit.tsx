@@ -90,6 +90,7 @@ const formSchema = z.object({
   shipmentUnit: z.string().optional(),
   vendorCd: z.string().optional(),
   vendorNm: z.string().optional(),
+  itemGroup: z.string().optional(),
   occurrenceDate: z.string().optional(),
   defectQty: z.preprocess(
     (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
@@ -162,6 +163,7 @@ export default function SubmitReport() {
     shipmentUnit: "",
     vendorCd: "",
     vendorNm: "",
+    itemGroup: "",
     occurrenceDate: todayStr(),
     defectQty: undefined as number | undefined,
     description: "",
@@ -234,6 +236,7 @@ export default function SubmitReport() {
     const shipmentUnit = isCandidate ? undefined : result.shipmentUnit;
     const vendorCd = isCandidate ? undefined : result.vendorCd;
     const vendorNm = isCandidate ? undefined : result.vendorNm;
+    const itemGroup = isCandidate ? result.category : result.itemGroup;
     if (itemCode) form.setValue("itemCode", itemCode, { shouldValidate: true });
     if (modelName) form.setValue("modelName", modelName, { shouldValidate: true });
     if (factory) {
@@ -244,6 +247,7 @@ export default function SubmitReport() {
     if (shipmentUnit) form.setValue("shipmentUnit", shipmentUnit, { shouldValidate: true });
     if (vendorCd) form.setValue("vendorCd", vendorCd, { shouldValidate: true });
     if (vendorNm) form.setValue("vendorNm", vendorNm, { shouldValidate: true });
+    if (itemGroup) form.setValue("itemGroup", itemGroup, { shouldValidate: true });
     setErpSearchResult(null);
     setErpSearchProduct("");
     setErpSearchHogi("");
@@ -322,6 +326,7 @@ export default function SubmitReport() {
           productType: values.productType,
           vendorCd: values.vendorCd || null,
           vendorNm: values.vendorNm || null,
+          itemGroup: values.itemGroup || null,
           shipmentDateFrom: null,
           shipmentDateTo: null,
           remarks: null,

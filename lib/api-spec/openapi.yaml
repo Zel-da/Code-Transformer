@@ -1363,6 +1363,9 @@ components:
         vendorNm:
           type: ["string", "null"]
           description: "거래처명 (보고 시점 스냅샷)"
+        itemGroup:
+          type: ["string", "null"]
+          description: "품목그룹 (ERP B_ITEM_GROUP.ITEM_GROUP_NM, 모델별 분석/필터용)"
         productType:
           type: ["string", "null"]
           enum: ["양산", "개발", null]
@@ -1522,6 +1525,9 @@ components:
         vendorNm:
           type: ["string", "null"]
           description: "거래처명"
+        itemGroup:
+          type: ["string", "null"]
+          description: "품목그룹 (ERP B_ITEM_GROUP.ITEM_GROUP_NM)"
         productType:
           type: string
           enum: ["양산", "개발"]
@@ -1687,6 +1693,9 @@ components:
         vendorNm:
           type: ["string", "null"]
           description: "거래처명 (원본 수정)"
+        itemGroup:
+          type: ["string", "null"]
+          description: "품목그룹 (원본 수정)"
         remarks:
           type: ["string", "null"]
           description: "비고"

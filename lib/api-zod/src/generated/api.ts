@@ -205,6 +205,7 @@ export const CreateReportBody = zod.object({
     .nullish()
     .describe("거래처 코드 또는 사업자번호 (RPA가 ERP #11에 입력)"),
   vendorNm: zod.string().nullish().describe("거래처명"),
+  itemGroup: zod.string().nullish().describe("품목그룹 (ERP B_ITEM_GROUP.ITEM_GROUP_NM)"),
   productType: zod.enum(["양산", "개발"]).optional().describe("양산 or 개발"),
   actionDirection: zod
     .enum(["업체 방문 수정", "생산팀 자체 수정", "업체 반출 및 수정 입고"])
@@ -277,6 +278,7 @@ export const ListPendingReportsResponseItem = zod.object({
     .nullish()
     .describe("거래처 코드 (vendors.vendor_cd 또는 사업자번호)"),
   vendorNm: zod.string().nullish().describe("거래처명 (보고 시점 스냅샷)"),
+  itemGroup: zod.string().nullish().describe("품목그룹 (ERP B_ITEM_GROUP.ITEM_GROUP_NM)"),
   productType: zod
     .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
     .nullish()
@@ -452,6 +454,7 @@ export const UpdateReportResponse = zod.object({
     .nullish()
     .describe("거래처 코드 (vendors.vendor_cd 또는 사업자번호)"),
   vendorNm: zod.string().nullish().describe("거래처명 (보고 시점 스냅샷)"),
+  itemGroup: zod.string().nullish().describe("품목그룹 (ERP B_ITEM_GROUP.ITEM_GROUP_NM)"),
   productType: zod
     .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
     .nullish()
@@ -547,6 +550,7 @@ export const GetReportResponse = zod.object({
     .nullish()
     .describe("거래처 코드 (vendors.vendor_cd 또는 사업자번호)"),
   vendorNm: zod.string().nullish().describe("거래처명 (보고 시점 스냅샷)"),
+  itemGroup: zod.string().nullish().describe("품목그룹 (ERP B_ITEM_GROUP.ITEM_GROUP_NM)"),
   productType: zod
     .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
     .nullish()
@@ -644,6 +648,7 @@ export const UpdateReportSyncStatusResponse = zod.object({
     .nullish()
     .describe("거래처 코드 (vendors.vendor_cd 또는 사업자번호)"),
   vendorNm: zod.string().nullish().describe("거래처명 (보고 시점 스냅샷)"),
+  itemGroup: zod.string().nullish().describe("품목그룹 (ERP B_ITEM_GROUP.ITEM_GROUP_NM)"),
   productType: zod
     .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
     .nullish()
@@ -739,6 +744,7 @@ export const UpdateReportQcBody = zod.object({
   ncrGbnCd: zod.string().nullish().describe("NCR 구분코드 (원본 수정)"),
   vendorCd: zod.string().nullish().describe("거래처 코드 (원본 수정)"),
   vendorNm: zod.string().nullish().describe("거래처명 (원본 수정)"),
+  itemGroup: zod.string().nullish().describe("품목그룹 (원본 수정)"),
   remarks: zod.string().nullish().describe("비고"),
   shipmentDateFrom: zod.coerce.date().nullish().describe("출하 기간 시작일"),
   shipmentDateTo: zod.coerce.date().nullish().describe("출하 기간 종료일"),
@@ -775,6 +781,7 @@ export const UpdateReportQcResponse = zod.object({
     .nullish()
     .describe("거래처 코드 (vendors.vendor_cd 또는 사업자번호)"),
   vendorNm: zod.string().nullish().describe("거래처명 (보고 시점 스냅샷)"),
+  itemGroup: zod.string().nullish().describe("품목그룹 (ERP B_ITEM_GROUP.ITEM_GROUP_NM)"),
   productType: zod
     .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
     .nullish()
@@ -881,6 +888,7 @@ export const UpdateReportStatusResponse = zod.object({
     .nullish()
     .describe("거래처 코드 (vendors.vendor_cd 또는 사업자번호)"),
   vendorNm: zod.string().nullish().describe("거래처명 (보고 시점 스냅샷)"),
+  itemGroup: zod.string().nullish().describe("품목그룹 (ERP B_ITEM_GROUP.ITEM_GROUP_NM)"),
   productType: zod
     .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
     .nullish()
@@ -991,6 +999,7 @@ export const SubmitQcActionResponse = zod.object({
     .nullish()
     .describe("거래처 코드 (vendors.vendor_cd 또는 사업자번호)"),
   vendorNm: zod.string().nullish().describe("거래처명 (보고 시점 스냅샷)"),
+  itemGroup: zod.string().nullish().describe("품목그룹 (ERP B_ITEM_GROUP.ITEM_GROUP_NM)"),
   productType: zod
     .union([zod.literal("양산"), zod.literal("개발"), zod.literal(null)])
     .nullish()
