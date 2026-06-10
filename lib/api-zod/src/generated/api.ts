@@ -130,6 +130,14 @@ export const ListReportsResponse = zod.object({
         .describe(
           "조치 방향 (업체 방문 수정\/생산팀 자체 수정\/업체 반출 및 수정 입고)",
         ),
+      remarks: zod.string().nullish().describe("비고"),
+      shipmentDateFrom: zod.coerce
+        .date()
+        .nullish()
+        .describe("출하 기간 시작일"),
+      shipmentDateTo: zod.coerce.date().nullish().describe("출하 기간 종료일"),
+      managerCd: zod.string().nullish().describe("담당자 코드 (ERP 담당자)"),
+      managerNm: zod.string().nullish().describe("담당자명 (ERP 담당자)"),
       syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
       syncLastError: zod
         .string()
@@ -182,6 +190,11 @@ export const CreateReportBody = zod.object({
     .enum(["업체 방문 수정", "생산팀 자체 수정", "업체 반출 및 수정 입고"])
     .optional()
     .describe("조치 방향"),
+  remarks: zod.string().nullish().describe("비고"),
+  shipmentDateFrom: zod.coerce.date().nullish().describe("출하 기간 시작일"),
+  shipmentDateTo: zod.coerce.date().nullish().describe("출하 기간 종료일"),
+  managerCd: zod.string().nullish().describe("담당자 코드"),
+  managerNm: zod.string().nullish().describe("담당자명"),
 });
 
 /**
@@ -267,6 +280,11 @@ export const ListPendingReportsResponseItem = zod.object({
     .describe(
       "조치 방향 (업체 방문 수정\/생산팀 자체 수정\/업체 반출 및 수정 입고)",
     ),
+  remarks: zod.string().nullish().describe("비고"),
+  shipmentDateFrom: zod.coerce.date().nullish().describe("출하 기간 시작일"),
+  shipmentDateTo: zod.coerce.date().nullish().describe("출하 기간 종료일"),
+  managerCd: zod.string().nullish().describe("담당자 코드 (ERP 담당자)"),
+  managerNm: zod.string().nullish().describe("담당자명 (ERP 담당자)"),
   syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
   syncLastError: zod
     .string()
@@ -314,6 +332,11 @@ export const UpdateReportBody = zod.object({
   ncrGbnCd: zod.string().nullish(),
   vendorCd: zod.string().nullish(),
   vendorNm: zod.string().nullish(),
+  remarks: zod.string().nullish().describe("비고"),
+  shipmentDateFrom: zod.coerce.date().nullish().describe("출하 기간 시작일"),
+  shipmentDateTo: zod.coerce.date().nullish().describe("출하 기간 종료일"),
+  managerCd: zod.string().nullish().describe("담당자 코드"),
+  managerNm: zod.string().nullish().describe("담당자명"),
 });
 
 export const UpdateReportResponse = zod.object({
@@ -368,6 +391,11 @@ export const UpdateReportResponse = zod.object({
     .describe(
       "조치 방향 (업체 방문 수정\/생산팀 자체 수정\/업체 반출 및 수정 입고)",
     ),
+  remarks: zod.string().nullish().describe("비고"),
+  shipmentDateFrom: zod.coerce.date().nullish().describe("출하 기간 시작일"),
+  shipmentDateTo: zod.coerce.date().nullish().describe("출하 기간 종료일"),
+  managerCd: zod.string().nullish().describe("담당자 코드 (ERP 담당자)"),
+  managerNm: zod.string().nullish().describe("담당자명 (ERP 담당자)"),
   syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
   syncLastError: zod
     .string()
@@ -447,6 +475,11 @@ export const GetReportResponse = zod.object({
     .describe(
       "조치 방향 (업체 방문 수정\/생산팀 자체 수정\/업체 반출 및 수정 입고)",
     ),
+  remarks: zod.string().nullish().describe("비고"),
+  shipmentDateFrom: zod.coerce.date().nullish().describe("출하 기간 시작일"),
+  shipmentDateTo: zod.coerce.date().nullish().describe("출하 기간 종료일"),
+  managerCd: zod.string().nullish().describe("담당자 코드 (ERP 담당자)"),
+  managerNm: zod.string().nullish().describe("담당자명 (ERP 담당자)"),
   syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
   syncLastError: zod
     .string()
@@ -528,6 +561,11 @@ export const UpdateReportSyncStatusResponse = zod.object({
     .describe(
       "조치 방향 (업체 방문 수정\/생산팀 자체 수정\/업체 반출 및 수정 입고)",
     ),
+  remarks: zod.string().nullish().describe("비고"),
+  shipmentDateFrom: zod.coerce.date().nullish().describe("출하 기간 시작일"),
+  shipmentDateTo: zod.coerce.date().nullish().describe("출하 기간 종료일"),
+  managerCd: zod.string().nullish().describe("담당자 코드 (ERP 담당자)"),
+  managerNm: zod.string().nullish().describe("담당자명 (ERP 담당자)"),
   syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
   syncLastError: zod
     .string()
@@ -577,6 +615,11 @@ export const UpdateReportQcBody = zod.object({
   ncrGbnCd: zod.string().nullish().describe("NCR 구분코드 (원본 수정)"),
   vendorCd: zod.string().nullish().describe("거래처 코드 (원본 수정)"),
   vendorNm: zod.string().nullish().describe("거래처명 (원본 수정)"),
+  remarks: zod.string().nullish().describe("비고"),
+  shipmentDateFrom: zod.coerce.date().nullish().describe("출하 기간 시작일"),
+  shipmentDateTo: zod.coerce.date().nullish().describe("출하 기간 종료일"),
+  managerCd: zod.string().nullish().describe("담당자 코드"),
+  managerNm: zod.string().nullish().describe("담당자명"),
 });
 
 export const UpdateReportQcResponse = zod.object({
@@ -631,6 +674,11 @@ export const UpdateReportQcResponse = zod.object({
     .describe(
       "조치 방향 (업체 방문 수정\/생산팀 자체 수정\/업체 반출 및 수정 입고)",
     ),
+  remarks: zod.string().nullish().describe("비고"),
+  shipmentDateFrom: zod.coerce.date().nullish().describe("출하 기간 시작일"),
+  shipmentDateTo: zod.coerce.date().nullish().describe("출하 기간 종료일"),
+  managerCd: zod.string().nullish().describe("담당자 코드 (ERP 담당자)"),
+  managerNm: zod.string().nullish().describe("담당자명 (ERP 담당자)"),
   syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
   syncLastError: zod
     .string()
@@ -710,6 +758,11 @@ export const SubmitQcActionResponse = zod.object({
     .describe(
       "조치 방향 (업체 방문 수정\/생산팀 자체 수정\/업체 반출 및 수정 입고)",
     ),
+  remarks: zod.string().nullish().describe("비고"),
+  shipmentDateFrom: zod.coerce.date().nullish().describe("출하 기간 시작일"),
+  shipmentDateTo: zod.coerce.date().nullish().describe("출하 기간 종료일"),
+  managerCd: zod.string().nullish().describe("담당자 코드 (ERP 담당자)"),
+  managerNm: zod.string().nullish().describe("담당자명 (ERP 담당자)"),
   syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
   syncLastError: zod
     .string()
@@ -791,6 +844,14 @@ export const TriggerRpaResponse = zod.object({
         .describe(
           "조치 방향 (업체 방문 수정\/생산팀 자체 수정\/업체 반출 및 수정 입고)",
         ),
+      remarks: zod.string().nullish().describe("비고"),
+      shipmentDateFrom: zod.coerce
+        .date()
+        .nullish()
+        .describe("출하 기간 시작일"),
+      shipmentDateTo: zod.coerce.date().nullish().describe("출하 기간 종료일"),
+      managerCd: zod.string().nullish().describe("담당자 코드 (ERP 담당자)"),
+      managerNm: zod.string().nullish().describe("담당자명 (ERP 담당자)"),
       syncAttemptCount: zod.number().describe("누적 RPA 동기화 시도 횟수"),
       syncLastError: zod
         .string()

@@ -48,6 +48,11 @@ const formSchema = z.object({
   qcStatus: z.enum(QC_STATUSES),
   vendorCd: z.string().nullable().optional(),
   vendorNm: z.string().nullable().optional(),
+  remarks: z.string().nullable().optional(),
+  shipmentDateFrom: z.string().nullable().optional(),
+  shipmentDateTo: z.string().nullable().optional(),
+  managerCd: z.string().nullable().optional(),
+  managerNm: z.string().nullable().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -197,6 +202,11 @@ export default function QcPage() {
       qcStatus: "접수",
       vendorCd: null,
       vendorNm: null,
+      remarks: null,
+      shipmentDateFrom: null,
+      shipmentDateTo: null,
+      managerCd: null,
+      managerNm: null,
     },
   });
 
@@ -230,6 +240,15 @@ export default function QcPage() {
         qcStatus: (report.qcStatus as (typeof QC_STATUSES)[number]) ?? "접수",
         vendorCd: report.vendorCd ?? null,
         vendorNm: report.vendorNm ?? null,
+        remarks: report.remarks ?? null,
+        shipmentDateFrom: report.shipmentDateFrom
+          ? format(new Date(report.shipmentDateFrom), "yyyy-MM-dd")
+          : null,
+        shipmentDateTo: report.shipmentDateTo
+          ? format(new Date(report.shipmentDateTo), "yyyy-MM-dd")
+          : null,
+        managerCd: report.managerCd ?? null,
+        managerNm: report.managerNm ?? null,
       });
     }
   }, [report]);
@@ -262,6 +281,15 @@ export default function QcPage() {
           qcStatus: values.qcStatus,
           vendorCd: values.vendorCd || null,
           vendorNm: values.vendorNm || null,
+          remarks: values.remarks || null,
+          shipmentDateFrom: values.shipmentDateFrom
+            ? new Date(values.shipmentDateFrom).toISOString()
+            : null,
+          shipmentDateTo: values.shipmentDateTo
+            ? new Date(values.shipmentDateTo).toISOString()
+            : null,
+          managerCd: values.managerCd || null,
+          managerNm: values.managerNm || null,
         },
       });
       await Promise.all([
@@ -668,6 +696,105 @@ export default function QcPage() {
                         />
                       </FormControl>
                       <FormMessage className="text-[12px]" />
+                    </FormItem>
+                  </FieldRow>
+                )}
+              />
+
+              {/* 출하 기간 */}
+              <FieldRow label="출하 기간" optional>
+                <div className="grid grid-cols-2 gap-2">
+                  <FormField
+                    control={form.control}
+                    name="shipmentDateFrom"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <input
+                            type="date"
+                            className={INPUT_CLS}
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="shipmentDateTo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <input
+                            type="date"
+                            className={INPUT_CLS}
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </FieldRow>
+
+              {/* 담당자 */}
+              <FieldRow label="담당자" optional>
+                <div className="grid grid-cols-2 gap-2">
+                  <FormField
+                    control={form.control}
+                    name="managerCd"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <input
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                            className={INPUT_CLS}
+                            placeholder="담당자 코드"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="managerNm"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <input
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                            className={INPUT_CLS}
+                            placeholder="담당자명"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </FieldRow>
+
+              {/* 비고 */}
+              <FormField
+                control={form.control}
+                name="remarks"
+                render={({ field }) => (
+                  <FieldRow label="비고" optional>
+                    <FormItem>
+                      <FormControl>
+                        <input
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value || null)}
+                          className={INPUT_CLS}
+                          placeholder="비고 사항 입력"
+                        />
+                      </FormControl>
                     </FormItem>
                   </FieldRow>
                 )}

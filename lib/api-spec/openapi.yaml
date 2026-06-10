@@ -1079,6 +1079,23 @@ components:
         actionDirection:
           type: ["string", "null"]
           description: "조치 방향 (업체 방문 수정/생산팀 자체 수정/업체 반출 및 수정 입고)"
+        remarks:
+          type: ["string", "null"]
+          description: "비고"
+        shipmentDateFrom:
+          type: ["string", "null"]
+          format: date-time
+          description: "출하 기간 시작일"
+        shipmentDateTo:
+          type: ["string", "null"]
+          format: date-time
+          description: "출하 기간 종료일"
+        managerCd:
+          type: ["string", "null"]
+          description: "담당자 코드 (ERP 담당자)"
+        managerNm:
+          type: ["string", "null"]
+          description: "담당자명 (ERP 담당자)"
         syncAttemptCount:
           type: integer
           description: "누적 RPA 동기화 시도 횟수"
@@ -1187,6 +1204,23 @@ components:
           type: string
           description: "조치 방향"
           enum: ["업체 방문 수정", "생산팀 자체 수정", "업체 반출 및 수정 입고"]
+        remarks:
+          type: ["string", "null"]
+          description: "비고"
+        shipmentDateFrom:
+          type: ["string", "null"]
+          format: date-time
+          description: "출하 기간 시작일"
+        shipmentDateTo:
+          type: ["string", "null"]
+          format: date-time
+          description: "출하 기간 종료일"
+        managerCd:
+          type: ["string", "null"]
+          description: "담당자 코드"
+        managerNm:
+          type: ["string", "null"]
+          description: "담당자명"
       required:
         - itemCode
         - processName
@@ -1240,6 +1274,23 @@ components:
           type: ["string", "null"]
         vendorNm:
           type: ["string", "null"]
+        remarks:
+          type: ["string", "null"]
+          description: "비고"
+        shipmentDateFrom:
+          type: ["string", "null"]
+          format: date-time
+          description: "출하 기간 시작일"
+        shipmentDateTo:
+          type: ["string", "null"]
+          format: date-time
+          description: "출하 기간 종료일"
+        managerCd:
+          type: ["string", "null"]
+          description: "담당자 코드"
+        managerNm:
+          type: ["string", "null"]
+          description: "담당자명"
 
     QcAnalysisBody:
       type: object
@@ -1310,6 +1361,23 @@ components:
         vendorNm:
           type: ["string", "null"]
           description: "거래처명 (원본 수정)"
+        remarks:
+          type: ["string", "null"]
+          description: "비고"
+        shipmentDateFrom:
+          type: ["string", "null"]
+          format: date-time
+          description: "출하 기간 시작일"
+        shipmentDateTo:
+          type: ["string", "null"]
+          format: date-time
+          description: "출하 기간 종료일"
+        managerCd:
+          type: ["string", "null"]
+          description: "담당자 코드"
+        managerNm:
+          type: ["string", "null"]
+          description: "담당자명"
 
     QcActionBody:
       type: object

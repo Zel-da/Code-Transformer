@@ -178,6 +178,31 @@ export interface Report {
    * @nullable
    */
   actionDirection?: string | null;
+  /**
+   * 비고
+   * @nullable
+   */
+  remarks?: string | null;
+  /**
+   * 출하 기간 시작일
+   * @nullable
+   */
+  shipmentDateFrom?: string | null;
+  /**
+   * 출하 기간 종료일
+   * @nullable
+   */
+  shipmentDateTo?: string | null;
+  /**
+   * 담당자 코드 (ERP 담당자)
+   * @nullable
+   */
+  managerCd?: string | null;
+  /**
+   * 담당자명 (ERP 담당자)
+   * @nullable
+   */
+  managerNm?: string | null;
   /** 누적 RPA 동기화 시도 횟수 */
   syncAttemptCount: number;
   /**
@@ -274,6 +299,31 @@ export interface CreateReportBody {
   productType?: CreateReportBodyProductType;
   /** 조치 방향 */
   actionDirection?: CreateReportBodyActionDirection;
+  /**
+   * 비고
+   * @nullable
+   */
+  remarks?: string | null;
+  /**
+   * 출하 기간 시작일
+   * @nullable
+   */
+  shipmentDateFrom?: string | null;
+  /**
+   * 출하 기간 종료일
+   * @nullable
+   */
+  shipmentDateTo?: string | null;
+  /**
+   * 담당자 코드
+   * @nullable
+   */
+  managerCd?: string | null;
+  /**
+   * 담당자명
+   * @nullable
+   */
+  managerNm?: string | null;
 }
 
 export type UpdateReportBodySyncStatus =
@@ -324,6 +374,31 @@ export interface UpdateReportBody {
   vendorCd?: string | null;
   /** @nullable */
   vendorNm?: string | null;
+  /**
+   * 비고
+   * @nullable
+   */
+  remarks?: string | null;
+  /**
+   * 출하 기간 시작일
+   * @nullable
+   */
+  shipmentDateFrom?: string | null;
+  /**
+   * 출하 기간 종료일
+   * @nullable
+   */
+  shipmentDateTo?: string | null;
+  /**
+   * 담당자 코드
+   * @nullable
+   */
+  managerCd?: string | null;
+  /**
+   * 담당자명
+   * @nullable
+   */
+  managerNm?: string | null;
 }
 
 /**
@@ -450,6 +525,31 @@ export interface QcAnalysisBody {
    * @nullable
    */
   vendorNm?: string | null;
+  /**
+   * 비고
+   * @nullable
+   */
+  remarks?: string | null;
+  /**
+   * 출하 기간 시작일
+   * @nullable
+   */
+  shipmentDateFrom?: string | null;
+  /**
+   * 출하 기간 종료일
+   * @nullable
+   */
+  shipmentDateTo?: string | null;
+  /**
+   * 담당자 코드
+   * @nullable
+   */
+  managerCd?: string | null;
+  /**
+   * 담당자명
+   * @nullable
+   */
+  managerNm?: string | null;
 }
 
 export interface QcActionBody {

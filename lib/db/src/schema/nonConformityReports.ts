@@ -145,6 +145,12 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
   qcCorrectiveResult: text("qc_corrective_result"),
   qcSubmittedAt: timestamp("qc_submitted_at", { withTimezone: true }),
   qcSubmittedBy: integer("qc_submitted_by").references(() => usersTable.id, { onDelete: "set null" }),
+  // ERP 누락 필드 (Task #33)
+  remarks: text("remarks"),
+  shipmentDateFrom: timestamp("shipment_date_from", { withTimezone: true }),
+  shipmentDateTo: timestamp("shipment_date_to", { withTimezone: true }),
+  managerCd: text("manager_cd"),
+  managerNm: text("manager_nm"),
   // V2.0 RPA 재시도 관련 컬럼
   syncAttemptCount: integer("sync_attempt_count").notNull().default(0),
   syncLastError: text("sync_last_error"),

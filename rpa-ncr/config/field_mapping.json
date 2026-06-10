@@ -6,7 +6,8 @@
         "description", "imageUrl", "registrantName", "ncrType", "factory",
         "shipmentUnit", "lostManHours", "defectQty", "occurrenceDate", "issuingTeam",
         "plantCd", "processCd", "flawTypeCd", "deptCd", "ncrGbnCd", "productType",
-        "itemGroup", "itemName"
+        "itemGroup", "itemName",
+        "remarks", "shipmentDateFrom", "shipmentDateTo", "managerCd", "managerNm"
     ],
 
     "_method_values": "type | popup_search | popup_search_enter | dropdown | skip | dismiss",
@@ -23,8 +24,12 @@
         { "label": "품목그룹",   "method": "type",     "ncr_key": "itemGroup",                                                             "tab_after": 1, "_note": "item_codes.category 자동 조회 (DbSource: JOIN, ApiSource: /api/items?search)" },
         { "label": "불량유형",   "method": "dropdown", "ncr_key": "flawTypeCd",     "map_ref": "flawType_map",                             "tab_after": 1, "_note": "flaw_types.sort_index + 1 = ↓ 횟수" },
         { "label": "거래처",     "method": "type",     "ncr_key": "vendorCd",                                                              "tab_after": 1, "_note": "vendors 마스터에서 선택한 코드 또는 사업자번호. 비어있으면 SKIP 처리됨." },
-        { "label": "손실공수",   "method": "type",     "ncr_key": "lostManHours",                                                          "tab_after": 1 },
-        { "label": "제품코드",   "method": "type",     "ncr_key": "itemCode",                                                              "tab_after": 1, "_note": "부품코드와 동일한 itemCode 사용 — UNIERP에서 다르게 받아야 한다면 별도 필드 필요" }
+        { "label": "손실공수",   "method": "type",     "ncr_key": "lostManHours",   "transform": "multiply_60",                            "tab_after": 1, "_note": "DB는 시간(h) 단위로 저장. ERP 입력란 단위는 분(분) → ×60 변환 후 입력" },
+        { "label": "제품코드",   "method": "type",     "ncr_key": "itemCode",                                                              "tab_after": 1, "_note": "부품코드와 동일한 itemCode 사용 — UNIERP에서 다르게 받아야 한다면 별도 필드 필요" },
+        { "label": "출하기간시작","method": "type",    "ncr_key": "shipmentDateFrom","format": "YYYYMMDD",                                  "tab_after": 1, "_note": "비어있으면 SKIP. ERP 출하일(기간) 시작" },
+        { "label": "출하기간종료","method": "type",    "ncr_key": "shipmentDateTo",  "format": "YYYYMMDD",                                  "tab_after": 1, "_note": "비어있으면 SKIP. ERP 출하일(기간) 종료" },
+        { "label": "담당자",     "method": "type",     "ncr_key": "managerCd",                                                             "tab_after": 1, "_note": "ERP 담당자 코드. 비어있으면 SKIP." },
+        { "label": "비고",       "method": "type",     "ncr_key": "remarks",                                                               "tab_after": 1, "_note": "비어있으면 SKIP." }
     ],
 
     "grid_columns": "",

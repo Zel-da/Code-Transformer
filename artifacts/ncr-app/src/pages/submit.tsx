@@ -91,6 +91,9 @@ const formSchema = z.object({
     z.number().int().min(0).optional(),
   ),
   description: z.string().min(1, "부적합 현상을 입력해주세요"),
+  shipmentDateFrom: z.string().optional(),
+  shipmentDateTo: z.string().optional(),
+  remarks: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -158,6 +161,9 @@ export default function SubmitReport() {
     occurrenceDate: todayStr(),
     defectQty: undefined as number | undefined,
     description: "",
+    shipmentDateFrom: "",
+    shipmentDateTo: "",
+    remarks: "",
   });
 
   const form = useForm<FormValues>({
@@ -309,6 +315,9 @@ export default function SubmitReport() {
           deptCd: null,
           flawTypeCd: null,
           productType: values.productType,
+          shipmentDateFrom: values.shipmentDateFrom ? new Date(values.shipmentDateFrom).toISOString() : null,
+          shipmentDateTo: values.shipmentDateTo ? new Date(values.shipmentDateTo).toISOString() : null,
+          remarks: values.remarks || null,
         },
       });
 
@@ -678,6 +687,58 @@ export default function SubmitReport() {
                     placeholder="발생한 부적합 현상을 상세히 기술해주세요"
                     rows={4}
                     className="w-full text-[15px] text-[#191F28] placeholder-[#BEC5CC] outline-none bg-transparent resize-none font-medium leading-relaxed"
+                    {...field}
+                  />
+                </FieldRow>
+              )}
+            />
+
+            {/* 출하 기간 */}
+            <div className="px-5 py-4 border-b border-[#F2F4F6] grid grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="shipmentDateFrom"
+                render={({ field }) => (
+                  <div>
+                    <div className="flex items-center justify-between mb-2.5">
+                      <span className="text-[13px] font-semibold text-[#191F28]">출하일(시작)</span>
+                      <span className="text-[11px] text-[#BEC5CC]">선택</span>
+                    </div>
+                    <input
+                      type="date"
+                      className="text-[14px] text-[#191F28] outline-none bg-transparent font-medium w-full"
+                      {...field}
+                    />
+                  </div>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="shipmentDateTo"
+                render={({ field }) => (
+                  <div>
+                    <div className="flex items-center justify-between mb-2.5">
+                      <span className="text-[13px] font-semibold text-[#191F28]">출하일(종료)</span>
+                      <span className="text-[11px] text-[#BEC5CC]">선택</span>
+                    </div>
+                    <input
+                      type="date"
+                      className="text-[14px] text-[#191F28] outline-none bg-transparent font-medium w-full"
+                      {...field}
+                    />
+                  </div>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="remarks"
+              render={({ field }) => (
+                <FieldRow label="비고" optional>
+                  <input
+                    placeholder="비고 사항을 입력하세요"
+                    className="w-full text-[15px] text-[#191F28] placeholder-[#BEC5CC] outline-none bg-transparent font-medium"
                     {...field}
                   />
                 </FieldRow>

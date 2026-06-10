@@ -106,6 +106,11 @@ router.post("/reports", async (req, res): Promise<void> => {
       vendorNm: d.vendorNm ?? null,
       productType: d.productType ?? null,
       actionDirection: d.actionDirection ?? null,
+      remarks: d.remarks ?? null,
+      shipmentDateFrom: d.shipmentDateFrom ? new Date(d.shipmentDateFrom) : null,
+      shipmentDateTo: d.shipmentDateTo ? new Date(d.shipmentDateTo) : null,
+      managerCd: d.managerCd ?? null,
+      managerNm: d.managerNm ?? null,
       slaDeadlineAt,
     })
     .returning();
@@ -335,6 +340,11 @@ router.put("/reports/:id/qc", requireAdmin, async (req, res): Promise<void> => {
   if (body.data.ncrGbnCd !== undefined) updates.ncrGbnCd = body.data.ncrGbnCd;
   if (body.data.vendorCd !== undefined) updates.vendorCd = body.data.vendorCd;
   if (body.data.vendorNm !== undefined) updates.vendorNm = body.data.vendorNm;
+  if (body.data.remarks !== undefined) updates.remarks = body.data.remarks;
+  if (body.data.shipmentDateFrom !== undefined) updates.shipmentDateFrom = body.data.shipmentDateFrom ? new Date(body.data.shipmentDateFrom) : null;
+  if (body.data.shipmentDateTo !== undefined) updates.shipmentDateTo = body.data.shipmentDateTo ? new Date(body.data.shipmentDateTo) : null;
+  if (body.data.managerCd !== undefined) updates.managerCd = body.data.managerCd;
+  if (body.data.managerNm !== undefined) updates.managerNm = body.data.managerNm;
   if (body.data.qcStatus !== undefined) {
     updates.qcStatus = body.data.qcStatus;
     if (body.data.qcStatus === "종결" || body.data.qcStatus === "조치 완료") {
@@ -443,6 +453,11 @@ router.put("/reports/:id", requireAuth, async (req, res): Promise<void> => {
   if (body.data.ncrGbnCd !== undefined) updates.ncrGbnCd = body.data.ncrGbnCd;
   if (body.data.vendorCd !== undefined) updates.vendorCd = body.data.vendorCd;
   if (body.data.vendorNm !== undefined) updates.vendorNm = body.data.vendorNm;
+  if (body.data.remarks !== undefined) updates.remarks = body.data.remarks;
+  if (body.data.shipmentDateFrom !== undefined) updates.shipmentDateFrom = body.data.shipmentDateFrom ? new Date(body.data.shipmentDateFrom) : null;
+  if (body.data.shipmentDateTo !== undefined) updates.shipmentDateTo = body.data.shipmentDateTo ? new Date(body.data.shipmentDateTo) : null;
+  if (body.data.managerCd !== undefined) updates.managerCd = body.data.managerCd;
+  if (body.data.managerNm !== undefined) updates.managerNm = body.data.managerNm;
 
   const [report] = await db
     .update(nonConformityReportsTable)
