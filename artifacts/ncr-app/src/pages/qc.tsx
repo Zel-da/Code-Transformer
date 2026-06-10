@@ -204,12 +204,13 @@ export default function QcPage() {
 
   // 역할 기반 전이 매트릭스 (서버와 동일)
   type QcStatus = "OPEN" | "IN_REVIEW" | "PENDING_COLLAB" | "RESOLVED" | "APPROVED" | "ERP_SYNCED";
+  // ERP_SYNCED는 RPA 성공 시 자동 전이만 — 수동 전이 불가
   const TRANSITION_MATRIX: Record<QcStatus, Partial<Record<QcStatus, string[]>>> = {
     OPEN:           { IN_REVIEW: ["admin", "reviewer", "approver"] },
     IN_REVIEW:      { PENDING_COLLAB: ["admin", "reviewer"], RESOLVED: ["admin", "reviewer"], OPEN: ["admin"] },
     PENDING_COLLAB: { RESOLVED: ["admin", "reviewer", "collaborator"], IN_REVIEW: ["admin", "reviewer"] },
     RESOLVED:       { APPROVED: ["admin", "approver"], IN_REVIEW: ["admin", "reviewer"] },
-    APPROVED:       { ERP_SYNCED: ["admin"] },
+    APPROVED:       {},
     ERP_SYNCED:     {},
   };
 
