@@ -23,6 +23,15 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from "@/component
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { differenceInDays, format } from "date-fns";
 import { AlertTriangle, ChevronLeft, RefreshCw, Save } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const QC_STATUSES = ["접수", "분석 중", "조치 완료", "종결"] as const;
 const ACTION_DIRECTIONS = ["업체 방문 수정", "생산팀 자체 수정", "업체 반출 및 수정 입고"] as const;
@@ -171,6 +180,7 @@ export default function QcPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [slaBlockedOpen, setSlaBlockedOpen] = useState(false);
 
   const { data: report, isLoading } = useGetReport(id);
   const { data: flawTypes = [] } = useListFlawTypes();
@@ -298,8 +308,15 @@ export default function QcPage() {
       ]);
       toast({ title: "QC 분석 저장 완료", description: "분석 결과가 저장되었습니다." });
       navigate("/ledger");
-    } catch {
-      toast({ title: "오류", description: "저장에 실패했습니다.", variant: "destructive" });
+    } catch (err: unknown) {
+      // 403: SLA 7일 제한 → 팝업 모달
+      const status = (err as { status?: number; response?: { status?: number } })?.status
+        ?? (err as { status?: number; response?: { status?: number } })?.response?.status;
+      if (status === 403) {
+        setSlaBlockedOpen(true);
+      } else {
+        toast({ title: "오류", description: "저장에 실패했습니다.", variant: "destructive" });
+      }
     }
   };
 
@@ -327,6 +344,27 @@ export default function QcPage() {
 
   return (
     <Layout>
+      {/* SLA 7일 제한 팝업 모달 */}
+      <AlertDialog open={slaBlockedOpen} onOpenChange={setSlaBlockedOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              수정 제한 — SLA 7일 초과
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              발생일 기준 7일이 경과하여 일반 사용자는 보고서를 수정할 수 없습니다.
+              수정이 필요한 경우 관리자에게 문의하세요.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setSlaBlockedOpen(false)}>
+              확인
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="max-w-lg mx-auto px-5 py-5 pb-32">
         {/* 헤더 */}
         <div className="flex items-center gap-2 mb-5">

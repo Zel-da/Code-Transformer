@@ -35,12 +35,19 @@ async function generateNcrNumber(tx: Parameters<Parameters<typeof db.transaction
   // Advisory lock: ensures only one concurrent numbering per DB session
   await tx.execute(sql`SELECT pg_advisory_xact_lock(8675309)`);
 
-  const [{ cnt }] = await tx
-    .select({ cnt: count() })
+  // Use MAX(suffix) instead of COUNT to avoid collisions after deletions.
+  // Compute MAX in JS to avoid SUBSTRING FROM $N parameterization quirks.
+  const rows = await tx
+    .select({ ncrNumber: nonConformityReportsTable.ncrNumber })
     .from(nonConformityReportsTable)
     .where(sql`${nonConformityReportsTable.ncrNumber} LIKE ${prefix + "%"}`);
 
-  const seq = (Number(cnt) + 1).toString().padStart(4, "0");
+  const maxSeq = rows.reduce((max, r) => {
+    const n = parseInt(r.ncrNumber?.slice(prefix.length) ?? "", 10);
+    return isNaN(n) ? max : Math.max(max, n);
+  }, 0);
+
+  const seq = (maxSeq + 1).toString().padStart(4, "0");
   return `${prefix}${seq}`;
 }
 
@@ -522,9 +529,9 @@ router.post("/admin/close-month", requireAdmin, async (req, res): Promise<void> 
 
   const { year, month } = parsed.data;
 
-  // 해당 월의 시작/종료 타임스탬프
-  const monthStart = new Date(year, month - 1, 1);
-  const monthEnd = new Date(year, month, 1); // exclusive
+  // 해당 월까지(포함)의 모든 보고서 잠금 — 이전 월도 포함
+  // cutoff = 다음 달 1일 (exclusive upper bound)
+  const cutoff = new Date(year, month, 1);
 
   const result = await db
     .update(nonConformityReportsTable)
@@ -532,8 +539,7 @@ router.post("/admin/close-month", requireAdmin, async (req, res): Promise<void> 
     .where(
       and(
         eq(nonConformityReportsTable.isLocked, false),
-        gte(nonConformityReportsTable.reportDate, monthStart),
-        lt(nonConformityReportsTable.reportDate, monthEnd),
+        lt(nonConformityReportsTable.reportDate, cutoff),
       ),
     )
     .returning({ id: nonConformityReportsTable.id });
