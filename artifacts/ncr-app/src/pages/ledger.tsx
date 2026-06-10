@@ -1,5 +1,5 @@
 import { Layout } from "@/components/layout";
-import { useListReports, getListReportsQueryKey, useGetReport, useUpdateReportSyncStatus, useUpdateReportStatus, getGetReportQueryKey, getGetReportStatsQueryKey } from "@workspace/api-client-react";
+import { useListReports, getListReportsQueryKey, useGetReport, useUpdateReportSyncStatus, useUpdateReportStatus, useTriggerRpa, getGetReportQueryKey, getGetReportStatsQueryKey } from "@workspace/api-client-react";
 import { StatusBadge } from "@/components/status-badge";
 import { format, differenceInDays } from "date-fns";
 import { useState, useMemo } from "react";
@@ -92,7 +92,7 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
   const [, navigate] = useLocation();
   const resetRetry = useUpdateReportSyncStatus();
   const updateStatus = useUpdateReportStatus();
-  const [rpaTriggering, setRpaTriggering] = useState(false);
+  const triggerRpa = useTriggerRpa();
 
   const handleResetRetry = async () => {
     if (!report) return;
@@ -111,24 +111,20 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
 
   const handleRpaTrigger = async () => {
     if (!report) return;
-    setRpaTriggering(true);
     try {
-      const resp = await fetch("/api/rpa/trigger", { method: "POST" });
-      const json = await resp.json() as { completed?: number; failed?: number; processed?: number };
+      const result = await triggerRpa.mutateAsync();
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getListReportsQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getGetReportQueryKey(report.id) }),
         queryClient.invalidateQueries({ queryKey: getGetReportStatsQueryKey() }),
       ]);
-      if ((json.completed ?? 0) > 0) {
+      if ((result.completed ?? 0) > 0) {
         toast({ title: "RPA 등록 완료", description: "ERP 연동이 성공적으로 처리되었습니다." });
       } else {
         toast({ title: "RPA 처리 중", description: "처리 중이거나 대기 중입니다. 잠시 후 확인하세요." });
       }
     } catch {
       toast({ title: "오류", description: "RPA 트리거에 실패했습니다.", variant: "destructive" });
-    } finally {
-      setRpaTriggering(false);
     }
   };
 
@@ -334,10 +330,10 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
             </div>
             <button
               onClick={handleRpaTrigger}
-              disabled={rpaTriggering}
+              disabled={triggerRpa.isPending}
               className="shrink-0 h-8 px-3.5 rounded-xl bg-teal-700 text-white text-[12px] font-semibold disabled:opacity-50 flex items-center gap-1.5 transition-colors hover:bg-teal-800"
             >
-              {rpaTriggering ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+              {triggerRpa.isPending ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
               RPA 등록
             </button>
           </div>
