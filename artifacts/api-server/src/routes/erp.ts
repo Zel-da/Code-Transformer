@@ -256,7 +256,8 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
   const vendorNames = vendorMatches.map((v) => v.vendorNm).filter((s): s is string => !!s);
   const matchCond = buildProductMatchCondition(product!, vendorNames);
   if (hogi != null) {
-    const narrowed = await db
+    // 생산 진행 호기(production_orders) 매칭
+    const fromOrders = await db
       .selectDistinct({
         code: itemCodesTable.code,
         name: itemCodesTable.name,
@@ -273,8 +274,50 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
         ),
       )
       .orderBy(asc(itemCodesTable.code));
+    // 출하된 호기(shipments) — 검색어가 item에 매칭되는 경우
+    const fromShipments = await db
+      .selectDistinct({
+        code: itemCodesTable.code,
+        name: itemCodesTable.name,
+        category: itemCodesTable.category,
+        id: itemCodesTable.id,
+        createdAt: itemCodesTable.createdAt,
+      })
+      .from(itemCodesTable)
+      .innerJoin(shipmentsTable, eq(shipmentsTable.itemCode, itemCodesTable.code))
+      .where(and(matchCond, eq(shipmentsTable.outHogiInt, hogi)))
+      .orderBy(asc(itemCodesTable.code));
+    // 출하된 호기(shipments) — 검색어가 거래처(vendor)와 매칭되는 경우
+    // 예: "리파츠 + 345" → 리파츠로 출하된 호기 345의 item 찾기
+    let fromVendorShipHogi: ItemRow[] = [];
+    if (vendorMatches.length > 0) {
+      const bpCds = vendorMatches.map((v) => v.vendorCd);
+      fromVendorShipHogi = await db
+        .selectDistinct({
+          code: itemCodesTable.code,
+          name: itemCodesTable.name,
+          category: itemCodesTable.category,
+          id: itemCodesTable.id,
+          createdAt: itemCodesTable.createdAt,
+        })
+        .from(itemCodesTable)
+        .innerJoin(shipmentsTable, eq(shipmentsTable.itemCode, itemCodesTable.code))
+        .where(
+          and(
+            sql`${shipmentsTable.bpCd} = ANY(${bpCds})`,
+            eq(shipmentsTable.outHogiInt, hogi),
+          ),
+        )
+        .orderBy(asc(itemCodesTable.code));
+    }
+    // 합집합 (코드 기준 중복 제거)
+    const merged = new Map<string, ItemRow>();
+    for (const r of [...fromOrders, ...fromShipments, ...fromVendorShipHogi]) {
+      merged.set(r.code, r as ItemRow);
+    }
+    const narrowed = Array.from(merged.values());
     if (narrowed.length === 1) {
-      const item = narrowed[0] as ItemRow;
+      const item = narrowed[0];
       const vendor = await resolveVendor(item, hogi, vendorMatches);
       res.json(buildResult(item, hogi, await ordersFor(item.code, hogi), vendor));
       return;
@@ -291,12 +334,35 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
     // 호기 매칭 없음 → 이름만 후보 안내로 폴백
   }
 
-  const candidates = await db
+  // 1) item_codes 직접 매칭 (검색어 자체 + 한자/영문 변형 + vendor 이름)
+  const fromItems = await db
     .select()
     .from(itemCodesTable)
     .where(matchCond)
     .orderBy(asc(itemCodesTable.code))
     .limit(25);
+  // 2) 거래처 검색어 → vendors 매칭 → shipments.bp_cd 로 거꾸로 item 찾기 (출하 이력 우회)
+  let fromVendorShipments: ItemRow[] = [];
+  if (vendorMatches.length > 0) {
+    const bpCds = vendorMatches.map((v) => v.vendorCd);
+    fromVendorShipments = await db
+      .selectDistinct({
+        code: itemCodesTable.code,
+        name: itemCodesTable.name,
+        category: itemCodesTable.category,
+        id: itemCodesTable.id,
+        createdAt: itemCodesTable.createdAt,
+      })
+      .from(itemCodesTable)
+      .innerJoin(shipmentsTable, eq(shipmentsTable.itemCode, itemCodesTable.code))
+      .where(sql`${shipmentsTable.bpCd} = ANY(${bpCds})`)
+      .orderBy(asc(itemCodesTable.code))
+      .limit(25);
+  }
+  // 합집합 (코드 기준 중복 제거)
+  const allMerged = new Map<string, ItemRow>();
+  for (const r of [...fromItems, ...fromVendorShipments]) allMerged.set(r.code, r);
+  const candidates = Array.from(allMerged.values()).slice(0, 25);
 
   if (candidates.length === 1) {
     const item = candidates[0];
