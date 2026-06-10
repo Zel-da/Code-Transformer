@@ -770,47 +770,64 @@ export default function QcPage() {
               {/* ── QC 분석 내용 ── */}
               <GroupDivider title="QC 분석 내용" />
 
-              {/* 처리 상태 — 이전 상태 → 현재 상태 → 역할별 전이 버튼 */}
+              {/* 처리 상태 — 이전 상태(되돌리기) → 현재 상태 → 앞으로 전이 버튼 */}
               <FieldRow label="처리 상태">
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* 이전 상태 (있을 때만) */}
-                  {QC_STATUS_PREV[reportStatus] && (
-                    <>
-                      <span className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border opacity-40 ${QC_STATUS_COLORS[QC_STATUS_PREV[reportStatus]!] ?? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"}`}>
-                        {QC_STATUS_LABELS[QC_STATUS_PREV[reportStatus]!] ?? QC_STATUS_PREV[reportStatus]}
+                {(() => {
+                  const prevStatus = QC_STATUS_PREV[reportStatus];
+                  const canGoBack = prevStatus && availableTransitions.includes(prevStatus as QcStatus);
+                  const forwardTransitions = availableTransitions.filter((to) => to !== prevStatus);
+                  return (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* 이전 상태 — 권한 있으면 클릭 가능한 되돌리기 버튼, 없으면 흐릿 배지 */}
+                      {prevStatus && (
+                        <>
+                          {canGoBack ? (
+                            <button
+                              type="button"
+                              onClick={() => handleTransition(prevStatus as QcStatus)}
+                              disabled={updateStatus.isPending}
+                              title={`${QC_STATUS_LABELS[prevStatus] ?? prevStatus}(으)로 되돌리기`}
+                              className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all disabled:opacity-50 opacity-50 hover:opacity-100 ${QC_STATUS_COLORS[prevStatus] ?? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"}`}
+                            >
+                              ← {QC_STATUS_LABELS[prevStatus] ?? prevStatus}
+                            </button>
+                          ) : (
+                            <span className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border opacity-40 ${QC_STATUS_COLORS[prevStatus] ?? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"}`}>
+                              {QC_STATUS_LABELS[prevStatus] ?? prevStatus}
+                            </span>
+                          )}
+                          <span className="text-[13px] text-[#8B95A1]">→</span>
+                        </>
+                      )}
+                      {/* 현재 상태 */}
+                      <span className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border ${QC_STATUS_COLORS[reportStatus] ?? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"}`}>
+                        {QC_STATUS_LABELS[reportStatus] ?? reportStatus}
                       </span>
-                      <span className="text-[13px] text-[#8B95A1]">→</span>
-                    </>
-                  )}
-                  {/* 현재 상태 */}
-                  <span className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border ${QC_STATUS_COLORS[reportStatus] ?? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"}`}>
-                    {QC_STATUS_LABELS[reportStatus] ?? reportStatus}
-                  </span>
-                  {/* 전이 버튼들 */}
-                  {availableTransitions.length > 0 && (
-                    <span className="text-[13px] text-[#8B95A1]">→</span>
-                  )}
-                  {availableTransitions.map((to) => (
-                    <button
-                      key={to}
-                      type="button"
-                      onClick={() => handleTransition(to)}
-                      disabled={updateStatus.isPending}
-                      className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all disabled:opacity-50 ${
-                        to === "APPROVED" || to === "ERP_SYNCED"
-                          ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
-                          : to === "OPEN"
-                          ? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"
-                          : "bg-white text-[#191F28] border-[#E5E8EB] hover:border-[#1A1A1A]/30"
-                      }`}
-                    >
-                      {QC_STATUS_LABELS[to] ?? to}
-                    </button>
-                  ))}
-                  {availableTransitions.length === 0 && reportStatus === "ERP_SYNCED" && (
-                    <span className="text-[11px] text-[#8B95A1]">ERP 연동 완료</span>
-                  )}
-                </div>
+                      {/* 앞으로 전이 버튼들 */}
+                      {forwardTransitions.length > 0 && (
+                        <span className="text-[13px] text-[#8B95A1]">→</span>
+                      )}
+                      {forwardTransitions.map((to) => (
+                        <button
+                          key={to}
+                          type="button"
+                          onClick={() => handleTransition(to)}
+                          disabled={updateStatus.isPending}
+                          className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all disabled:opacity-50 ${
+                            to === "APPROVED" || to === "ERP_SYNCED"
+                              ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
+                              : "bg-white text-[#191F28] border-[#E5E8EB] hover:border-[#1A1A1A]/30"
+                          }`}
+                        >
+                          {QC_STATUS_LABELS[to] ?? to}
+                        </button>
+                      ))}
+                      {availableTransitions.length === 0 && reportStatus === "ERP_SYNCED" && (
+                        <span className="text-[11px] text-[#8B95A1]">ERP 연동 완료</span>
+                      )}
+                    </div>
+                  );
+                })()}
               </FieldRow>
 
               {/* 귀책부서 */}
