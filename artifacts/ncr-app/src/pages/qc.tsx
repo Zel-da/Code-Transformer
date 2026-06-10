@@ -130,13 +130,15 @@ function FieldRow({
   error?: string;
 }) {
   return (
-    <div className="py-3.5 border-b border-[#F2F4F6]">
-      <div className="flex items-center gap-1.5 mb-2">
-        <span className="text-[12px] font-semibold text-[#8B95A1]">{label}</span>
+    <div className="py-3 border-b border-[#F2F4F6] md:flex md:items-start md:gap-4">
+      <div className="flex items-center gap-1.5 mb-2 md:mb-0 md:w-24 md:shrink-0 md:pt-2.5">
+        <span className="text-[12px] font-semibold text-[#8B95A1] leading-tight">{label}</span>
         {optional && <span className="text-[10px] text-[#BEC5CC]">선택</span>}
       </div>
-      {children}
-      {error && <p className="mt-1 text-[11px] text-red-500">{error}</p>}
+      <div className="flex-1 min-w-0">
+        {children}
+        {error && <p className="mt-1 text-[11px] text-red-500">{error}</p>}
+      </div>
     </div>
   );
 }
@@ -552,12 +554,12 @@ export default function QcPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="max-w-lg mx-auto px-5 py-5 pb-32">
+      <div className="max-w-5xl mx-auto px-5 py-5 md:px-8 md:py-6">
         {/* 헤더 */}
-        <div className="flex items-center gap-2 mb-5">
+        <div className="flex items-center gap-3 mb-5">
           <button
             onClick={() => navigate("/ledger")}
-            className="h-8 w-8 rounded-xl bg-[#F2F4F6] flex items-center justify-center text-[#4E5968] hover:bg-[#E5E8EB] transition-colors"
+            className="h-8 w-8 rounded-xl bg-[#F2F4F6] flex items-center justify-center text-[#4E5968] hover:bg-[#E5E8EB] transition-colors shrink-0"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -606,9 +608,12 @@ export default function QcPage() {
         {/* 협업 의견 스레드 */}
         <CommentThread reportId={id} />
 
-        <div className="bg-white rounded-2xl border border-[#F2F4F6] px-4 mt-4">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4 pb-8">
+
+            {/* ══ 왼쪽 카드: 접수 기본 정보 + 부적합 내용 ══ */}
+            <div className="bg-white rounded-2xl border border-[#F2F4F6] px-4 h-fit">
 
               {/* ── 접수 기본 정보 ── */}
               <GroupDivider title="접수 기본 정보" />
@@ -946,6 +951,11 @@ export default function QcPage() {
                 </div>
               </FieldRow>
 
+            </div>{/* ── 왼쪽 카드 끝 ── */}
+
+            {/* ══ 오른쪽 카드: QC 분석 내용 ══ */}
+            <div className="bg-white rounded-2xl border border-[#F2F4F6] px-4">
+
               {/* ── QC 분석 내용 ── */}
               <GroupDivider title="QC 분석 내용" />
 
@@ -1225,9 +1235,11 @@ export default function QcPage() {
                   저장
                 </button>
               </div>
-            </form>
-          </Form>
-        </div>
+
+            </div>{/* ── 오른쪽 카드 끝 ── */}
+            </div>{/* ── 그리드 끝 ── */}
+          </form>
+        </Form>
       </div>
 
       {/* PENDING_COLLAB 협업 담당자 지정 모달 */}
