@@ -12,6 +12,7 @@ export interface UserProfile {
   id: number;
   username: string;
   displayName: string;
+  email: string | null;
   role: UserRole;
   isActive: boolean;
   deptCd: string | null;

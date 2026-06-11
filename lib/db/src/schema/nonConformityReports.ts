@@ -94,6 +94,7 @@ export const usersTable = pgTable("users", {
   username: text("username").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   displayName: text("display_name").notNull(),
+  email: text("email"),
   role: text("role").$type<"admin" | "worker" | "reviewer" | "approver" | "collaborator">().notNull().default("worker"),
   isActive: boolean("is_active").notNull().default(true),
   deptCd: text("dept_cd"),

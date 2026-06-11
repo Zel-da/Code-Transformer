@@ -16,6 +16,7 @@ const CreateUserBody = z.object({
   username: z.string().min(2, "아이디는 2자 이상"),
   password: z.string().min(4, "비밀번호는 4자 이상"),
   displayName: z.string().min(1, "이름을 입력해주세요"),
+  email: z.string().email("올바른 이메일 형식").optional(),
   role: z.enum(ROLES).default("worker"),
   deptCd: z.string().optional(),
   factory: z.string().optional(),
@@ -27,6 +28,7 @@ const CreateUserBody = z.object({
 
 const UpdateUserBody = z.object({
   displayName: z.string().min(1).optional(),
+  email: z.string().email("올바른 이메일 형식").nullable().optional(),
   password: z.string().min(4).optional(),
   role: z.enum(ROLES).optional(),
   deptCd: z.string().nullable().optional(),

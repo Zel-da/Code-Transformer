@@ -1415,6 +1415,11 @@ export const ListUsersResponseItem = zod.object({
   id: zod.number(),
   username: zod.string(),
   displayName: zod.string(),
+  email: zod
+    .string()
+    .email()
+    .nullish()
+    .describe("수산톡 개인 DM 발송용 이메일"),
   role: zod.enum(["admin", "worker", "reviewer", "approver", "collaborator"]),
   isActive: zod
     .boolean()
@@ -1443,6 +1448,11 @@ export const CreateUserBody = zod.object({
   username: zod.string().min(createUserBodyUsernameMin),
   password: zod.string().min(createUserBodyPasswordMin),
   displayName: zod.string().min(1),
+  email: zod
+    .string()
+    .email()
+    .optional()
+    .describe("수산톡 개인 DM 발송용 이메일"),
   role: zod
     .enum(["admin", "worker", "reviewer", "approver", "collaborator"])
     .default(createUserBodyRoleDefault),
@@ -1465,6 +1475,11 @@ export const updateUserBodyPasswordMin = 4;
 
 export const UpdateUserBody = zod.object({
   displayName: zod.string().min(1).optional(),
+  email: zod
+    .string()
+    .email()
+    .nullish()
+    .describe("수산톡 개인 DM 발송용 이메일"),
   password: zod.string().min(updateUserBodyPasswordMin).optional(),
   role: zod
     .enum(["admin", "worker", "reviewer", "approver", "collaborator"])
@@ -1480,6 +1495,11 @@ export const UpdateUserResponse = zod.object({
   id: zod.number(),
   username: zod.string(),
   displayName: zod.string(),
+  email: zod
+    .string()
+    .email()
+    .nullish()
+    .describe("수산톡 개인 DM 발송용 이메일"),
   role: zod.enum(["admin", "worker", "reviewer", "approver", "collaborator"]),
   isActive: zod
     .boolean()
@@ -1535,6 +1555,11 @@ export const SetUserActiveResponse = zod.object({
   id: zod.number(),
   username: zod.string(),
   displayName: zod.string(),
+  email: zod
+    .string()
+    .email()
+    .nullish()
+    .describe("수산톡 개인 DM 발송용 이메일"),
   role: zod.enum(["admin", "worker", "reviewer", "approver", "collaborator"]),
   isActive: zod
     .boolean()
@@ -1562,6 +1587,11 @@ export const LoginResponse = zod.object({
     id: zod.number(),
     username: zod.string(),
     displayName: zod.string(),
+    email: zod
+      .string()
+      .email()
+      .nullish()
+      .describe("수산톡 개인 DM 발송용 이메일"),
     role: zod.enum(["admin", "worker", "reviewer", "approver", "collaborator"]),
     isActive: zod
       .boolean()
@@ -1583,6 +1613,11 @@ export const GetMeResponse = zod.object({
   id: zod.number(),
   username: zod.string(),
   displayName: zod.string(),
+  email: zod
+    .string()
+    .email()
+    .nullish()
+    .describe("수산톡 개인 DM 발송용 이메일"),
   role: zod.enum(["admin", "worker", "reviewer", "approver", "collaborator"]),
   isActive: zod
     .boolean()

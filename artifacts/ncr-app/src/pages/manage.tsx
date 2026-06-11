@@ -184,6 +184,7 @@ interface NewUserForm {
   username: string;
   password: string;
   displayName: string;
+  email: string;
   role: "admin" | "worker" | "reviewer" | "approver" | "collaborator";
   factory: string;
   deptCd: string;
@@ -206,7 +207,7 @@ const NOTIFY_LEVEL_LABELS: Record<string, string> = {
 };
 
 const EMPTY_USER_FORM: NewUserForm = {
-  username: "", password: "", displayName: "", role: "worker",
+  username: "", password: "", displayName: "", email: "", role: "worker",
   factory: "", deptCd: "", processName: "", notifyLevel: "to",
 };
 
@@ -322,6 +323,7 @@ export default function ManagePage() {
           method: "PUT",
           body: JSON.stringify({
             displayName: newUserForm.displayName,
+            email: newUserForm.email || null,
             role: newUserForm.role,
             factory: newUserForm.factory || null,
             plantCd: plantCd ?? null,
@@ -410,6 +412,7 @@ export default function ManagePage() {
       username: u.username,
       password: "",
       displayName: u.displayName,
+      email: u.email ?? "",
       role: u.role,
       factory: u.factory ?? "",
       deptCd: u.deptCd ?? "",
@@ -1382,6 +1385,19 @@ export default function ManagePage() {
                 value={newUserForm.displayName}
                 onChange={(e) => setNewUserForm((f) => ({ ...f, displayName: e.target.value }))}
                 placeholder="실명 입력"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] font-semibold text-[#8B95A1]">
+                수산톡 이메일
+                <span className="ml-1 text-[10px] text-[#BEC5CC] font-normal">— 개인 DM 수신용</span>
+              </Label>
+              <Input
+                className={INP}
+                type="email"
+                value={newUserForm.email}
+                onChange={(e) => setNewUserForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="gildong.hong@soosan.co.kr"
               />
             </div>
             <div className="space-y-1">

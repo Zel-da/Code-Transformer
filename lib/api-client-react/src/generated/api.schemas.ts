@@ -730,6 +730,8 @@ export interface CreateUserBody {
   password: string;
   /** @minLength 1 */
   displayName: string;
+  /** 수산톡 개인 DM 발송용 이메일 */
+  email?: string;
   role?: CreateUserBodyRole;
   deptCd?: string;
   factory?: string;
@@ -752,6 +754,11 @@ export const UpdateUserBodyRole = {
 export interface UpdateUserBody {
   /** @minLength 1 */
   displayName?: string;
+  /**
+   * 수산톡 개인 DM 발송용 이메일
+   * @nullable
+   */
+  email?: string | null;
   /** @minLength 4 */
   password?: string;
   role?: UpdateUserBodyRole;
@@ -787,6 +794,11 @@ export interface UserProfile {
   id: number;
   username: string;
   displayName: string;
+  /**
+   * 수산톡 개인 DM 발송용 이메일
+   * @nullable
+   */
+  email?: string | null;
   role: UserProfileRole;
   /** Whether the account is active. Inactive accounts cannot log in and existing tokens are rejected. */
   isActive: boolean;

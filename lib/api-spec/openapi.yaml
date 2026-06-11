@@ -1949,6 +1949,10 @@ components:
         displayName:
           type: string
           minLength: 1
+        email:
+          type: string
+          format: email
+          description: "수산톡 개인 DM 발송용 이메일"
         role:
           type: string
           enum: [admin, worker, reviewer, approver, collaborator]
@@ -1974,6 +1978,10 @@ components:
         displayName:
           type: string
           minLength: 1
+        email:
+          type: ["string", "null"]
+          format: email
+          description: "수산톡 개인 DM 발송용 이메일"
         password:
           type: string
           minLength: 4
@@ -2022,6 +2030,10 @@ components:
           type: string
         displayName:
           type: string
+        email:
+          type: ["string", "null"]
+          format: email
+          description: "수산톡 개인 DM 발송용 이메일"
         role:
           type: string
           enum: [admin, worker, reviewer, approver, collaborator]

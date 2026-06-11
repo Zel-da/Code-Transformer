@@ -1,7 +1,13 @@
 import { eq, inArray, desc, and } from "drizzle-orm";
 import { db, usersTable, departmentsTable, reportCommentsTable } from "@workspace/db";
 import type { NonConformityReport } from "@workspace/db";
-import { sendSushantalkToUrl, sendSushantalkMessage } from "./sushantalk.js";
+import {
+  sendSushantalkToUrl,
+  sendSushantalkMessage,
+  sendBulkDm,
+  isPatConfigured,
+  type SushantalkRecipient,
+} from "./sushantalk.js";
 import { logger as rootLogger } from "./logger.js";
 
 type QcStatus = "OPEN" | "IN_REVIEW" | "PENDING_COLLAB" | "RESOLVED" | "APPROVED" | "ERP_SYNCED";
@@ -34,6 +40,9 @@ const STATUS_LABELS: Record<QcStatus, string> = {
   APPROVED:       "승인 완료",
   ERP_SYNCED:     "ERP 등록 완료",
 };
+
+const BOT_NAME = "부적합 보고 시스템";
+const ROOM_NAME = "🔔 NCR 알림";
 
 // ────────────────────────────────────────────────────────────────
 // Message builders
@@ -109,15 +118,16 @@ async function fetchTaggedUserIds(reportId: number): Promise<number[]> {
 /**
  * 상태 전이 시 지능형 알림 발송.
  *
+ * PAT 토큰 설정 시 (SUSHANTALK_BASE_URL + SUSHANTALK_PAT_TOKEN):
+ *   → 이메일이 등록된 사용자에게 개인 DM 직접 발송
+ *   → 이메일 미등록 사용자는 기존 부서 webhook으로 fallback
+ *
+ * PAT 토큰 미설정 시:
+ *   → 기존 방식(부서 webhook URL) 그대로 사용
+ *
  * - To 수신자 (notifyLevel='to')  : 상세 메시지 수신
  * - CC 수신자 (notifyLevel='cc')  : 요약(참조) 메시지 수신
  * - notifyLevel='none'             : 알림 차단
- *
- * 수신자별 배송:
- *   1) 역할 기반 사용자들의 부서 webhook URL 경유 (개인화 수준: 부서 단위)
- *   2) 주요 상태(OPEN / APPROVED / ERP_SYNCED)는 메인 QC/lab 채널에도 발송
- *   3) 등록자 알림(IN_REVIEW / APPROVED / ERP_SYNCED): 귀책부서 webhook 경유
- *   4) PENDING_COLLAB: 최신 코멘트에서 @tagged 사용자 자동 조회
  */
 export async function notifyStatusTransition(opts: {
   report: NonConformityReport;
@@ -129,12 +139,17 @@ export async function notifyStatusTransition(opts: {
   const appUrl = process.env.APP_URL ?? "https://your-app.replit.app";
   const log = rootLogger.child({ fn: "notifyStatusTransition", reportId: report.id, to });
   const deptCache = new Map<string, string | null>();
+  const usePat = isPatConfigured();
 
   try {
     const toMsg = buildToMessage(report, to, appUrl);
     const ccMsg = buildCcMessage(report, from, to, appUrl);
 
-    // ── webhook → { hasTo, hasCC } accumulator ─────────────────
+    // ── PAT 모드: 개인 DM 수신자 목록 ─────────────────────────
+    const dmTo: SushantalkRecipient[] = [];
+    const dmCc: SushantalkRecipient[] = [];
+
+    // ── webhook fallback 수신자 ────────────────────────────────
     const webhookMap = new Map<string, { hasTo: boolean; hasCC: boolean }>();
 
     function accWebhook(url: string | null, isTo: boolean) {
@@ -155,6 +170,7 @@ export async function notifyStatusTransition(opts: {
           id: usersTable.id,
           role: usersTable.role,
           deptCd: usersTable.deptCd,
+          email: usersTable.email,
           notifyLevel: usersTable.notifyLevel,
         })
         .from(usersTable)
@@ -165,16 +181,25 @@ export async function notifyStatusTransition(opts: {
       );
 
       for (const u of eligible) {
-        if (!u.deptCd) continue;
-        const url = await getDeptWebhook(u.deptCd, deptCache);
         const isTo =
           routing.toRoles.includes(u.role as UserRole) && u.notifyLevel === "to";
         const isCc =
           !isTo &&
           (routing.ccRoles.includes(u.role as UserRole) ||
             (routing.toRoles.includes(u.role as UserRole) && u.notifyLevel === "cc"));
-        if (isTo) accWebhook(url, true);
-        else if (isCc) accWebhook(url, false);
+
+        if (!isTo && !isCc) continue;
+
+        if (usePat && u.email) {
+          // 개인 DM 대상
+          if (isTo) dmTo.push({ toEmail: u.email });
+          else dmCc.push({ toEmail: u.email });
+        } else {
+          // webhook fallback
+          if (!u.deptCd) continue;
+          const url = await getDeptWebhook(u.deptCd, deptCache);
+          accWebhook(url, isTo);
+        }
       }
     }
 
@@ -186,30 +211,60 @@ export async function notifyStatusTransition(opts: {
 
       if (taggedIds.length > 0) {
         const taggedUsers = await db
-          .select({ id: usersTable.id, deptCd: usersTable.deptCd, notifyLevel: usersTable.notifyLevel })
+          .select({
+            id: usersTable.id,
+            deptCd: usersTable.deptCd,
+            email: usersTable.email,
+            notifyLevel: usersTable.notifyLevel,
+          })
           .from(usersTable)
           .where(inArray(usersTable.id, taggedIds));
 
         for (const u of taggedUsers) {
-          if (u.notifyLevel === "none" || !u.deptCd) continue;
-          const url = await getDeptWebhook(u.deptCd, deptCache);
-          accWebhook(url, u.notifyLevel === "to");
+          if (u.notifyLevel === "none") continue;
+          const isTo = u.notifyLevel === "to";
+          if (usePat && u.email) {
+            if (isTo) dmTo.push({ toEmail: u.email });
+            else dmCc.push({ toEmail: u.email });
+          } else {
+            if (!u.deptCd) continue;
+            const url = await getDeptWebhook(u.deptCd, deptCache);
+            accWebhook(url, isTo);
+          }
         }
       }
     }
 
     // ── 3. 귀책부서 webhook — 등록자 대리 수신 ─────────────────
-    // IN_REVIEW  : 귀책부서 webhook → To (검토 시작 알림)
-    // APPROVED   : 귀책부서 webhook → CC (승인 완료 참조)
-    // ERP_SYNCED : 귀책부서 webhook → To (ERP 등록 완료 알림)
+    // (부서 webhook 기반 고정: 개인 이메일 대신 부서 채널로 발송)
     if (report.deptCd && (to === "IN_REVIEW" || to === "APPROVED" || to === "ERP_SYNCED")) {
       const deptUrl = await getDeptWebhook(report.deptCd, deptCache);
       const isTo = to === "IN_REVIEW" || to === "ERP_SYNCED";
       accWebhook(deptUrl, isTo);
     }
 
-    // ── 4. Dispatch to dept webhooks ──────────────────────────
-    const dispatches: Promise<void>[] = [];
+    // ── 4. Dispatch ──────────────────────────────────────────
+    const dispatches: Promise<unknown>[] = [];
+
+    // 4a. PAT 개인 DM 발송
+    if (usePat) {
+      if (dmTo.length > 0) {
+        dispatches.push(
+          sendBulkDm({ recipients: dmTo, content: toMsg, botName: BOT_NAME, roomName: ROOM_NAME })
+            .then(({ sent, failed }) => log.info({ sent, failed }, "PAT DM To sent"))
+            .catch((e) => log.warn({ e }, "PAT bulk DM To failed")),
+        );
+      }
+      if (dmCc.length > 0) {
+        dispatches.push(
+          sendBulkDm({ recipients: dmCc, content: ccMsg, botName: BOT_NAME, roomName: ROOM_NAME })
+            .then(({ sent, failed }) => log.info({ sent, failed }, "PAT DM CC sent"))
+            .catch((e) => log.warn({ e }, "PAT bulk DM CC failed")),
+        );
+      }
+    }
+
+    // 4b. webhook fallback 발송
     for (const [url, { hasTo, hasCC }] of webhookMap) {
       if (hasTo) {
         dispatches.push(
@@ -234,7 +289,8 @@ export async function notifyStatusTransition(opts: {
       log.info({ channel, to }, "main channel notified");
     }
 
-    const sentAt = mainChannelSent || webhookMap.size > 0 ? new Date() : null;
+    const anySent = mainChannelSent || webhookMap.size > 0 || dmTo.length > 0 || dmCc.length > 0;
+    const sentAt = anySent ? new Date() : null;
     return { sentAt, channel: report.productType === "개발" ? "lab" : "qc" };
   } catch (err) {
     log.error({ err }, "notifyStatusTransition failed (non-fatal)");
