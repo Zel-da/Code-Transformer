@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import { eq, ne, sql, and, gte, lte, count, lt, or, ilike } from "drizzle-orm";
+import { eq, ne, sql, and, gte, lte, count, lt, or, ilike, desc } from "drizzle-orm";
 import * as XLSX from "xlsx";
-import { db, nonConformityReportsTable } from "@workspace/db";
+import { db, nonConformityReportsTable, auditLogsTable, usersTable } from "@workspace/db";
 import {
   ListReportsQueryParams,
   CreateReportBody,
@@ -18,6 +18,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAdmin, requireAuth, requireRole, type UserRole } from "../middleware/requireAuth.js";
 import { notifyStatusTransition } from "../lib/notifications.js";
+import { writeAuditLog, diffObjects } from "../lib/audit.js";
 import { z } from "zod";
 
 const CloseMonthBody = z.object({
@@ -482,7 +483,7 @@ router.put("/reports/:id/qc", requireRole(["admin", "reviewer", "approver"]), as
   }
 
   const [existing] = await db
-    .select({ id: nonConformityReportsTable.id })
+    .select()
     .from(nonConformityReportsTable)
     .where(eq(nonConformityReportsTable.id, params.data.id));
 
@@ -526,7 +527,15 @@ router.put("/reports/:id/qc", requireRole(["admin", "reviewer", "approver"]), as
     .where(eq(nonConformityReportsTable.id, params.data.id))
     .returning();
 
-  req.log.info({ reportId: report.id, qcStatus: report.qcStatus, by: req.auth!.userId }, "QC analysis saved");
+  const actorId = req.auth!.userId;
+  const [actorUser] = await db.select({ displayName: usersTable.displayName }).from(usersTable).where(eq(usersTable.id, actorId));
+  const actorName = actorUser?.displayName ?? req.auth!.username;
+  const { before, after } = diffObjects(existing as unknown as Record<string, unknown>, updates);
+  if (Object.keys(after).length > 0) {
+    await writeAuditLog({ actorId, actorName, action: "QC_FIELDS_UPDATED", targetType: "report", targetId: report.id, before, after });
+  }
+
+  req.log.info({ reportId: report.id, qcStatus: report.qcStatus, by: actorId }, "QC analysis saved");
   res.json(report);
 });
 
@@ -554,6 +563,11 @@ router.post("/reports/:id/qc-action", requireRole(["admin", "reviewer", "approve
     return;
   }
 
+  const [beforeAction] = await db
+    .select({ qcAction: nonConformityReportsTable.qcAction })
+    .from(nonConformityReportsTable)
+    .where(eq(nonConformityReportsTable.id, params.data.id));
+
   const [report] = await db
     .update(nonConformityReportsTable)
     .set({
@@ -564,7 +578,19 @@ router.post("/reports/:id/qc-action", requireRole(["admin", "reviewer", "approve
     .where(eq(nonConformityReportsTable.id, params.data.id))
     .returning();
 
-  req.log.info({ reportId: report.id, qcAction: report.qcAction, by: req.auth!.userId }, "QC action submitted");
+  const actorIdQa = req.auth!.userId;
+  const [actorUserQa] = await db.select({ displayName: usersTable.displayName }).from(usersTable).where(eq(usersTable.id, actorIdQa));
+  await writeAuditLog({
+    actorId: actorIdQa,
+    actorName: actorUserQa?.displayName ?? req.auth!.username,
+    action: "QC_ACTION_SUBMITTED",
+    targetType: "report",
+    targetId: report.id,
+    before: { qcAction: beforeAction?.qcAction ?? null },
+    after: { qcAction: body.data.qcAction },
+  });
+
+  req.log.info({ reportId: report.id, qcAction: report.qcAction, by: actorIdQa }, "QC action submitted");
   res.json(report);
 });
 
@@ -645,6 +671,14 @@ router.put("/reports/:id", requireAuth, async (req, res): Promise<void> => {
     .set(updates)
     .where(eq(nonConformityReportsTable.id, params.data.id))
     .returning();
+
+  const actorIdUpd = req.auth!.userId;
+  const [actorUserUpd] = await db.select({ displayName: usersTable.displayName }).from(usersTable).where(eq(usersTable.id, actorIdUpd));
+  const actorNameUpd = actorUserUpd?.displayName ?? req.auth!.username;
+  const { before: bUpd, after: aUpd } = diffObjects(existing as unknown as Record<string, unknown>, updates);
+  if (Object.keys(aUpd).length > 0) {
+    await writeAuditLog({ actorId: actorIdUpd, actorName: actorNameUpd, action: "REPORT_UPDATED", targetType: "report", targetId: report.id, before: bUpd, after: aUpd });
+  }
 
   req.log.info({ reportId: report.id }, "Report updated");
   res.json(report);
@@ -740,7 +774,20 @@ router.patch("/reports/:id/status", requireAuth, async (req, res): Promise<void>
     .where(eq(nonConformityReportsTable.id, id))
     .returning();
 
-  req.log.info({ reportId: id, from, to, by: req.auth!.userId, role }, "QC status transitioned");
+  const actorIdSt = req.auth!.userId;
+  const [actorUserSt] = await db.select({ displayName: usersTable.displayName }).from(usersTable).where(eq(usersTable.id, actorIdSt));
+  await writeAuditLog({
+    actorId: actorIdSt,
+    actorName: actorUserSt?.displayName ?? req.auth!.username,
+    action: "STATUS_CHANGED",
+    targetType: "report",
+    targetId: id,
+    before: { qcStatus: from },
+    after: { qcStatus: to },
+    detail: `${from} → ${to}`,
+  });
+
+  req.log.info({ reportId: id, from, to, by: actorIdSt, role }, "QC status transitioned");
   res.json(report);
 
   // Fire-and-forget: 상태 전이 알림 발송
@@ -774,6 +821,26 @@ router.delete("/reports/:id", async (req, res): Promise<void> => {
 
   req.log.info({ reportId: params.data.id }, "Report deleted");
   res.status(204).send();
+});
+
+router.get("/reports/:id/audit-logs", requireAuth, async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "잘못된 ID" }); return; }
+
+  const [report] = await db
+    .select({ id: nonConformityReportsTable.id })
+    .from(nonConformityReportsTable)
+    .where(eq(nonConformityReportsTable.id, id));
+
+  if (!report) { res.status(404).json({ error: "Report not found" }); return; }
+
+  const logs = await db
+    .select()
+    .from(auditLogsTable)
+    .where(eq(auditLogsTable.targetId, id))
+    .orderBy(desc(auditLogsTable.createdAt));
+
+  res.json(logs);
 });
 
 export default router;

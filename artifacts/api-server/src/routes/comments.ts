@@ -3,6 +3,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { db, reportCommentsTable, nonConformityReportsTable, usersTable, departmentsTable } from "@workspace/db";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { sendSushantalkToUrl } from "../lib/sushantalk.js";
+import { writeAuditLog } from "../lib/audit.js";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -164,6 +165,16 @@ router.put("/reports/:id/comments/:cid", requireAuth, async (req, res): Promise<
     .where(eq(reportCommentsTable.id, cid))
     .returning();
 
+  await writeAuditLog({
+    actorId,
+    actorName: existing.authorName,
+    action: "COMMENT_EDITED",
+    targetType: "report",
+    targetId: reportId,
+    before: { commentId: cid, body: existing.body },
+    after: { commentId: cid, body: parsed.data.body },
+  });
+
   req.log.info({ commentId: cid, by: actorId }, "Comment updated");
   res.json(updated);
 });
@@ -195,6 +206,17 @@ router.delete("/reports/:id/comments/:cid", requireAuth, async (req, res): Promi
   }
 
   await db.delete(reportCommentsTable).where(eq(reportCommentsTable.id, cid));
+
+  await writeAuditLog({
+    actorId,
+    actorName: existing.authorName,
+    action: "COMMENT_DELETED",
+    targetType: "report",
+    targetId: reportId,
+    before: { commentId: cid, body: existing.body },
+    after: null,
+  });
+
   req.log.info({ commentId: cid, by: actorId }, "Comment deleted");
   res.status(204).send();
 });

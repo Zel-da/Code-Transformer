@@ -5,6 +5,22 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface AuditLog {
+  id: number;
+  /** @nullable */
+  actorId?: number | null;
+  actorName: string;
+  action: string;
+  targetType: string;
+  /** @nullable */
+  targetId?: number | null;
+  /** @nullable */
+  detail?: string | null;
+  beforeVal?: unknown | null;
+  afterVal?: unknown | null;
+  createdAt: string;
+}
+
 export interface HealthStatus {
   status: string;
 }

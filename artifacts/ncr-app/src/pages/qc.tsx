@@ -1,5 +1,6 @@
 import { useParams, useLocation } from "wouter";
 import { CommentThread } from "@/components/comment-thread";
+import { AuditTimeline } from "@/components/audit-timeline";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -1228,9 +1229,10 @@ export default function QcPage() {
           </form>
         </Form>
 
-        {/* ── 협업 의견 (전체 너비) ── */}
-        <div className="mt-5 pb-8">
+        {/* ── 협업 의견 + 변경 이력 (전체 너비, 2열) ── */}
+        <div className="mt-5 pb-8 grid grid-cols-1 xl:grid-cols-2 gap-5">
           <CommentThread reportId={id} />
+          <AuditTimeline reportId={id} />
         </div>
       </div>
 

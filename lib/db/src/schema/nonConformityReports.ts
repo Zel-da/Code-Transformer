@@ -8,6 +8,7 @@ import {
   real,
   boolean,
   primaryKey,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -204,6 +205,8 @@ export const auditLogsTable = pgTable("audit_logs", {
   targetType: text("target_type").notNull(),
   targetId: integer("target_id"),
   detail: text("detail"),
+  beforeVal: jsonb("before_val"),
+  afterVal: jsonb("after_val"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 export type AuditLog = typeof auditLogsTable.$inferSelect;

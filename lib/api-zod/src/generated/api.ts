@@ -1168,6 +1168,29 @@ export const DeleteReportCommentParams = zod.object({
 });
 
 /**
+ * @summary 보고서 변경 이력 조회
+ */
+export const ListReportAuditLogsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListReportAuditLogsResponseItem = zod.object({
+  id: zod.number(),
+  actorId: zod.number().nullish(),
+  actorName: zod.string(),
+  action: zod.string(),
+  targetType: zod.string(),
+  targetId: zod.number().nullish(),
+  detail: zod.string().nullish(),
+  beforeVal: zod.unknown().nullish(),
+  afterVal: zod.unknown().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListReportAuditLogsResponse = zod.array(
+  ListReportAuditLogsResponseItem,
+);
+
+/**
  * Simulates RPA bot execution - processes all PENDING reports and marks them COMPLETED or FAILED
  * @summary Trigger RPA processing on all PENDING reports
  */

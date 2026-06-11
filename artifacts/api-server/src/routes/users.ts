@@ -4,6 +4,7 @@ import { eq, desc } from "drizzle-orm";
 import { db, usersTable, auditLogsTable } from "@workspace/db";
 import { requireAdmin, requireAuth } from "../middleware/requireAuth.js";
 import { logger } from "../lib/logger.js";
+import { writeAuditLog } from "../lib/audit.js";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -40,27 +41,6 @@ const ResetPasswordBody = z.object({
   password: z.string().min(4, "비밀번호는 4자 이상"),
 });
 
-async function writeAuditLog(opts: {
-  actorId: number;
-  actorName: string;
-  action: string;
-  targetType: string;
-  targetId?: number;
-  detail?: string;
-}) {
-  try {
-    await db.insert(auditLogsTable).values({
-      actorId: opts.actorId,
-      actorName: opts.actorName,
-      action: opts.action,
-      targetType: opts.targetType,
-      targetId: opts.targetId ?? null,
-      detail: opts.detail ?? null,
-    });
-  } catch (err) {
-    logger.error({ err, opts }, "audit log insert failed");
-  }
-}
 
 router.get("/users", requireAdmin, async (_req, res): Promise<void> => {
   const users = await db.select().from(usersTable).orderBy(usersTable.createdAt);

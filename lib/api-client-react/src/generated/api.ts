@@ -17,6 +17,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AuditLog,
   CloseMonthBody,
   CloseMonthResult,
   CreateCommentBody,
@@ -1912,6 +1913,93 @@ export const useDeleteReportComment = <
 > => {
   return useMutation(getDeleteReportCommentMutationOptions(options));
 };
+
+/**
+ * @summary 보고서 변경 이력 조회
+ */
+export const getListReportAuditLogsUrl = (id: number) => {
+  return `/api/reports/${id}/audit-logs`;
+};
+
+export const listReportAuditLogs = async (
+  id: number,
+  options?: RequestInit,
+): Promise<AuditLog[]> => {
+  return customFetch<AuditLog[]>(getListReportAuditLogsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListReportAuditLogsQueryKey = (id: number) => {
+  return [`/api/reports/${id}/audit-logs`] as const;
+};
+
+export const getListReportAuditLogsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listReportAuditLogs>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listReportAuditLogs>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListReportAuditLogsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listReportAuditLogs>>
+  > = ({ signal }) => listReportAuditLogs(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listReportAuditLogs>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListReportAuditLogsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listReportAuditLogs>>
+>;
+export type ListReportAuditLogsQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary 보고서 변경 이력 조회
+ */
+
+export function useListReportAuditLogs<
+  TData = Awaited<ReturnType<typeof listReportAuditLogs>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listReportAuditLogs>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListReportAuditLogsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * Simulates RPA bot execution - processes all PENDING reports and marks them COMPLETED or FAILED
