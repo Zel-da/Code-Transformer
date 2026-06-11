@@ -249,22 +249,68 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
 
     @app.post("/api/erp/test")
     async def erp_test():
-        """UNIERP 윈도우를 찾아 연결 가능 여부를 반환한다."""
+        """UNIERP 윈도우를 찾아 연결 가능 여부를 반환한다.
+
+        process_name이 설정돼 있으면 그 프로세스 소속 창만 본다
+        (Chrome 탭처럼 타이틀에 'UNIERP'가 들어간 무관한 창 오인 방지).
+        """
         try:
             from pywinauto import Desktop
-            title = settings.get("erp", {}).get("window_title", "UNIERP")
+            try:
+                import psutil
+            except ImportError:
+                psutil = None
+            erp_cfg = settings.get("erp", {})
+            title = erp_cfg.get("window_title", "UNIERP")
+            proc_name = erp_cfg.get("process_name", "").lower()
             desktop = Desktop(backend="uia")
+
+            matches = []   # 메인 후보 (로그인 제외)
+            login_dlg = None
             for win in desktop.windows():
                 try:
                     wt = win.window_text()
-                    if title in wt:
-                        rect = win.rectangle()
-                        return {"connected": True, "window_title": wt,
-                                "rect": {"left": rect.left, "top": rect.top,
-                                         "right": rect.right, "bottom": rect.bottom}}
+                    if not wt:
+                        continue
+                    pid = win.process_id()
+                    pname = ""
+                    if pid and psutil:
+                        try:
+                            pname = psutil.Process(pid).name()
+                        except Exception:
+                            pass
+                    # 프로세스명 우선 필터
+                    if proc_name:
+                        if proc_name not in pname.lower():
+                            continue
+                    else:
+                        if title.lower() not in wt.lower():
+                            continue
+                    rect = win.rectangle()
+                    entry = {
+                        "title": wt, "process": pname,
+                        "rect": {"left": rect.left, "top": rect.top,
+                                 "right": rect.right, "bottom": rect.bottom},
+                    }
+                    if "로그인" in wt:
+                        login_dlg = entry
+                    else:
+                        matches.append(entry)
                 except Exception:
                     continue
-            return {"connected": False, "error": "UNIERP 윈도우를 찾을 수 없습니다"}
+
+            if matches:
+                best = max(matches, key=lambda m: (m["rect"]["right"]-m["rect"]["left"])
+                                                   * (m["rect"]["bottom"]-m["rect"]["top"]))
+                return {"connected": True, "window_title": best["title"],
+                        "process": best["process"], "rect": best["rect"],
+                        "all_matches": matches, "login_dialog": login_dlg}
+            if login_dlg:
+                return {"connected": False,
+                        "error": "로그인 다이얼로그만 떠있음 — 로그인 후 다시 시도하세요",
+                        "login_dialog": login_dlg}
+            return {"connected": False,
+                    "error": f"ERP 윈도우를 찾을 수 없습니다 (process_name={proc_name!r}, title={title!r})"}
         except Exception as e:
             return {"connected": False, "error": str(e)}
 
@@ -273,6 +319,7 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
         erp_cfg = settings.get("erp", {})
         return {
             "window_title": erp_cfg.get("window_title", "UNIERP"),
+            "process_name": erp_cfg.get("process_name", ""),
             "launch_path": erp_cfg.get("launch_path", ""),
             "login_id": erp_cfg.get("login_id", ""),
             "login_pw": erp_cfg.get("login_pw", ""),
@@ -286,7 +333,7 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
     async def erp_settings_update(request: Request):
         body = await request.json()
         erp_cfg = settings.setdefault("erp", {})
-        for key in ("window_title", "launch_path", "login_id", "login_pw",
+        for key in ("window_title", "process_name", "launch_path", "login_id", "login_pw",
                     "target_menu", "first_field_tabs", "save_shortcut", "grid_columns"):
             if key in body:
                 erp_cfg[key] = body[key]

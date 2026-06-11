@@ -39,35 +39,115 @@ def retry_on_failure(max_retries: int = 3, delay: float = 1.0):
 class WindowController:
     """pywinauto를 사용한 ERP 윈도우 제어기."""
 
-    def __init__(self, window_title: str, input_delay: float = 0.3):
+    def __init__(self, window_title: str, input_delay: float = 0.3, process_name: str = ""):
+        """
+        Args:
+            window_title: 윈도우 타이틀의 부분 매칭 패턴 (예: "UNIERP")
+            input_delay: 입력 간격(초)
+            process_name: 프로세스명 (예: "Bizentro.App.MAIN.ClientAgent.exe").
+                지정하면 타이틀이 비슷한 무관한 창(Chrome 탭 등)을 배제한다.
+        """
         self._window_title = window_title
         self._input_delay = input_delay
+        self._process_name = process_name.lower() if process_name else ""
         self._app = None
         self._main_window = None
+        self._login_window = None
         self._last_grid_click_pos: tuple[int, int] | None = None
         # 메뉴찾기 팝업 위치 캐시 — 첫 F3에서 감지 → 이후 호출에서 포커스 보장용 클릭
         self._menu_finder_pos: tuple[int, int] | None = None
 
-    def connect(self) -> bool:
-        """ERP 윈도우에 연결한다.
+    # ------------------------------------------------------------------
+    # 프로세스명 기반 윈도우 탐색 (Chrome 탭 등 오인 방지)
+    # ------------------------------------------------------------------
 
-        Returns:
-            연결 성공 여부
+    def _find_erp_windows(self, exclude_login: bool = False) -> list:
+        """ERP 프로세스에 속한 보이는 top-level 윈도우 리스트.
+
+        - process_name이 설정돼 있으면 그 프로세스만
+        - 아니면 window_title 부분 매칭
+        - exclude_login=True면 "로그인" 다이얼로그 제외
         """
+        from pywinauto import Desktop
+        try:
+            import psutil
+        except ImportError:
+            psutil = None
+
+        result = []
+        for win in Desktop(backend="uia").windows():
+            try:
+                title = win.window_text()
+                if not title:
+                    continue
+                if exclude_login and "로그인" in title:
+                    continue
+                if self._process_name and psutil:
+                    pid = win.process_id()
+                    if not pid:
+                        continue
+                    try:
+                        pname = psutil.Process(pid).name().lower()
+                    except Exception:
+                        continue
+                    if self._process_name not in pname:
+                        continue
+                elif self._window_title:
+                    # 프로세스명 미설정 시 타이틀 매칭으로 폴백
+                    if self._window_title.lower() not in title.lower():
+                        continue
+                else:
+                    continue
+                result.append(win)
+            except Exception:
+                continue
+        return result
+
+    def _find_login_window(self):
+        """로그인 다이얼로그 (ERP 프로세스 + 타이틀에 '로그인')."""
+        from pywinauto import Desktop
+        try:
+            import psutil
+        except ImportError:
+            psutil = None
+        for win in Desktop(backend="uia").windows():
+            try:
+                title = win.window_text() or ""
+                if "로그인" not in title:
+                    continue
+                if self._process_name and psutil:
+                    pid = win.process_id()
+                    try:
+                        pname = psutil.Process(pid).name().lower()
+                    except Exception:
+                        continue
+                    if self._process_name not in pname:
+                        continue
+                return win
+            except Exception:
+                continue
+        return None
+
+    def connect(self) -> bool:
+        """ERP 메인 윈도우에 연결한다 (로그인 다이얼로그 제외)."""
+        wins = self._find_erp_windows(exclude_login=True)
+        if not wins:
+            login_dlg = self._find_login_window()
+            if login_dlg:
+                logger.warning("ERP 로그인 다이얼로그만 떠있음 — 로그인 후 다시 시도")
+            else:
+                logger.error("ERP 윈도우를 찾을 수 없음 "
+                             f"(process_name={self._process_name!r}, title={self._window_title!r})")
+            return False
+        # 가장 큰 윈도우를 메인으로 선택 (보통 최대화된 메인)
         try:
             from pywinauto import Application
-
-            # 기존 프로세스에 연결
-            self._app = Application(backend="uia").connect(
-                title_re=f".*{self._window_title}.*",
-                timeout=10,
-            )
-            self._main_window = self._app.window(title_re=f".*{self._window_title}.*")
+            best = max(wins, key=lambda w: (w.rectangle().width() * w.rectangle().height()))
+            self._app = Application(backend="uia").connect(handle=best.handle)
+            self._main_window = self._app.window(handle=best.handle)
             self._main_window.wait("ready", timeout=10)
-
-            logger.info(f"ERP 윈도우 연결됨: {self._window_title}")
+            logger.info(f"ERP 윈도우 연결됨: '{best.window_text()}' (handle={best.handle})")
             return True
-
         except Exception as e:
             logger.error(f"ERP 윈도우 연결 실패: {e}")
             return False
@@ -75,73 +155,62 @@ class WindowController:
     def launch_erp(self, launch_path: str, timeout: float = 60.0) -> bool:
         """ERP 프로그램을 실행한다.
 
-        1. 이미 UNIERP 메인 윈도우가 있으면 바로 연결
-        2. 없으면 .appref-ms 실행 → "로그인" 창 대기
-
-        Args:
-            launch_path: .appref-ms 또는 .exe 경로
-            timeout: 최대 대기 시간(초)
-
-        Returns:
-            실행 성공 여부 (로그인 창 또는 메인 윈도우 감지)
+        1. 이미 ERP 메인 윈도우가 있으면(로그인 다이얼로그 제외) 그걸 사용
+        2. 로그인 다이얼로그만 있으면 그것을 잡고 로그인 단계로
+        3. 둘 다 없으면 launch_path 실행 후 로그인 또는 메인 윈도우 대기
         """
         import os
-        from pywinauto import Application
 
         logger.info(f"ERP 실행: {launch_path}")
 
-        # 이미 메인 윈도우가 실행 중인지 확인
-        try:
-            app = Application(backend="uia").connect(
-                title_re=f".*{self._window_title}.*",
-                timeout=3,
-            )
-            self._app = app
-            self._main_window = app.window(title_re=f".*{self._window_title}.*")
-            logger.info("ERP 이미 실행 중 — 기존 윈도우 사용")
+        # 1. 이미 메인 윈도우가 떠있는지 (Chrome 등 오인 방지: 프로세스명 우선)
+        wins = self._find_erp_windows(exclude_login=True)
+        if wins:
+            from pywinauto import Application
+            best = max(wins, key=lambda w: (w.rectangle().width() * w.rectangle().height()))
+            self._app = Application(backend="uia").connect(handle=best.handle)
+            self._main_window = self._app.window(handle=best.handle)
+            logger.info(f"ERP 이미 실행 중 — 기존 메인 윈도우 사용: '{best.window_text()}'")
             return True
-        except Exception:
-            pass
 
-        # .appref-ms 실행 (ClickOnce)
+        # 2. 로그인 다이얼로그가 이미 있는지
+        login_dlg = self._find_login_window()
+        if login_dlg:
+            from pywinauto import Application
+            self._app = Application(backend="uia").connect(handle=login_dlg.handle)
+            self._login_window = self._app.window(handle=login_dlg.handle)
+            logger.info("ERP 로그인 다이얼로그 이미 떠있음 — 그것을 사용")
+            return True
+
+        # 3. 실행
         try:
             os.startfile(launch_path)
         except Exception as e:
             logger.error(f"ERP 실행 실패: {e}")
             return False
 
-        # "로그인" 창 대기
-        logger.info("로그인 창 대기 중...")
+        # 로그인 또는 메인 윈도우 대기
+        logger.info("로그인/메인 윈도우 대기 중...")
         start = time.time()
         while time.time() - start < timeout:
-            try:
-                app = Application(backend="uia").connect(
-                    title="로그인",
-                    timeout=3,
-                )
-                self._app = app
-                self._login_window = app.window(title="로그인")
-                logger.info("로그인 창 감지됨")
+            wins = self._find_erp_windows(exclude_login=True)
+            if wins:
+                from pywinauto import Application
+                best = max(wins, key=lambda w: (w.rectangle().width() * w.rectangle().height()))
+                self._app = Application(backend="uia").connect(handle=best.handle)
+                self._main_window = self._app.window(handle=best.handle)
+                logger.info(f"메인 윈도우 감지됨 (로그인 건너뜀): '{best.window_text()}'")
                 return True
-            except Exception:
-                pass
-
-            # 혹시 로그인 없이 바로 메인 윈도우가 뜨는 경우
-            try:
-                app = Application(backend="uia").connect(
-                    title_re=f".*{self._window_title}.*",
-                    timeout=2,
-                )
-                self._app = app
-                self._main_window = app.window(title_re=f".*{self._window_title}.*")
-                logger.info("메인 윈도우 직접 감지됨 (로그인 건너뜀)")
+            login_dlg = self._find_login_window()
+            if login_dlg:
+                from pywinauto import Application
+                self._app = Application(backend="uia").connect(handle=login_dlg.handle)
+                self._login_window = self._app.window(handle=login_dlg.handle)
+                logger.info("로그인 다이얼로그 감지됨")
                 return True
-            except Exception:
-                pass
-
             time.sleep(2)
 
-        logger.error(f"로그인 창 대기 타임아웃 ({timeout}초)")
+        logger.error(f"로그인/메인 윈도우 대기 타임아웃 ({timeout}초)")
         return False
 
     def login(self, password: str, timeout: float = 30.0) -> bool:

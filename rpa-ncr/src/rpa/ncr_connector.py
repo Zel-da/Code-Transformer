@@ -46,7 +46,10 @@ class NCRConnector:
         self._field_mapping = field_mapping
         self._field_map = NcrReportFieldMap(field_mapping)
 
-        self._window_controller = WindowController(self._window_title, self._input_delay)
+        self._process_name = erp_cfg.get("process_name", "")
+        self._window_controller = WindowController(
+            self._window_title, self._input_delay, process_name=self._process_name,
+        )
         self._fallback_controller = FallbackController(self._input_delay)
 
         self._connected = False
@@ -168,9 +171,12 @@ class NCRConnector:
         self._start_focus_watchdog()
 
         try:
-            # 첫 입력 필드로 이동
+            # 첫 입력 필드로 이동 (각 Tab 사이마다 중지/포커스 체크)
             self._emit_log(f"Tab×{self._first_field_tabs} → 첫 입력 필드로 이동")
             for _ in range(self._first_field_tabs):
+                if self._is_stopped():
+                    self._emit_log("중지 요청 감지 (Tab 이동 중) — 입력 중단")
+                    return
                 self._check_focus_lost()
                 self._send_tab()
 

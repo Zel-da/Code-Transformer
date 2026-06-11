@@ -1,6 +1,6 @@
 {
     "_comment": "rpa-ncr 설정. source로 데이터 출처 전환(api|db). erp.* 와 field_mapping.json은 실 UNIERP 캘리브레이션 후 채울 것(README 캘리브레이션 체크리스트 참고).",
-    "source": "api",
+    "source": "db",
     "api": {
         "base_url": "http://localhost:3000",
         "secret": "",
@@ -14,9 +14,10 @@
     },
     "erp": {
         "window_title": "UNIERP",
-        "launch_path": "",
+        "process_name": "Bizentro.App.MAIN.ClientAgent.exe",
+        "launch_path": "c:/Users/SOOSAN/OneDrive/Desktop/UNIERP/UNIERP.appref-ms",
         "login_id": "",
-        "login_pw": "",
+        "login_pw": "soosan5008!",
         "target_menu": "부적합등록(S)(QD211MA1_CKO063)",
         "first_field_tabs": 10,
         "save_shortcut": "^s",
