@@ -382,7 +382,7 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
 
         state.erp_mode = req.mode
         state.erp_stop_event.clear()
-        state.erp_paused = False
+        state.erp_pause_event.clear()
         state.erp_running = True
         state.erp_logs = []
 
@@ -396,6 +396,7 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
                 source = get_source(settings)
                 connector = NCRConnector(settings, mode=state.erp_mode)
                 connector.set_stop_event(state.erp_stop_event)
+                connector.set_pause_event(state.erp_pause_event)
 
                 def log_cb(msg: str):
                     state.erp_logs.append(msg)
@@ -417,7 +418,7 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
                     if state.erp_stop_event.is_set():
                         log_cb("입력이 중지되었습니다.")
                         break
-                    while state.erp_paused and not state.erp_stop_event.is_set():
+                    while state.erp_pause_event.is_set() and not state.erp_stop_event.is_set():
                         state.erp_stop_event.wait(0.5)
 
                     state.erp_queue[i]["status"] = "입력 중"
@@ -489,8 +490,12 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
 
     @app.post("/api/erp/pause")
     async def erp_pause():
-        state.erp_paused = not state.erp_paused
-        msg = f"ERP 입력 {'일시정지' if state.erp_paused else '재개'}"
+        if state.erp_pause_event.is_set():
+            state.erp_pause_event.clear()
+            msg = "ERP 입력 재개"
+        else:
+            state.erp_pause_event.set()
+            msg = "ERP 입력 일시정지"
         state.erp_logs.append(msg)
         await state.broadcast_erp({"type": "log", "message": msg})
         return MessageResponse(message=msg)
@@ -498,7 +503,7 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
     @app.post("/api/erp/stop")
     async def erp_stop():
         state.erp_stop_event.set()
-        state.erp_paused = False
+        state.erp_pause_event.clear()
         state.erp_running = False
         msg = "ERP 입력 중지 요청"
         state.erp_logs.append(msg)

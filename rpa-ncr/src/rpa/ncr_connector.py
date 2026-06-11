@@ -63,6 +63,7 @@ class NCRConnector:
 
         self._connected = False
         self._stop_event: threading.Event | None = None
+        self._pause_event: threading.Event | None = None
         self._log_callback: Any = None
         self._error_events: list[str] = []
         self._valid_items: set[str] | None = None
@@ -79,6 +80,9 @@ class NCRConnector:
     def set_stop_event(self, event: threading.Event) -> None:
         self._stop_event = event
 
+    def set_pause_event(self, event: threading.Event) -> None:
+        self._pause_event = event
+
     def set_log_callback(self, callback: Any) -> None:
         self._log_callback = callback
 
@@ -89,6 +93,22 @@ class NCRConnector:
 
     def _is_stopped(self) -> bool:
         return self._stop_event is not None and self._stop_event.is_set()
+
+    def _is_paused(self) -> bool:
+        return self._pause_event is not None and self._pause_event.is_set()
+
+    def _wait_if_paused(self) -> None:
+        """일시정지 중이면 재개/중지될 때까지 대기. 워치독의 포커스 체크도 무력화한다."""
+        if not self._is_paused():
+            return
+        self._emit_log("⏸ 일시정지 — 재개 또는 중지 대기 중...")
+        while self._is_paused():
+            if self._is_stopped():
+                return
+            time.sleep(0.1)
+        # 재개 시 일시정지 동안 쌓였을 수 있는 포커스 이탈 신호를 클리어
+        self._focus_lost_event.clear()
+        self._emit_log("▶ 재개 — 다음 스텝부터 계속")
 
     # ------------------------------------------------------------------
     # 연결 / 실행
@@ -180,9 +200,10 @@ class NCRConnector:
         self._start_focus_watchdog()
 
         try:
-            # 첫 입력 필드로 이동 (각 Tab 사이마다 중지/포커스 체크)
+            # 첫 입력 필드로 이동 (각 Tab 사이마다 중지/일시정지/포커스 체크)
             self._emit_log(f"Tab×{self._first_field_tabs} → 첫 입력 필드로 이동")
             for _ in range(self._first_field_tabs):
+                self._wait_if_paused()
                 if self._is_stopped():
                     self._emit_log("중지 요청 감지 (Tab 이동 중) — 입력 중단")
                     raise StoppedByUserError("Tab 이동 중 중지")
@@ -193,6 +214,7 @@ class NCRConnector:
             sequence = self._field_map.build_sequence(report)
             total = len(sequence.steps)
             for i, step in enumerate(sequence.steps):
+                self._wait_if_paused()
                 if self._is_stopped():
                     self._emit_log("중지 요청 감지 — 입력 중단")
                     raise StoppedByUserError(f"스텝 {i+1}/{total} 진입 전 중지")
@@ -344,6 +366,11 @@ class NCRConnector:
             wc = self._window_controller
             interval = self._watchdog_interval
             while not self._watchdog_stop.is_set():
+                # 일시정지 중에는 사용자가 다른 창을 자유롭게 보도록 포커스 체크 생략
+                if self._is_paused():
+                    self._focus_lost_event.clear()
+                    self._watchdog_stop.wait(interval)
+                    continue
                 try:
                     wc.ensure_foreground()
                 except FocusLostError as e:

@@ -22,7 +22,7 @@ class AppState:
 
         # ERP 상태
         self.erp_running: bool = False
-        self.erp_paused: bool = False
+        self.erp_pause_event = threading.Event()  # set = 일시정지 중, clear = 진행
         self.erp_stop_event = threading.Event()
         self.erp_mode: str = "pywinauto"
         self.erp_connected: bool = False
