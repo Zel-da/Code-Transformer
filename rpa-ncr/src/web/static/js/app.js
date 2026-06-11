@@ -92,7 +92,47 @@ function handleErp(d) {
         logLine(d.message, "warn");
     } else if (d.type === "running") {
         logLine(d.value ? "실행 중" : "실행 종료");
+    } else if (d.type === "review_required") {
+        showReviewPanel(d);
+    } else if (d.type === "review_resolved") {
+        hideReviewPanel();
     }
+}
+
+// ── 검토 패널 ──
+function showReviewPanel(d) {
+    const panel = $("reviewPanel");
+    panel.classList.remove("hidden");
+    $("reviewReportLabel").textContent = `(보고 #${d.report_id})`;
+    $("reviewResult").textContent = "";
+    const tbody = $("reviewSteps");
+    tbody.innerHTML = "";
+    d.steps.forEach((s) => {
+        const tr = document.createElement("tr");
+        const valDisplay = s.value === "" || s.value === null ? "—" : s.value;
+        const isSkip = s.method === "skip" || s.skippable;
+        tr.innerHTML =
+            `<td>${s.idx + 1}</td><td>${s.label}</td>` +
+            `<td><code>${valDisplay}</code></td>` +
+            `<td class="muted">${s.method}</td>` +
+            `<td>${isSkip
+                ? '<span class="muted">(SKIP)</span>'
+                : `<button class="btn btn-secondary" data-redo="${s.idx}">재실행 #${s.idx + 1}</button>`}</td>`;
+        tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll("button[data-redo]").forEach((btn) => {
+        btn.onclick = async () => {
+            const idx = parseInt(btn.dataset.redo, 10);
+            try {
+                const r = await api("POST", "/api/erp/review/redo-step", { step_index: idx });
+                setResult("reviewResult", r.message, true);
+            } catch (e) { setResult("reviewResult", e.message, false); }
+        };
+    });
+}
+
+function hideReviewPanel() {
+    $("reviewPanel").classList.add("hidden");
 }
 
 // ── 소스 ──
@@ -181,6 +221,27 @@ function bind() {
         try { const d = await api("POST", "/api/erp/stop"); setResult("runStatus", d.message, true); }
         catch (e) { setResult("runStatus", e.message, false); }
     };
+    $("btnRedoAll").onclick = async () => {
+        try { const d = await api("POST", "/api/erp/review/redo-all"); setResult("reviewResult", d.message, true); }
+        catch (e) { setResult("reviewResult", e.message, false); }
+    };
+    $("btnConfirm").onclick = async () => {
+        try {
+            const d = await api("POST", "/api/erp/review/confirm");
+            setResult("reviewResult", d.message, true);
+            hideReviewPanel();
+        } catch (e) { setResult("reviewResult", e.message, false); }
+    };
+}
+
+// 새로고침 후 검토 중이었으면 복원
+async function restoreReviewState() {
+    try {
+        const d = await api("GET", "/api/erp/review");
+        if (d.active) {
+            showReviewPanel({ report_id: d.report_id, steps: d.steps });
+        }
+    } catch (e) { /* ignore */ }
 }
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -190,5 +251,6 @@ window.addEventListener("DOMContentLoaded", () => {
     loadSource().catch((e) => logLine("소스 로드 실패: " + e.message, "err"));
     loadErpSettings().catch((e) => logLine("ERP 설정 로드 실패: " + e.message, "err"));
     loadSetupCheck().catch(() => {});
+    restoreReviewState().catch(() => {});
     logLine("대시보드 준비 완료");
 });

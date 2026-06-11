@@ -167,8 +167,13 @@ class NCRConnector:
     # 보고 입력 (메인 진입점)
     # ------------------------------------------------------------------
 
-    def input_report(self, report: NcrReport) -> None:
+    def input_report(self, report: NcrReport, navigate: bool = True) -> None:
         """단일 부적합 보고를 ERP 폼에 입력한다.
+
+        Args:
+            report: 보고 데이터
+            navigate: True면 메뉴찾기로 새 폼 열기, False면 현재 폼/포커스에서 바로 시작
+                (처음부터 재실행할 때 사용자가 직전 폼을 닫은 뒤 호출하는 시나리오용)
 
         포커스 이탈 워치독이 보고 시작~끝 동안 100ms 간격으로 포그라운드 창을
         확인. 다른 창이 활성화되면 즉시 FocusLostError → 입력 중단.
@@ -190,8 +195,8 @@ class NCRConnector:
         if self._mode == "pywinauto" and not wc.ensure_maximized():
             self._emit_log("⚠ ERP 윈도우 최대화 실패 — 좌표가 어긋날 수 있습니다")
 
-        # 메뉴 진입 (새 폼)
-        if self._mode == "pywinauto":
+        # 메뉴 진입 (새 폼) — 처음부터 재실행 시엔 건너뜀
+        if navigate and self._mode == "pywinauto":
             wc.navigate_to_menu(target_menu)
             time.sleep(2)
             wc.bring_to_front()
@@ -402,6 +407,48 @@ class NCRConnector:
         """
         if self._focus_lost_event.is_set():
             raise FocusLostError("다른 창이 활성화되어 입력을 중단합니다 (워치독 감지)")
+
+    # ------------------------------------------------------------------
+    # 검토 모드 — 스텝별 재실행 + 시퀀스 미리보기
+    # ------------------------------------------------------------------
+
+    def build_sequence_info(self, report: NcrReport) -> list[dict[str, Any]]:
+        """field_mapping 기준 17 스텝을 UI에 보여줄 수 있는 dict 리스트로 변환."""
+        sequence = self._field_map.build_sequence(report)
+        return [
+            {
+                "idx": i,
+                "label": s.field_name,
+                "value": s.value,
+                "method": s.method.value,
+                "tab_after": s.tab_after,
+                "skippable": s.method == InputMethod.SKIP,
+            }
+            for i, s in enumerate(sequence.steps)
+        ]
+
+    def redo_step(self, report: NcrReport, step_index: int) -> None:
+        """현재 포커스된 필드에 N번 스텝 값만 다시 타이핑한다.
+
+        - Tab 이동 없음 (사용자가 미리 그 필드를 클릭해 포커스 둔 상태 가정)
+        - 메뉴 진입 없음
+        - SKIP 스텝은 아무 것도 안 함
+        """
+        if not self._connected:
+            raise RuntimeError("ERP에 연결되지 않았습니다.")
+        sequence = self._field_map.build_sequence(report)
+        if step_index < 0 or step_index >= len(sequence.steps):
+            raise ValueError(f"잘못된 step_index: {step_index} (0~{len(sequence.steps)-1})")
+        step = sequence.steps[step_index]
+        if step.method == InputMethod.SKIP:
+            self._emit_log(f"[재실행 #{step_index+1}] {step.field_name} → SKIP (할 일 없음)")
+            return
+        if step.method in (InputMethod.POPUP_SEARCH, InputMethod.POPUP_SEARCH_ENTER) and not step.value:
+            self._emit_log(f"[재실행 #{step_index+1}] {step.field_name} → 빈 값")
+            return
+        self._emit_log(f"[재실행 #{step_index+1}] {step.field_name} = '{step.value}' ({step.method.value})")
+        self._execute_step_tab_based(step)
+        # Tab은 보내지 않음 — 사용자가 포커스를 직접 관리한다
 
     # ------------------------------------------------------------------
     # 품목 검증 (선택)

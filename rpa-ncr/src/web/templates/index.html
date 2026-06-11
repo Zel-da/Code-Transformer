@@ -53,6 +53,21 @@
             <div id="runStatus" class="result"></div>
         </section>
 
+        <!-- 검토 패널: input_report 끝나면 활성화 -->
+        <section id="reviewPanel" class="card hidden">
+            <h2>검토 중 <span id="reviewReportLabel" class="muted"></span></h2>
+            <p class="muted" style="margin:0 0 10px">ERP에서 결과 확인 후 → 잘못된 필드만 클릭(ERP 폼에서) → 아래 [재실행 #N] 클릭. 다 맞으면 [완료 확인].</p>
+            <div class="row">
+                <button id="btnRedoAll" class="btn btn-secondary">처음부터</button>
+                <button id="btnConfirm" class="btn btn-primary">완료 확인</button>
+            </div>
+            <div id="reviewResult" class="result"></div>
+            <table class="queue">
+                <thead><tr><th>#</th><th>필드</th><th>값</th><th>방법</th><th>재실행</th></tr></thead>
+                <tbody id="reviewSteps"></tbody>
+            </table>
+        </section>
+
         <section class="card">
             <h2>큐 <span id="queueCount" class="muted"></span></h2>
             <table class="queue">
