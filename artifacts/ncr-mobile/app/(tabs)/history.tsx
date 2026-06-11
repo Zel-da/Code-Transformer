@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -181,16 +181,32 @@ export default function HistoryScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [allReports, setAllReports] = useState<Report[]>([]);
   const PAGE_SIZE = 20;
 
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+      setAllReports([]);
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [search]);
+
   const { data, isLoading, isError, refetch, isFetching } = useListReports({
     page,
     pageSize: PAGE_SIZE,
+    ...(debouncedSearch ? { search: debouncedSearch } : {}),
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!data?.data) return;
     if (page === 1) {
       setAllReports(data.data);
@@ -206,18 +222,9 @@ export default function HistoryScreen() {
   const total = data?.total ?? 0;
   const hasMore = page * PAGE_SIZE < total;
 
-  const filtered = search.trim()
-    ? allReports.filter(
-        (r) =>
-          r.itemCode.toLowerCase().includes(search.toLowerCase()) ||
-          r.description.toLowerCase().includes(search.toLowerCase()) ||
-          r.processName.toLowerCase().includes(search.toLowerCase())
-      )
-    : allReports;
-
   const s = makeStyles(colors, topPad);
 
-  if (isLoading) {
+  if (isLoading && page === 1 && !allReports.length) {
     return (
       <View style={[s.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator color={colors.primary} size="large" />
@@ -225,7 +232,7 @@ export default function HistoryScreen() {
     );
   }
 
-  if (isError) {
+  if (isError && !allReports.length) {
     return (
       <View style={[s.center, { backgroundColor: colors.background }]}>
         <Ionicons name="alert-circle-outline" size={48} color={colors.destructive} />
@@ -268,41 +275,43 @@ export default function HistoryScreen() {
       </View>
 
       <FlatList
-        data={filtered}
+        data={allReports}
         keyExtractor={(r) => String(r.id)}
         renderItem={({ item }) => <ReportCard report={item} colors={colors} />}
         contentContainerStyle={s.listContent}
-        scrollEnabled={!!filtered.length}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={isFetching && !isLoading}
+            refreshing={isFetching && !isLoading && page === 1}
             onRefresh={() => {
               setPage(1);
+              setAllReports([]);
               refetch();
             }}
             tintColor={colors.primary}
           />
         }
         ListEmptyComponent={
-          <View style={s.emptyState}>
-            <Ionicons
-              name="document-text-outline"
-              size={48}
-              color={colors.mutedForeground}
-            />
-            <Text style={s.emptyTitle}>보고서 없음</Text>
-            <Text style={s.emptySubtitle}>
-              {search ? "검색 결과가 없습니다." : "아직 제출된 보고서가 없습니다."}
-            </Text>
-          </View>
+          !isFetching ? (
+            <View style={s.emptyState}>
+              <Ionicons
+                name="document-text-outline"
+                size={48}
+                color={colors.mutedForeground}
+              />
+              <Text style={s.emptyTitle}>보고서 없음</Text>
+              <Text style={s.emptySubtitle}>
+                {debouncedSearch ? "검색 결과가 없습니다." : "아직 제출된 보고서가 없습니다."}
+              </Text>
+            </View>
+          ) : null
         }
         onEndReached={() => {
           if (hasMore && !isFetching) setPage((p) => p + 1);
         }}
         onEndReachedThreshold={0.3}
         ListFooterComponent={
-          isFetching && page > 1 ? (
+          isFetching ? (
             <ActivityIndicator
               color={colors.primary}
               style={{ paddingVertical: 16 }}
@@ -358,7 +367,7 @@ function makeStyles(colors: ReturnType<typeof useColors>, topPad: number) {
     listContent: {
       paddingHorizontal: 20,
       paddingTop: 14,
-      paddingBottom: Platform.OS === "web" ? 34 : 100,
+      paddingBottom: 100,
     },
     center: {
       flex: 1,

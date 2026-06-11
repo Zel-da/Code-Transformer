@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, ne, sql, and, gte, lte, count, lt } from "drizzle-orm";
+import { eq, ne, sql, and, gte, lte, count, lt, or, ilike } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { db, nonConformityReportsTable } from "@workspace/db";
 import {
@@ -61,7 +61,7 @@ router.get("/reports", async (req, res): Promise<void> => {
     return;
   }
 
-  const { defectType, syncStatus, dateFrom, dateTo, page, pageSize } =
+  const { defectType, syncStatus, dateFrom, dateTo, page, pageSize, search } =
     parsed.data;
 
   // qcStatus / excludeErpSynced는 openapi spec 외 파라미터 — req.query에서 직접 추출
@@ -72,6 +72,16 @@ router.get("/reports", async (req, res): Promise<void> => {
   const excludeErpSynced = req.query.excludeErpSynced === "true";
 
   const conditions = [];
+  if (search) {
+    const like = `%${search}%`;
+    conditions.push(
+      or(
+        ilike(nonConformityReportsTable.itemCode, like),
+        ilike(nonConformityReportsTable.processName, like),
+        ilike(nonConformityReportsTable.description, like),
+      )!
+    );
+  }
   if (defectType) {
     conditions.push(eq(nonConformityReportsTable.defectType, defectType));
   }

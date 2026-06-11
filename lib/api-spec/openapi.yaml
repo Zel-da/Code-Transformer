@@ -143,6 +143,12 @@ paths:
           schema:
             type: string
             enum: ["true", "false"]
+        - name: search
+          in: query
+          required: false
+          description: 품목코드, 공정명, 설명 텍스트 검색 (부분 일치)
+          schema:
+            type: string
       responses:
         "200":
           description: Paginated list of reports

@@ -74,6 +74,10 @@ export const ListReportsQueryParams = zod.object({
     .describe(
       "true 이면 ERP_SYNCED 상태 보고서를 목록에서 제외한다 (진행 현황 탭 전용)",
     ),
+  search: zod.coerce
+    .string()
+    .optional()
+    .describe("품목코드, 공정명, 설명 텍스트 검색 (부분 일치)"),
 });
 
 export const ListReportsResponse = zod.object({
