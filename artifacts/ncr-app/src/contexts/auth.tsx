@@ -39,6 +39,16 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const TOKEN_KEY = "ncr_auth_token";
 const USER_KEY = "ncr_auth_user";
 
+// Set the token getter at module level so it's available immediately —
+// before any component useEffect runs (React runs children effects before
+// parents, so a useEffect-based setter would be too late for child API calls).
+setAuthTokenGetter(() => localStorage.getItem(TOKEN_KEY));
+
+// Module-level logout ref so the unauthorized handler always calls the latest
+// logout function, even before AuthProvider mounts.
+const _logoutRef: { current: () => void } = { current: () => {} };
+setUnauthorizedHandler(() => _logoutRef.current());
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>(() => {
     try {
@@ -54,8 +64,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logoutRef = useRef<() => void>(() => {});
 
   useEffect(() => {
-    setAuthTokenGetter(() => localStorage.getItem(TOKEN_KEY));
-    setUnauthorizedHandler(() => logoutRef.current());
     return () => setUnauthorizedHandler(null);
   }, []);
 
@@ -88,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   logoutRef.current = logout;
+  _logoutRef.current = logout;
 
   const refreshUser = async () => {
     const token = localStorage.getItem(TOKEN_KEY);
