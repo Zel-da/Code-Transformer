@@ -84,7 +84,7 @@ def _run_mark_only(source, report_id: int, status: str) -> None:
 
 def _process_batch(source, settings, report_id: int | None) -> dict:
     """실 ERP 입력 배치. RPA 레이어(Phase 4) 필요."""
-    from src.rpa.ncr_connector import NCRConnector
+    from src.rpa.ncr_connector import NCRConnector, StoppedByUserError
     from src.rpa.window_controller import FocusLostError
 
     if report_id is not None:
@@ -108,6 +108,10 @@ def _process_batch(source, settings, report_id: int | None) -> dict:
             source.mark_processing(report.id)
             try:
                 connector.input_report(report)
+            except StoppedByUserError as e:
+                logger.warning("사용자 중지 — #%s PENDING 복원 후 배치 중단: %s", report.id, e)
+                source.mark_pending(report.id)
+                break
             except FocusLostError as e:
                 logger.error("포커스 이탈 — 배치 중단: %s", e)
                 source.mark_failed(report.id, f"focus lost: {e}")

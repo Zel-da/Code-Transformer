@@ -20,6 +20,15 @@ from src.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+class StoppedByUserError(Exception):
+    """사용자가 중지 버튼을 눌러 입력이 도중에 멈췄을 때 발생.
+
+    이 예외가 잡히면 호출자는 보고를 COMPLETED로 마킹하지 않고
+    PENDING으로 되돌려 다시 처리할 수 있게 해야 한다.
+    """
+    pass
+
+
 class NCRConnector:
     """부적합 보고를 UNIERP 부적합보고서 폼에 Tab 기반으로 입력한다."""
 
@@ -176,7 +185,7 @@ class NCRConnector:
             for _ in range(self._first_field_tabs):
                 if self._is_stopped():
                     self._emit_log("중지 요청 감지 (Tab 이동 중) — 입력 중단")
-                    return
+                    raise StoppedByUserError("Tab 이동 중 중지")
                 self._check_focus_lost()
                 self._send_tab()
 
@@ -186,7 +195,7 @@ class NCRConnector:
             for i, step in enumerate(sequence.steps):
                 if self._is_stopped():
                     self._emit_log("중지 요청 감지 — 입력 중단")
-                    return
+                    raise StoppedByUserError(f"스텝 {i+1}/{total} 진입 전 중지")
                 self._check_focus_lost()
 
                 if step.method == InputMethod.SKIP:

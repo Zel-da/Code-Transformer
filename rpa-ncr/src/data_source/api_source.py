@@ -114,6 +114,11 @@ class ApiSource(DataSource):
         logger.error("보고 #%d FAILED (API): %s", report_id, error)
         self._set_status(report_id, ReportStatus.FAILED)
 
+    def mark_pending(self, report_id: int) -> None:
+        """PROCESSING 상태를 PENDING으로 되돌린다 (사용자 중지 후 재시도 가능하게)."""
+        self._set_status(report_id, ReportStatus.PENDING, reset_retry=True)
+        logger.info("보고 #%d PENDING 복원 (API)", report_id)
+
     # ------------------------------------------------------------------
     # 헬스체크
     # ------------------------------------------------------------------

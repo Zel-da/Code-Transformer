@@ -44,6 +44,10 @@ class DataSource(ABC):
         """ERP 입력 실패 — FAILED 로 표시 (오류 상세는 로컬 로그/가능 시 DB)."""
 
     @abstractmethod
+    def mark_pending(self, report_id: int) -> None:
+        """사용자 중지로 입력이 도중에 멈춤 — 다시 처리할 수 있게 PENDING 으로 되돌림."""
+
+    @abstractmethod
     def health(self) -> tuple[bool, str]:
         """소스 도달 가능성 점검. (ok, message) 반환."""
 

@@ -206,6 +206,19 @@ class DbSource(DataSource):
         logger.error("보고 #%d FAILED (DB): %s", report_id, error)
         self._update_status(report_id, ReportStatus.FAILED, error=error)
 
+    def mark_pending(self, report_id: int) -> None:
+        """PROCESSING → PENDING 복원 + 재시도 카운터/마지막 오류 클리어."""
+        with self._connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE non_conformity_reports SET sync_status = %s, "
+                    "sync_attempt_count = 0, sync_last_error = NULL, "
+                    "updated_at = now() WHERE id = %s",
+                    (ReportStatus.PENDING.value, report_id),
+                )
+            conn.commit()
+        logger.info("보고 #%d PENDING 복원 (DB)", report_id)
+
     # ------------------------------------------------------------------
     # 헬스체크
     # ------------------------------------------------------------------

@@ -390,7 +390,7 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
 
         def worker():
             try:
-                from src.rpa.ncr_connector import NCRConnector
+                from src.rpa.ncr_connector import NCRConnector, StoppedByUserError
                 from src.rpa.window_controller import FocusLostError
 
                 source = get_source(settings)
@@ -433,6 +433,18 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
 
                     try:
                         connector.input_report(report)
+                    except StoppedByUserError as e:
+                        # 사용자 중지: COMPLETED 마킹 안 하고 PENDING으로 복원
+                        try:
+                            source.mark_pending(report.id)
+                        except Exception as me:
+                            log_cb(f"⚠ PENDING 복원 실패: {me}")
+                        state.erp_queue[i]["status"] = "중지"
+                        state.erp_queue[i]["progress"] = "-"
+                        state.broadcast_erp_sync(loop, {"type": "queue_update", "index": i,
+                                                        "status": "중지", "progress": "-"})
+                        log_cb(f"중지로 #{report.id} PENDING 복원 ({e})")
+                        break
                     except FocusLostError as e:
                         source.mark_failed(report.id, f"focus lost: {e}")
                         state.erp_queue[i]["status"] = "오류"
