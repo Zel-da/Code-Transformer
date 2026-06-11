@@ -57,10 +57,15 @@ class ApiSource(DataSource):
 
     def _enrich(self, report: NcrReport) -> None:
         """item_codes 마스터에서 itemGroup(category)/itemName을 보강한다.
-        UNIERP 부적합등록 폼의 품목그룹 필드용. DbSource는 SQL JOIN으로 보강한다.
+
+        최신 서버 응답엔 itemGroup이 이미 포함되지만, 빈 경우(또는 구버전 서버)에
+        대비해 /api/items?search=로 보강한다. DbSource는 SQL COALESCE로 보강한다.
         """
         code = report.get_str("itemCode")
         if not code:
+            return
+        # 이미 itemGroup이 채워져 있고 itemName도 있으면 추가 호출 생략
+        if report.fields.get("itemGroup") and report.fields.get("itemName"):
             return
         try:
             resp = self._session.get(
@@ -73,8 +78,11 @@ class ApiSource(DataSource):
             items = resp.json() or []
             picked = next((it for it in items if it.get("code") == code), None) or (items[0] if items else None)
             if picked:
-                report.fields["itemGroup"] = picked.get("category")
-                report.fields["itemName"] = picked.get("name")
+                # 이미 있는 값은 덮어쓰지 않음 (서버가 정한 값 우선)
+                if not report.fields.get("itemGroup"):
+                    report.fields["itemGroup"] = picked.get("category")
+                if not report.fields.get("itemName"):
+                    report.fields["itemName"] = picked.get("name")
         except Exception as e:
             logger.warning("itemGroup 보강 실패 (#%s): %s", report.id, e)
 

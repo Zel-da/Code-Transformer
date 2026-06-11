@@ -13,12 +13,15 @@ logger = get_logger(__name__)
 
 # 데이터 소스가 제공하는 정규(camelCase) 필드 목록
 CANONICAL_FIELDS: tuple[str, ...] = (
-    "id", "reportDate", "itemCode", "modelName", "processName", "defectType",
+    "id", "ncrNumber", "reportDate", "itemCode", "modelName", "processName", "defectType",
     "description", "imageUrl", "syncStatus", "registrantName", "ncrType",
     "factory", "shipmentUnit", "lostManHours", "defectQty", "occurrenceDate",
     "issuingTeam", "plantCd", "processCd", "flawTypeCd", "deptCd",
     "ncrGbnCd", "vendorCd", "vendorNm", "productType",
-    # item_codes 마스터에서 보강되는 파생 필드 (DbSource는 JOIN, ApiSource는 /api/items 호출)
+    # 추가 ERP 입력 필드 (Drizzle 스키마에는 있고 라이브 DB에는 시점 따라 다름)
+    "remarks", "shipmentDateFrom", "shipmentDateTo", "managerCd", "managerNm",
+    # item_codes 마스터에서 보강되는 파생 필드
+    # (DbSource: COALESCE(r.item_group, ic.category) / ApiSource: /api/items?search)
     "itemGroup", "itemName",
 )
 
