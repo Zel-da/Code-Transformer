@@ -530,6 +530,9 @@ export default function QcPage() {
         .filter(([, roles]) => roles.includes(user.role))
         .map(([to]) => to)
     : [];
+  const prevQcStatus = QC_STATUS_PREV[reportStatus];
+  const canGoBackQc = !!(prevQcStatus && availableTransitions.includes(prevQcStatus as QcStatus));
+  const forwardQcTransitions = availableTransitions.filter((to) => to !== prevQcStatus);
 
   return (
     <Layout>
@@ -556,23 +559,34 @@ export default function QcPage() {
 
       <div className="max-w-5xl mx-auto px-5 py-5 md:px-8 md:py-6">
         {/* 헤더 */}
-        <div className="flex items-center gap-3 mb-5">
-          <button
-            onClick={() => navigate("/ledger")}
-            className="h-8 w-8 rounded-xl bg-[#F2F4F6] flex items-center justify-center text-[#4E5968] hover:bg-[#E5E8EB] transition-colors shrink-0"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <div>
-            <h1 className="text-[18px] font-bold text-[#191F28]">QC 분석 입력</h1>
-            <p className="text-[12px] text-[#8B95A1]">
-              보고서 #{String(report.id).padStart(4, "0")}
-              {report.ncrNumber && (
-                <span className="ml-1.5 font-bold text-[#4E5968] bg-[#F2F4F6] rounded px-1.5 py-0.5">{report.ncrNumber}</span>
-              )}
-              {" "}· 접수 {format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}
-            </p>
+        <div className="flex items-center justify-between gap-3 mb-5">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => navigate("/ledger")}
+              className="h-8 w-8 rounded-xl bg-[#F2F4F6] flex items-center justify-center text-[#4E5968] hover:bg-[#E5E8EB] transition-colors shrink-0"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="min-w-0">
+              <h1 className="text-[18px] font-bold text-[#191F28]">QC 분석 입력</h1>
+              <p className="text-[12px] text-[#8B95A1] truncate">
+                보고서 #{String(report.id).padStart(4, "0")}
+                {report.ncrNumber && (
+                  <span className="ml-1.5 font-bold text-[#4E5968] bg-[#F2F4F6] rounded px-1.5 py-0.5">{report.ncrNumber}</span>
+                )}
+                {" "}· 접수 {format(new Date(report.reportDate), "yyyy.MM.dd HH:mm")}
+              </p>
+            </div>
           </div>
+          <button
+            type="submit"
+            form="qc-form-main"
+            disabled={updateQc.isPending}
+            className="shrink-0 h-9 px-4 bg-[#1A1A1A] text-white font-semibold text-[13px] rounded-xl flex items-center gap-1.5 disabled:opacity-50 transition-opacity"
+          >
+            {updateQc.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            저장
+          </button>
         </div>
 
         {/* SLA 경고 배너: 발생일 기준 7일 이상 경과 */}
@@ -605,12 +619,60 @@ export default function QcPage() {
           </div>
         )}
 
-        {/* 협업 의견 스레드 */}
-        <CommentThread reportId={id} />
+        {/* ── 처리 상태 바 ── */}
+        <div className="mb-4 bg-white rounded-2xl border border-[#F2F4F6] px-4 py-3">
+          <p className="text-[11px] font-bold text-[#8B95A1] uppercase tracking-wide mb-2.5">처리 상태</p>
+          <div className="flex flex-wrap items-center gap-2">
+            {prevQcStatus && (
+              <>
+                {canGoBackQc ? (
+                  <button
+                    type="button"
+                    onClick={() => handleTransition(prevQcStatus as QcStatus)}
+                    disabled={updateStatus.isPending}
+                    title={`${QC_STATUS_LABELS[prevQcStatus] ?? prevQcStatus}(으)로 되돌리기`}
+                    className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all disabled:opacity-50 opacity-50 hover:opacity-100 ${QC_STATUS_COLORS[prevQcStatus] ?? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"}`}
+                  >
+                    {QC_STATUS_LABELS[prevQcStatus] ?? prevQcStatus}
+                  </button>
+                ) : (
+                  <span className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border opacity-40 ${QC_STATUS_COLORS[prevQcStatus] ?? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"}`}>
+                    {QC_STATUS_LABELS[prevQcStatus] ?? prevQcStatus}
+                  </span>
+                )}
+                <span className="text-[13px] text-[#8B95A1]">→</span>
+              </>
+            )}
+            <span className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border ${QC_STATUS_COLORS[reportStatus] ?? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"}`}>
+              {QC_STATUS_LABELS[reportStatus] ?? reportStatus}
+            </span>
+            {forwardQcTransitions.length > 0 && (
+              <span className="text-[13px] text-[#8B95A1]">→</span>
+            )}
+            {forwardQcTransitions.map((to) => (
+              <button
+                key={to}
+                type="button"
+                onClick={() => handleTransition(to)}
+                disabled={updateStatus.isPending}
+                className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all disabled:opacity-50 ${
+                  to === "APPROVED" || to === "ERP_SYNCED"
+                    ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
+                    : "bg-white text-[#191F28] border-[#E5E8EB] hover:border-[#1A1A1A]/30"
+                }`}
+              >
+                {QC_STATUS_LABELS[to] ?? to}
+              </button>
+            ))}
+            {availableTransitions.length === 0 && reportStatus === "ERP_SYNCED" && (
+              <span className="text-[11px] text-[#8B95A1]">ERP 연동 완료</span>
+            )}
+          </div>
+        </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4 pb-8">
+          <form id="qc-form-main" onSubmit={form.handleSubmit(onSubmit)}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
             {/* ══ 왼쪽 카드: 접수 기본 정보 + 부적합 내용 ══ */}
             <div className="bg-white rounded-2xl border border-[#F2F4F6] px-4 h-fit">
@@ -959,66 +1021,6 @@ export default function QcPage() {
               {/* ── QC 분석 내용 ── */}
               <GroupDivider title="QC 분석 내용" />
 
-              {/* 처리 상태 — 이전 상태(되돌리기) → 현재 상태 → 앞으로 전이 버튼 */}
-              <FieldRow label="처리 상태">
-                {(() => {
-                  const prevStatus = QC_STATUS_PREV[reportStatus];
-                  const canGoBack = prevStatus && availableTransitions.includes(prevStatus as QcStatus);
-                  const forwardTransitions = availableTransitions.filter((to) => to !== prevStatus);
-                  return (
-                    <div className="flex flex-wrap items-center gap-2">
-                      {/* 이전 상태 — 권한 있으면 클릭 가능한 되돌리기 버튼, 없으면 흐릿 배지 */}
-                      {prevStatus && (
-                        <>
-                          {canGoBack ? (
-                            <button
-                              type="button"
-                              onClick={() => handleTransition(prevStatus as QcStatus)}
-                              disabled={updateStatus.isPending}
-                              title={`${QC_STATUS_LABELS[prevStatus] ?? prevStatus}(으)로 되돌리기`}
-                              className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all disabled:opacity-50 opacity-50 hover:opacity-100 ${QC_STATUS_COLORS[prevStatus] ?? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"}`}
-                            >
-                              {QC_STATUS_LABELS[prevStatus] ?? prevStatus}
-                            </button>
-                          ) : (
-                            <span className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border opacity-40 ${QC_STATUS_COLORS[prevStatus] ?? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"}`}>
-                              {QC_STATUS_LABELS[prevStatus] ?? prevStatus}
-                            </span>
-                          )}
-                          <span className="text-[13px] text-[#8B95A1]">→</span>
-                        </>
-                      )}
-                      {/* 현재 상태 */}
-                      <span className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border ${QC_STATUS_COLORS[reportStatus] ?? "bg-[#F2F4F6] text-[#4E5968] border-[#E5E8EB]"}`}>
-                        {QC_STATUS_LABELS[reportStatus] ?? reportStatus}
-                      </span>
-                      {/* 앞으로 전이 버튼들 */}
-                      {forwardTransitions.length > 0 && (
-                        <span className="text-[13px] text-[#8B95A1]">→</span>
-                      )}
-                      {forwardTransitions.map((to) => (
-                        <button
-                          key={to}
-                          type="button"
-                          onClick={() => handleTransition(to)}
-                          disabled={updateStatus.isPending}
-                          className={`px-3.5 py-2 rounded-full text-[13px] font-semibold border transition-all disabled:opacity-50 ${
-                            to === "APPROVED" || to === "ERP_SYNCED"
-                              ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
-                              : "bg-white text-[#191F28] border-[#E5E8EB] hover:border-[#1A1A1A]/30"
-                          }`}
-                        >
-                          {QC_STATUS_LABELS[to] ?? to}
-                        </button>
-                      ))}
-                      {availableTransitions.length === 0 && reportStatus === "ERP_SYNCED" && (
-                        <span className="text-[11px] text-[#8B95A1]">ERP 연동 완료</span>
-                      )}
-                    </div>
-                  );
-                })()}
-              </FieldRow>
-
               {/* 귀책부서 */}
               <FormField
                 control={form.control}
@@ -1221,25 +1223,15 @@ export default function QcPage() {
                 )}
               />
 
-              <div className="py-5">
-                <button
-                  type="submit"
-                  disabled={updateQc.isPending}
-                  className="w-full py-3.5 bg-[#1A1A1A] text-white font-bold text-[15px] rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50 transition-opacity"
-                >
-                  {updateQc.isPending ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4" />
-                  )}
-                  저장
-                </button>
-              </div>
-
             </div>{/* ── 오른쪽 카드 끝 ── */}
             </div>{/* ── 그리드 끝 ── */}
           </form>
         </Form>
+
+        {/* ── 협업 의견 (전체 너비) ── */}
+        <div className="mt-5 pb-8">
+          <CommentThread reportId={id} />
+        </div>
       </div>
 
       {/* PENDING_COLLAB 협업 담당자 지정 모달 */}
