@@ -167,6 +167,29 @@ class NCRConnector:
     # 보고 입력 (메인 진입점)
     # ------------------------------------------------------------------
 
+    def _is_form_already_open(self) -> bool:
+        """부적합등록 폼이 이미 화면에 열려있는지 확인.
+
+        식별: '발행팀' 라벨은 부적합등록 폼 입력 영역에만 있고 검색 패널에는
+        없는 텍스트라 마커로 사용한다. (검색 패널엔 발생일/공장/진행상태/발행번호)
+        """
+        if self._mode != "pywinauto":
+            return False
+        wc = self._window_controller
+        if not wc._main_window:
+            return False
+        marker = self._field_mapping.get("_form_open_marker", "발행팀")
+        try:
+            for lbl in wc._main_window.descendants(control_type="Text"):
+                try:
+                    if lbl.element_info.name == marker:
+                        return True
+                except Exception:
+                    continue
+        except Exception as e:
+            logger.debug("폼 열림 감지 실패(무시): %s", e)
+        return False
+
     def input_report(self, report: NcrReport, navigate: bool = True) -> None:
         """단일 부적합 보고를 ERP 폼에 입력한다.
 
@@ -195,27 +218,23 @@ class NCRConnector:
         if self._mode == "pywinauto" and not wc.ensure_maximized():
             self._emit_log("⚠ ERP 윈도우 최대화 실패 — 좌표가 어긋날 수 있습니다")
 
-        # 메뉴 진입 (새 폼) — 처음부터 재실행 시엔 건너뜀
+        # 메뉴 진입 — 이미 폼 열려있으면 생략(폼 두 개 방지)
         if navigate and self._mode == "pywinauto":
-            wc.navigate_to_menu(target_menu)
-            time.sleep(2)
-            wc.bring_to_front()
+            if self._is_form_already_open():
+                self._emit_log("✓ 부적합등록 폼이 이미 열려있음 — 메뉴 진입 생략")
+                wc.bring_to_front()
+            else:
+                self._emit_log(f"메뉴 진입: {target_menu}")
+                wc.navigate_to_menu(target_menu)
+                time.sleep(2)
+                wc.bring_to_front()
 
         # 포커스 워치독 시작 — 100ms마다 ERP가 포그라운드인지 확인
         self._start_focus_watchdog()
 
         try:
-            # 첫 입력 필드로 이동 (각 Tab 사이마다 중지/일시정지/포커스 체크)
-            self._emit_log(f"Tab×{self._first_field_tabs} → 첫 입력 필드로 이동")
-            for _ in range(self._first_field_tabs):
-                self._wait_if_paused()
-                if self._is_stopped():
-                    self._emit_log("중지 요청 감지 (Tab 이동 중) — 입력 중단")
-                    raise StoppedByUserError("Tab 이동 중 중지")
-                self._check_focus_lost()
-                self._send_tab()
-
-            # 헤더 시퀀스 입력
+            # § 3.2 좌표 기반 — 각 스텝이 자기 좌표로 직접 클릭해 포커스를 잡으므로
+            # 옛 Tab×first_field_tabs 루프와 스텝별 Tab 이동은 불필요.
             sequence = self._field_map.build_sequence(report)
             total = len(sequence.steps)
             for i, step in enumerate(sequence.steps):
@@ -226,22 +245,23 @@ class NCRConnector:
                 self._check_focus_lost()
 
                 if step.method == InputMethod.SKIP:
-                    self._emit_log(f"[{i+1}/{total}] {step.field_name} → skip (Tab)")
-                    if step.tab_after:
-                        self._send_tab()
+                    self._emit_log(f"[{i+1}/{total}] {step.field_name} → 비어있음, 건너뜀")
                     continue
 
                 if step.method in (InputMethod.POPUP_SEARCH, InputMethod.POPUP_SEARCH_ENTER) and not step.value:
                     self._emit_log(f"[{i+1}/{total}] {step.field_name} → 빈 값, 팝업 건너뜀")
-                    if step.tab_after:
-                        self._send_tab()
                     continue
 
-                self._emit_log(f"[{i+1}/{total}] {step.field_name} = '{step.value}' ({step.method.value})")
+                coord_str = f"@ ref({step.ref_x},{step.ref_y})" if step.ref_x is not None else ""
+                self._emit_log(f"[{i+1}/{total}] {step.field_name} = '{step.value}' "
+                               f"({step.method.value}) {coord_str}")
                 self._execute_step_tab_based(step)
 
-                if step.tab_after:
-                    self._send_tab()
+                # 입력 직후 검색/확인 팝업 감지 — ERP가 모호한 값에 검색창을 띄우면
+                # 다음 좌표 클릭이 엉뚱한 곳에 들어가는 걸 막는다. 팝업이 떠 있으면
+                # 자동 일시정지 → 사용자가 선택/처리 후 [재개] 또는 [재실행]
+                if self._mode == "pywinauto":
+                    self._handle_popup_if_any(step)
 
             # 그리드(다행)는 단일 품목 스키마에서 미사용
             if self._field_mapping.get("grid_columns"):
@@ -295,7 +315,14 @@ class NCRConnector:
     # ------------------------------------------------------------------
 
     def _execute_step_tab_based(self, step: InputStep) -> None:
+        """좌표 클릭으로 필드 포커스 → 메서드별 입력. ref 좌표 없으면 현재 포커스 기준."""
         wc = self._window_controller
+
+        # § 3.2 좌표 우선 — 필드 박스 중앙 클릭으로 포커스 확정
+        if step.ref_x is not None and step.ref_y is not None and self._mode == "pywinauto":
+            wc.left_click_at(step.ref_x, step.ref_y)
+            time.sleep(0.15)  # 포커스 안정화
+
         if step.method == InputMethod.TYPE_TEXT:
             wc.type_into_focused(step.value, step.clear_before)
             time.sleep(step.delay_after)
@@ -304,7 +331,10 @@ class NCRConnector:
         elif step.method == InputMethod.POPUP_SEARCH_ENTER:
             wc.popup_search_and_select(step.value, enter_confirm=True)
         elif step.method == InputMethod.DROPDOWN_SELECT:
+            # UNIERP ComboBox: 클릭으로 열림 → ↓N → Enter로 확정
             wc.dropdown_select_down(int(step.value))
+            time.sleep(0.1)
+            wc.send_keys("{ENTER}")
         elif step.method == InputMethod.DISMISS_DIALOG:
             wc.dismiss_dialog_if_exists(timeout=float(step.value) if step.value else 2.0)
         elif step.method == InputMethod.CLICK:
@@ -339,6 +369,55 @@ class NCRConnector:
                                    attempt + 1, self._retry_count, step.field_name, e)
                     time.sleep(self._retry_delay)
         raise RuntimeError(f"입력 실패 (최대 재시도 초과): {step.field_name} - {last_error}")
+
+    def _handle_popup_if_any(self, step: InputStep) -> None:
+        """입력 직후 ERP가 검색/확인 팝업을 띄웠는지 확인.
+
+        - 같은 PID의 자식 팝업이면 ERP의 검색창 → 자동 일시정지 + 사용자 개입 요청
+        - 에러 다이얼로그는 _check_error_dialog로 자동 닫기 (기존 처리)
+        """
+        wc = self._window_controller
+        try:
+            import ctypes
+            user32 = ctypes.windll.user32
+            erp_hwnd = wc._main_window.handle if wc._main_window else None
+            if not erp_hwnd:
+                return
+
+            # 잠깐 대기 — 팝업이 뜨는 데 시간이 걸릴 수 있음
+            time.sleep(0.3)
+            fg = user32.GetForegroundWindow()
+            if not fg or fg == erp_hwnd:
+                return  # ERP 메인이 활성 → 정상
+
+            # ERP 프로세스의 자식 팝업인가? (같은 PID이면 ERP 내부 팝업)
+            import ctypes.wintypes
+            pid_fg = ctypes.wintypes.DWORD()
+            pid_erp = ctypes.wintypes.DWORD()
+            user32.GetWindowThreadProcessId(fg, ctypes.byref(pid_fg))
+            user32.GetWindowThreadProcessId(erp_hwnd, ctypes.byref(pid_erp))
+            if pid_fg.value != pid_erp.value:
+                return  # 다른 프로그램 — 워치독이 처리
+
+            # 팝업 제목 가져와 분류
+            buf = ctypes.create_unicode_buffer(256)
+            user32.GetWindowTextW(fg, buf, 256)
+            title = buf.value or ""
+
+            # 에러/확인 다이얼로그면 자동 닫기
+            if any(kw in title for kw in ("오류", "경고", "확인", "Error", "Warning")):
+                wc.dismiss_dialog_if_exists(timeout=0.3)
+                self._error_events.append(f"{step.field_name}: {title}")
+                self._emit_log(f"⚠ 자동 처리된 다이얼로그: {title}")
+                return
+
+            # 그 외 — 보통 검색 팝업. 사용자 개입 필요
+            self._emit_log(f"🔍 [{step.field_name}] 입력 후 팝업 감지: {title!r} — "
+                           f"자동 일시정지. ERP에서 직접 선택/처리 후 [재개]")
+            if self._pause_event:
+                self._pause_event.set()
+        except Exception as e:
+            logger.debug("팝업 감지 실패(무시): %s", e)
 
     def _check_error_dialog(self, context: str = "") -> None:
         """에러 다이얼로그가 떠 있으면 Enter로 닫고 발생 지점을 기록한다."""
@@ -423,15 +502,18 @@ class NCRConnector:
                 "method": s.method.value,
                 "tab_after": s.tab_after,
                 "skippable": s.method == InputMethod.SKIP,
+                "ref_x": s.ref_x,
+                "ref_y": s.ref_y,
+                "form_label": s.form_label,
             }
             for i, s in enumerate(sequence.steps)
         ]
 
     def redo_step(self, report: NcrReport, step_index: int) -> None:
-        """현재 포커스된 필드에 N번 스텝 값만 다시 타이핑한다.
+        """N번 스텝 값을 좌표 기반으로 다시 입력한다.
 
-        - Tab 이동 없음 (사용자가 미리 그 필드를 클릭해 포커스 둔 상태 가정)
-        - 메뉴 진입 없음
+        - ref 좌표 있으면 그 필드로 자동 포커스 + 입력 (사용자 추가 클릭 불필요)
+        - ref 좌표 없으면 현재 포커스 필드에 타이핑
         - SKIP 스텝은 아무 것도 안 함
         """
         if not self._connected:

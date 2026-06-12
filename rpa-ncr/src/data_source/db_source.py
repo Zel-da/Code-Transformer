@@ -46,6 +46,7 @@ _CORE_SELECT_PARTS: tuple[str, ...] = (
     'r.vendor_cd        AS "vendorCd"',
     'r.vendor_nm        AS "vendorNm"',
     'ic.name            AS "itemName"',  # item_codes 마스터에서 늘 따올 수 있음
+    'ig.group_cd        AS "itemGroupCd"',  # 품목그룹 코드 (예: CL411) — UNIERP 폼 입력용
 )
 
 # 동적으로 존재 여부를 확인하는 선택 컬럼 (snake_case → camelCase 별칭).
@@ -59,7 +60,14 @@ _OPTIONAL_NON_CONFORMITY_COLS: tuple[tuple[str, str], ...] = (
     ("ncr_number",         "ncrNumber"),
 )
 
-_FROM = "non_conformity_reports r LEFT JOIN item_codes ic ON ic.code = r.item_code"
+# 보고서 → 품목 마스터 → 품목그룹 마스터를 LEFT JOIN.
+# RPA가 부적합등록 폼의 "품목그룹" 칸에 group_cd(예: CL411)를 박을 수 있도록
+# ic.category(=group_nm)로 item_groups에서 group_cd를 끌어온다.
+_FROM = (
+    "non_conformity_reports r "
+    "LEFT JOIN item_codes ic ON ic.code = r.item_code "
+    "LEFT JOIN item_groups ig ON ig.group_nm = ic.category"
+)
 
 
 def _resolve_database_url(cfg: dict[str, Any]) -> str:

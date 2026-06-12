@@ -23,6 +23,8 @@ CANONICAL_FIELDS: tuple[str, ...] = (
     # item_codes 마스터에서 보강되는 파생 필드
     # (DbSource: COALESCE(r.item_group, ic.category) / ApiSource: /api/items?search)
     "itemGroup", "itemName",
+    # item_groups 마스터에서 보강되는 ERP 입력용 코드 (예: CL411)
+    "itemGroupCd",
 )
 
 

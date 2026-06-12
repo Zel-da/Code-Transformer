@@ -14,7 +14,7 @@
     },
     "erp": {
         "window_title": "UNIERP",
-        "process_name": "Bizentro.App.MAIN.ClientAgent.exe",
+        "process_name": "Bizentro",
         "launch_path": "c:/Users/SOOSAN/OneDrive/Desktop/UNIERP/UNIERP.appref-ms",
         "login_id": "",
         "login_pw": "soosan5008!",

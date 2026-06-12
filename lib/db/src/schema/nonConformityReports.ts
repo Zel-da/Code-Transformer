@@ -77,6 +77,17 @@ export const vendorsTable = pgTable("vendors", {
 });
 export type Vendor = typeof vendorsTable.$inferSelect;
 
+// UNIERP 품목그룹 마스터 (B_ITEM_GROUP 동기화).
+// RPA가 부적합등록 폼의 품목그룹 칸에 group_cd(예: CL411)를 박을 때 사용.
+// 보고서의 item_codes.category(=group_nm)를 lookup해서 group_cd 변환.
+export const itemGroupsTable = pgTable("item_groups", {
+  groupCd: text("group_cd").primaryKey(),
+  groupNm: text("group_nm").notNull(),
+  validFlg: boolean("valid_flg").notNull().default(true),
+  syncedAt: timestamp("synced_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type ItemGroup = typeof itemGroupsTable.$inferSelect;
+
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),

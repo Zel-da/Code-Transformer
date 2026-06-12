@@ -34,6 +34,11 @@ class InputStep:
     clear_before: bool = True
     erp_field_name: str = ""
     tab_after: bool = True
+    # § 3.2: 1920×1080 기준 박스 중앙 좌표 (윈도우 상대 + 비례 스케일링)
+    ref_x: int | None = None
+    ref_y: int | None = None
+    # § 14: 폼 라벨 텍스트 — 좌표 클릭 실패 시 라벨로 동적 검색하는 폴백용
+    form_label: str = ""
 
     def __str__(self) -> str:
         return f"InputStep({self.field_name}={self.value}, method={self.method.value})"

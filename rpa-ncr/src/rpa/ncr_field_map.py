@@ -66,11 +66,17 @@ class NcrReportFieldMap:
             if method == InputMethod.DROPDOWN_SELECT and not value.isdigit():
                 value = self._resolve_dropdown(spec, value)
 
-            # 빈 값은 SKIP으로 (Tab 순서 유지, 기존 값 보존)
+            # 좌표/라벨 (§3.2, §14)
+            ref_x = spec.get("ref_x")
+            ref_y = spec.get("ref_y")
+            form_label = spec.get("form_label", "")
+
+            # 빈 값은 SKIP으로 (해당 필드는 건드리지 않음 — 기존 값 보존)
             if value == "":
                 sequence.add_step(InputStep(
                     field_name=label, value="", method=InputMethod.SKIP,
                     tab_order=seq, tab_after=tab_after,
+                    ref_x=ref_x, ref_y=ref_y, form_label=form_label,
                 ))
                 continue
 
@@ -78,6 +84,7 @@ class NcrReportFieldMap:
                 field_name=label, value=value, method=method,
                 tab_order=seq, tab_after=tab_after, delay_after=0.05,
                 erp_field_name=str(spec.get("erp_field", "")) if spec.get("erp_field") != "TODO" else "",
+                ref_x=ref_x, ref_y=ref_y, form_label=form_label,
             ))
 
         logger.info("입력 시퀀스 생성: %d 스텝 (보고 #%s)", len(sequence.steps), report.id)
@@ -101,14 +108,35 @@ class NcrReportFieldMap:
         if transform == "multiply_60":
             try:
                 minutes = float(raw) * 60
-                # 정수로 딱 떨어지면 소수점 없이
                 result = int(minutes) if minutes == int(minutes) else minutes
                 return str(result)
             except (TypeError, ValueError):
                 logger.warning("multiply_60 변환 실패 (ncr_key=%s, raw=%r) → 건너뜀", ncr_key, raw)
                 return ""
 
+        if transform == "lookup_item_group":
+            # category(이름) → ERP 품목그룹 코드 변환 (config/item_groups.json)
+            lookup = self._get_item_groups()
+            code = lookup.get(str(raw).strip())
+            if not code:
+                logger.warning("품목그룹 매핑 없음: %r → 빈값으로 SKIP", raw)
+                return ""
+            return code
+
         return str(raw)
+
+    def _get_item_groups(self) -> dict[str, str]:
+        """config/item_groups.json 캐시 로드 (UNIERP 폼의 알파벳-숫자 코드 매핑)."""
+        if hasattr(self, "_item_groups_cache"):
+            return self._item_groups_cache
+        from src.utils.config_loader import ConfigLoader
+        from src.utils.file_utils import get_config_dir
+        path = get_config_dir() / "item_groups.json"
+        try:
+            self._item_groups_cache = ConfigLoader.load(path, use_cache=True)
+        except FileNotFoundError:
+            self._item_groups_cache = {}
+        return self._item_groups_cache
 
     def _resolve_dropdown(self, spec: dict[str, Any], raw_value: str) -> str:
         """드롭다운 아래방향키 횟수(문자열)를 반환한다. 미캘리브레이션이면 ''."""

@@ -665,24 +665,75 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
             return JSONResponse({"error": str(e)}, status_code=500)
 
     @app.post("/api/erp/inspect")
-    async def erp_inspect():
+    async def erp_inspect(request: Request):
+        """ERP 메인 창의 컨트롤 트리 덤프.
+
+        쿼리/바디 옵션:
+          - control_type: 특정 타입만 (Edit/ComboBox/Button/CheckBox/RadioButton…)
+          - limit: 최대 개수 (기본 2000)
+          - include_position: True면 좌표·크기 포함 (UI 매칭 시 유용)
+          - process_name 필터는 settings.erp.process_name 사용
+        """
         try:
             from pywinauto import Application
-            erp_title = settings.get("erp", {}).get("window_title", "UNIERP")
-            app_conn = Application(backend="uia").connect(title_re=f".*{erp_title}.*", timeout=5)
-            main_win = app_conn.window(title_re=f".*{erp_title}.*")
+            try:
+                body = await request.json()
+            except Exception:
+                body = {}
+            erp_cfg = settings.get("erp", {})
+            proc_name = erp_cfg.get("process_name", "").lower()
+            title = erp_cfg.get("window_title", "UNIERP")
+            ctype_filter = (body.get("control_type") or "").strip().lower()
+            limit = int(body.get("limit") or 2000)
+            include_position = bool(body.get("include_position", True))
+
+            # 프로세스명 기반 메인 윈도우 찾기 (로그인 다이얼로그 제외)
+            from src.rpa.window_controller import WindowController
+            wc = WindowController(title, process_name=proc_name)
+            wins = wc._find_erp_windows(exclude_login=True)
+            if not wins:
+                return JSONResponse({"error": "ERP 메인 윈도우를 찾을 수 없습니다 (로그인 또는 폼 열기 필요)"},
+                                    status_code=400)
+            main_win = max(wins, key=lambda w: w.rectangle().width() * w.rectangle().height())
+
             controls = []
             for ctrl in main_win.descendants():
                 try:
-                    controls.append({
-                        "control_type": ctrl.element_info.control_type,
-                        "name": ctrl.element_info.name,
-                        "auto_id": ctrl.element_info.automation_id,
-                    })
+                    info = ctrl.element_info
+                    c_type = info.control_type or ""
+                    if ctype_filter and c_type.lower() != ctype_filter:
+                        continue
+                    entry = {
+                        "control_type": c_type,
+                        "name": info.name or "",
+                        "auto_id": info.automation_id or "",
+                        "class_name": info.class_name or "",
+                    }
+                    if include_position:
+                        try:
+                            r = ctrl.rectangle()
+                            entry["rect"] = {"left": r.left, "top": r.top,
+                                             "right": r.right, "bottom": r.bottom,
+                                             "w": r.width(), "h": r.height()}
+                        except Exception:
+                            pass
+                    controls.append(entry)
+                    if len(controls) >= limit:
+                        break
                 except Exception:
                     continue
-            return {"window_title": main_win.window_text(),
-                    "control_count": len(controls), "controls": controls[:200]}
+
+            # 타입별 카운트 요약
+            type_counts: dict[str, int] = {}
+            for c in controls:
+                type_counts[c["control_type"]] = type_counts.get(c["control_type"], 0) + 1
+
+            return {
+                "window_title": main_win.window_text(),
+                "control_count": len(controls),
+                "type_counts": dict(sorted(type_counts.items(), key=lambda x: -x[1])),
+                "controls": controls,
+            }
         except Exception as e:
             return JSONResponse({"error": f"ERP 윈도우에 연결할 수 없습니다: {e}"}, status_code=500)
 
