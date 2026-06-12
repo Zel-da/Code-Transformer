@@ -53,6 +53,8 @@ import {
   Clock,
   Webhook,
   Save,
+  Send,
+  Mail,
 } from "lucide-react";
 
 function StatCard({
@@ -255,6 +257,7 @@ export default function ManagePage() {
 
   const [deptWebhooks, setDeptWebhooks] = useState<Record<string, string>>({});
   const [deptSaving, setDeptSaving] = useState<Record<string, boolean>>({});
+  const [deptTesting, setDeptTesting] = useState<Record<string, boolean>>({});
 
   const departments = useListDepartments();
   const updateDept = useUpdateDepartment();
@@ -279,6 +282,22 @@ export default function ManagePage() {
       toast({ title: "저장 실패", variant: "destructive" });
     } finally {
       setDeptSaving((prev) => ({ ...prev, [deptCd]: false }));
+    }
+  };
+
+  const handleTestWebhook = async (deptCd: string) => {
+    setDeptTesting((prev) => ({ ...prev, [deptCd]: true }));
+    try {
+      await apiJson(`${API}/master/departments/${encodeURIComponent(deptCd)}/test-webhook`, { method: "POST" });
+      toast({ title: "✅ 테스트 메시지 발송 완료", description: "수산톡 채널을 확인해주세요" });
+    } catch (err: unknown) {
+      toast({
+        title: "발송 실패",
+        description: err instanceof Error ? err.message : "알 수 없는 오류",
+        variant: "destructive",
+      });
+    } finally {
+      setDeptTesting((prev) => ({ ...prev, [deptCd]: false }));
     }
   };
 
@@ -837,6 +856,15 @@ export default function ManagePage() {
                             {u.notifyLevel === "none" && (
                               <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-[#F2F4F6] text-[#BEC5CC] line-through">수신 안 함</span>
                             )}
+                            {u.email ? (
+                              <span title={u.email} className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center gap-0.5">
+                                <Mail className="h-2.5 w-2.5" />DM
+                              </span>
+                            ) : (
+                              <span title="이메일 미등록 — DM 수신 불가" className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-[#F2F4F6] text-[#BEC5CC] flex items-center gap-0.5">
+                                <Mail className="h-2.5 w-2.5" />미등록
+                              </span>
+                            )}
                             {!u.isActive && (
                               <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-red-100 text-red-500">
                                 비활성
@@ -990,6 +1018,19 @@ export default function ManagePage() {
                         >
                           <Save className="h-3.5 w-3.5" />
                           저장
+                        </button>
+                        <button
+                          onClick={() => handleTestWebhook(dept.deptCd)}
+                          disabled={!deptWebhooks[dept.deptCd] || deptTesting[dept.deptCd]}
+                          title={!deptWebhooks[dept.deptCd] ? "URL을 먼저 입력 후 저장하세요" : "테스트 메시지 발송"}
+                          className={`${BTN_GHOST} flex items-center gap-1 text-[12px] px-3 py-2 self-start sm:self-auto shrink-0 ${(!deptWebhooks[dept.deptCd] || deptTesting[dept.deptCd]) ? "opacity-40 cursor-not-allowed" : "text-indigo-600 hover:bg-indigo-50"}`}
+                        >
+                          {deptTesting[dept.deptCd] ? (
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Send className="h-3.5 w-3.5" />
+                          )}
+                          테스트
                         </button>
                       </div>
                     ))}

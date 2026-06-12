@@ -297,3 +297,90 @@ export async function notifyStatusTransition(opts: {
     return { sentAt: null, channel: null };
   }
 }
+
+// ────────────────────────────────────────────────────────────────
+// SLA 초과 잠금 알림
+// ────────────────────────────────────────────────────────────────
+
+/**
+ * SLA 24시간 초과로 보고서가 잠금 처리될 때 호출.
+ * QC/lab 채널 + 귀책부서 webhook + (PAT 설정 시) reviewer/approver 개인 DM
+ */
+export async function notifySlaLocked(report: NonConformityReport): Promise<void> {
+  const appUrl = process.env.APP_URL ?? "https://your-app.replit.app";
+  const log = rootLogger.child({ fn: "notifySlaLocked", reportId: report.id });
+  const ncr = report.ncrNumber ?? `#${report.id}`;
+  const link = `${appUrl}/ledger?reportId=${report.id}`;
+  const msg = [
+    `[⏰ SLA 초과 잠금] ${ncr}`,
+    `품목: ${report.itemCode}`,
+    report.processName ? `공정: ${report.processName}` : null,
+    report.registrantName ? `등록자: ${report.registrantName}` : null,
+    `접수 후 24시간이 경과하여 보고서가 잠금 처리되었습니다.`,
+    `링크: ${link}`,
+  ].filter(Boolean).join("\n");
+
+  try {
+    const usePat = isPatConfigured();
+    const deptCache = new Map<string, string | null>();
+    const dispatches: Promise<unknown>[] = [];
+
+    // 1. QC/lab 메인 채널
+    const channel = report.productType === "개발" ? "lab" : "qc";
+    dispatches.push(
+      sendSushantalkMessage(channel, msg).catch((e) =>
+        log.warn({ e }, "SLA channel notify failed"),
+      ),
+    );
+
+    // 2. 귀책부서 webhook
+    if (report.deptCd) {
+      const deptUrl = await getDeptWebhook(report.deptCd, deptCache);
+      if (deptUrl) {
+        dispatches.push(
+          sendSushantalkToUrl(deptUrl, msg).catch((e) =>
+            log.warn({ e }, "SLA dept webhook failed"),
+          ),
+        );
+      }
+    }
+
+    // 3. PAT 설정 시 — reviewer/approver/admin 개인 DM
+    if (usePat) {
+      const activeUsers = await db
+        .select({
+          id: usersTable.id,
+          role: usersTable.role,
+          email: usersTable.email,
+          notifyLevel: usersTable.notifyLevel,
+        })
+        .from(usersTable)
+        .where(eq(usersTable.isActive, true));
+
+      const dmRecipients: SushantalkRecipient[] = activeUsers
+        .filter(
+          (u) =>
+            ["reviewer", "approver", "admin"].includes(u.role) &&
+            u.notifyLevel !== "none" &&
+            !!u.email,
+        )
+        .map((u) => ({ toEmail: u.email! }));
+
+      if (dmRecipients.length > 0) {
+        dispatches.push(
+          sendBulkDm({
+            recipients: dmRecipients,
+            content: msg,
+            botName: BOT_NAME,
+            roomName: ROOM_NAME,
+          }).catch((e) => log.warn({ e }, "SLA bulk DM failed")),
+        );
+      }
+    }
+
+    await Promise.all(dispatches);
+    log.info({ ncr, channel }, "SLA locked notification sent");
+  } catch (err) {
+    log.error({ err }, "notifySlaLocked failed (non-fatal)");
+  }
+}

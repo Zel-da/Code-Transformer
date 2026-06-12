@@ -28,7 +28,7 @@ import { Layout } from "@/components/layout";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { differenceInDays, format } from "date-fns";
-import { AlertTriangle, ChevronLeft, RefreshCw, Save, Search, Loader2, Users, X } from "lucide-react";
+import { AlertTriangle, ChevronLeft, RefreshCw, Save, Search, Loader2, Users, X, ZoomIn, X as XIcon } from "lucide-react";
 
 const ERP_API_BASE =
   ((import.meta.env.VITE_ERP_API_BASE as string | undefined) ?? "").replace(/\/+$/, "");
@@ -350,6 +350,7 @@ export default function QcPage() {
   const [erpSearchHogi, setErpSearchHogi] = useState("");
   const [erpSearchResult, setErpSearchResult] = useState<ErpLookup | null>(null);
   const [erpSearchLoading, setErpSearchLoading] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const selectedPlantCd = form.watch("plantCd");
   const { data: processes = [] } = useListProcesses(
@@ -1014,6 +1015,29 @@ export default function QcPage() {
                 </div>
               </FieldRow>
 
+              {/* ── 첨부 사진 ── */}
+              {report.imageUrl && (
+                <>
+                  <GroupDivider title="첨부 사진" />
+                  <div className="py-3">
+                    <button
+                      type="button"
+                      onClick={() => setLightboxOpen(true)}
+                      className="relative w-full overflow-hidden rounded-xl border border-[#E5E8EB] group"
+                    >
+                      <img
+                        src={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/storage/objects/${report.imageUrl}`}
+                        alt="첨부 사진"
+                        className="w-full object-cover max-h-52 group-hover:opacity-90 transition-opacity"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                        <ZoomIn className="h-8 w-8 text-white drop-shadow-lg" />
+                      </div>
+                    </button>
+                  </div>
+                </>
+              )}
+
             </div>{/* ── 왼쪽 카드 끝 ── */}
 
             {/* ══ 오른쪽 카드: QC 분석 내용 ══ */}
@@ -1323,6 +1347,28 @@ export default function QcPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── 이미지 라이트박스 ── */}
+      {lightboxOpen && report.imageUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
+            onClick={() => setLightboxOpen(false)}
+          >
+            <XIcon className="h-6 w-6" />
+          </button>
+          <img
+            src={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/storage/objects/${report.imageUrl}`}
+            alt="첨부 사진 (원본)"
+            className="max-w-[90vw] max-h-[85vh] rounded-2xl shadow-2xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </Layout>

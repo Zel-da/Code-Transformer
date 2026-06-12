@@ -9,6 +9,7 @@ import {
 } from "@workspace/db";
 import { eq, asc, ilike, desc } from "drizzle-orm";
 import { requireAdmin } from "../middleware/requireAuth.js";
+import { sendSushantalkToUrl } from "../lib/sushantalk.js";
 
 const router: IRouter = Router();
 
@@ -88,6 +89,36 @@ router.patch("/master/departments/:deptCd", requireAdmin, async (req, res): Prom
 
   req.log.info({ deptCd, hasWebhook: !!webhookUrl }, "Department webhook updated");
   res.json(updated);
+});
+
+router.post("/master/departments/:deptCd/test-webhook", requireAdmin, async (req, res): Promise<void> => {
+  const deptCd = String(req.params.deptCd);
+
+  const [dept] = await db
+    .select()
+    .from(departmentsTable)
+    .where(eq(departmentsTable.deptCd, deptCd));
+
+  if (!dept) {
+    res.status(404).json({ error: "부서를 찾을 수 없습니다" });
+    return;
+  }
+  if (!dept.webhookUrl) {
+    res.status(400).json({ error: "Webhook URL이 설정되지 않았습니다. 먼저 저장하세요." });
+    return;
+  }
+
+  try {
+    await sendSushantalkToUrl(
+      dept.webhookUrl,
+      `[✅ 테스트] 안녕하세요!\n부적합 보고 시스템 Webhook 연동 테스트입니다.\n${dept.deptName} 채널이 정상 연결되었습니다.`,
+    );
+    req.log.info({ deptCd }, "Webhook test sent successfully");
+    res.json({ ok: true, message: "테스트 메시지를 발송했습니다" });
+  } catch (err) {
+    req.log.warn({ err, deptCd }, "Webhook test failed");
+    res.status(502).json({ error: "Webhook 발송 실패", detail: String(err) });
+  }
 });
 
 export default router;

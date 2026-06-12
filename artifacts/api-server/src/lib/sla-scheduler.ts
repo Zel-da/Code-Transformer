@@ -1,6 +1,7 @@
 import { db, nonConformityReportsTable } from "@workspace/db";
 import { and, eq, lt, isNull, inArray } from "drizzle-orm";
 import { logger } from "./logger.js";
+import { notifySlaLocked } from "./notifications.js";
 
 const INTERVAL_MS = 5 * 60 * 1000;
 
@@ -9,7 +10,7 @@ async function runSlaCheck(): Promise<void> {
     const now = new Date();
 
     const expired = await db
-      .select({ id: nonConformityReportsTable.id })
+      .select()
       .from(nonConformityReportsTable)
       .where(
         and(
@@ -31,6 +32,13 @@ async function runSlaCheck(): Promise<void> {
       .where(inArray(nonConformityReportsTable.id, ids));
 
     logger.info({ count: ids.length, ids }, `SLA scheduler: locked ${ids.length} expired report(s)`);
+
+    // 잠금 처리된 각 보고서에 대해 알림 발송 (non-blocking)
+    for (const report of expired) {
+      notifySlaLocked(report).catch((err) =>
+        logger.error({ err, reportId: report.id }, "SLA lock notification failed"),
+      );
+    }
   } catch (err) {
     logger.error({ err }, "SLA scheduler: error during check");
   }

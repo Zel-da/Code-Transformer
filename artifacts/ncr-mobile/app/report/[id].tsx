@@ -11,22 +11,26 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useGetReport } from "@workspace/api-client-react";
+import { useGetReport, useListReportComments } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 import { Ionicons } from "@expo/vector-icons";
 
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: "#f59e0b",
-  PROCESSING: "#3b82f6",
-  COMPLETED: "#22c55e",
-  FAILED: "#ef4444",
+const QC_STATUS_COLORS: Record<string, string> = {
+  OPEN:           "#f59e0b",
+  IN_REVIEW:      "#3b82f6",
+  PENDING_COLLAB: "#8b5cf6",
+  RESOLVED:       "#10b981",
+  APPROVED:       "#22c55e",
+  ERP_SYNCED:     "#6b7280",
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: "대기",
-  PROCESSING: "처리중",
-  COMPLETED: "완료",
-  FAILED: "실패",
+const QC_STATUS_LABELS: Record<string, string> = {
+  OPEN:           "접수",
+  IN_REVIEW:      "QC 검토",
+  PENDING_COLLAB: "협업 요청",
+  RESOLVED:       "조치 완료",
+  APPROVED:       "승인 완료",
+  ERP_SYNCED:     "ERP 등록",
 };
 
 function Row({
@@ -75,6 +79,7 @@ export default function ReportDetailScreen() {
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   const { data: report, isLoading, isError } = useGetReport(Number(id));
+  const { data: comments = [] } = useListReportComments(Number(id));
 
   const s = makeStyles(colors, topPad, bottomPad);
 
@@ -98,8 +103,9 @@ export default function ReportDetailScreen() {
     );
   }
 
-  const statusColor = STATUS_COLORS[report.syncStatus] ?? colors.mutedForeground;
-  const statusLabel = STATUS_LABELS[report.syncStatus] ?? report.syncStatus;
+  const qcStatus = (report.qcStatus ?? "OPEN") as string;
+  const statusColor = QC_STATUS_COLORS[qcStatus] ?? colors.mutedForeground;
+  const statusLabel = QC_STATUS_LABELS[qcStatus] ?? qcStatus;
   const reportDate = new Date(report.reportDate).toLocaleString("ko-KR");
 
   return (
@@ -112,7 +118,16 @@ export default function ReportDetailScreen() {
         <Pressable style={s.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color={colors.foreground} />
         </Pressable>
-        <Text style={s.headerTitle}>보고서 #{report.id}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={s.headerTitle}>
+            {report.ncrNumber ?? `보고서 #${report.id}`}
+          </Text>
+          {report.ncrNumber && (
+            <Text style={[s.headerSub, { color: colors.mutedForeground }]}>
+              #{report.id}
+            </Text>
+          )}
+        </View>
         <View
           style={[
             s.statusBadge,
@@ -123,6 +138,7 @@ export default function ReportDetailScreen() {
         </View>
       </View>
 
+      {/* 기본 정보 */}
       <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Text style={s.cardTitle}>기본 정보</Text>
         <View style={s.divider} />
@@ -145,14 +161,22 @@ export default function ReportDetailScreen() {
             <Row label="등록자" value={report.registrantName} colors={colors} />
           </>
         )}
+        {report.deptCd && (
+          <>
+            <View style={[s.divider, { opacity: 0.5 }]} />
+            <Row label="귀책부서 코드" value={report.deptCd} colors={colors} />
+          </>
+        )}
       </View>
 
+      {/* 부적합 내용 */}
       <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <Text style={s.cardTitle}>설명</Text>
+        <Text style={s.cardTitle}>부적합 내용</Text>
         <View style={s.divider} />
         <Text style={s.descText}>{report.description}</Text>
       </View>
 
+      {/* 첨부 사진 */}
       {report.imageUrl && (
         <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={s.cardTitle}>첨부 사진</Text>
@@ -165,6 +189,7 @@ export default function ReportDetailScreen() {
         </View>
       )}
 
+      {/* QC 조치 결과 */}
       {report.qcAction && (
         <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={s.cardTitle}>QC 조치 결과</Text>
@@ -175,9 +200,52 @@ export default function ReportDetailScreen() {
               {new Date(report.qcActionAt).toLocaleString("ko-KR")}
             </Text>
           )}
+          {report.qcCorrectiveResult && (
+            <>
+              <View style={[s.divider, { opacity: 0.5, marginTop: 10 }]} />
+              <Row label="시정 결과" value={report.qcCorrectiveResult} colors={colors} />
+            </>
+          )}
         </View>
       )}
 
+      {/* QC 댓글 */}
+      {comments.length > 0 && (
+        <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={s.cardTitle}>QC 코멘트 ({comments.length})</Text>
+          <View style={s.divider} />
+          {comments.map((c, idx) => (
+            <View key={c.id}>
+              {idx > 0 && <View style={[s.divider, { opacity: 0.4, marginVertical: 0 }]} />}
+              <View style={s.commentRow}>
+                <View style={[s.commentAvatar, { backgroundColor: colors.muted }]}>
+                  <Text style={[s.commentAvatarText, { color: colors.mutedForeground }]}>
+                    {(c.authorName ?? "?").charAt(0)}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={s.commentHeader}>
+                    <Text style={[s.commentAuthor, { color: colors.foreground }]}>
+                      {c.authorName ?? "알 수 없음"}
+                    </Text>
+                    <Text style={[s.commentDate, { color: colors.mutedForeground }]}>
+                      {new Date(c.createdAt).toLocaleString("ko-KR", {
+                        month: "numeric",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </Text>
+                  </View>
+                  <Text style={[s.commentBody, { color: colors.foreground }]}>{c.body}</Text>
+                </View>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* SLA 잠금 배너 */}
       {report.isLocked && (
         <View style={[s.lockedBanner, { backgroundColor: colors.muted, borderColor: colors.border }]}>
           <Ionicons name="lock-closed" size={16} color={colors.mutedForeground} />
@@ -219,10 +287,14 @@ function makeStyles(
       justifyContent: "center",
     },
     headerTitle: {
-      fontSize: 20,
+      fontSize: 18,
       fontFamily: "Inter_700Bold",
       color: colors.foreground,
-      flex: 1,
+    },
+    headerSub: {
+      fontSize: 12,
+      fontFamily: "Inter_400Regular",
+      marginTop: 1,
     },
     statusBadge: {
       paddingHorizontal: 10,
@@ -301,6 +373,41 @@ function makeStyles(
       fontSize: 14,
       fontFamily: "Inter_600SemiBold",
       color: colors.primaryForeground,
+    },
+    commentRow: {
+      flexDirection: "row",
+      gap: 10,
+      paddingVertical: 10,
+    },
+    commentAvatar: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    commentAvatarText: {
+      fontSize: 12,
+      fontFamily: "Inter_700Bold",
+    },
+    commentHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 3,
+    },
+    commentAuthor: {
+      fontSize: 13,
+      fontFamily: "Inter_600SemiBold",
+    },
+    commentDate: {
+      fontSize: 11,
+      fontFamily: "Inter_400Regular",
+    },
+    commentBody: {
+      fontSize: 13,
+      fontFamily: "Inter_400Regular",
+      lineHeight: 20,
     },
   });
 }
