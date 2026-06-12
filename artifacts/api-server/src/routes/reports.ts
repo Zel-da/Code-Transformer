@@ -148,6 +148,7 @@ router.post("/reports", async (req, res): Promise<void> => {
         defectType: d.defectType,
         description: d.description,
         imageUrl: d.imageUrl ?? null,
+        qcStatus: "OPEN",
         syncStatus: "PENDING",
         registrantName: d.registrantName ?? null,
         ncrType: d.ncrType ?? null,

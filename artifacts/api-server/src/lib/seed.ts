@@ -42,6 +42,10 @@ async function migrateQcStatusToEnglish(): Promise<void> {
     if (count > 0) {
       logger.info({ count }, "Migrated legacy Korean qcStatus values to English enum (Task #35)");
     }
+    await db.execute(sql`
+      ALTER TABLE non_conformity_reports
+        ALTER COLUMN qc_status SET DEFAULT 'OPEN'
+    `);
   } catch (err) {
     logger.error({ err }, "Failed to migrate qcStatus values");
   }
