@@ -59,11 +59,22 @@ export type SushantalkRecipient =
   | { toEmployeeId: string }
   | { toName: string; toDept: string };
 
+/** 인터랙티브 버튼 액션 정의 */
+export interface MessageAction {
+  id: string;
+  label: string;
+  value: string;
+  style?: "default" | "primary" | "danger";
+  type?: "postback" | "url";
+  callbackUrl?: string;
+}
+
 export interface SendDmOptions {
   recipient: SushantalkRecipient;
   content: string;
   botName?: string;
   roomName?: string;
+  actions?: MessageAction[];
 }
 
 export interface SendBulkOptions {
@@ -71,6 +82,7 @@ export interface SendBulkOptions {
   content: string;
   botName?: string;
   roomName?: string;
+  actions?: MessageAction[];
 }
 
 export interface SendChannelOptions {
@@ -93,6 +105,7 @@ export async function sendDm(opts: SendDmOptions): Promise<boolean> {
   const body = { ...opts.recipient, content: opts.content } as Record<string, unknown>;
   if (opts.botName) body.botName = opts.botName;
   if (opts.roomName) body.roomName = opts.roomName;
+  if (opts.actions?.length) body.actions = opts.actions;
 
   const res = await fetch(`${cfg.baseUrl}/api/external/v1/messages`, {
     method: "POST",
@@ -126,6 +139,7 @@ export async function sendBulkDm(opts: SendBulkOptions): Promise<{ sent: number;
   };
   if (opts.botName) body.botName = opts.botName;
   if (opts.roomName) body.roomName = opts.roomName;
+  if (opts.actions?.length) body.actions = opts.actions;
 
   const res = await fetch(`${cfg.baseUrl}/api/external/v1/messages`, {
     method: "POST",

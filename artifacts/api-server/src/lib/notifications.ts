@@ -1,4 +1,5 @@
 import { eq, inArray, desc, and } from "drizzle-orm";
+import { createHmac } from "node:crypto";
 import { db, usersTable, departmentsTable, reportCommentsTable } from "@workspace/db";
 import type { NonConformityReport } from "@workspace/db";
 import {
@@ -7,6 +8,7 @@ import {
   sendBulkDm,
   isPatConfigured,
   type SushantalkRecipient,
+  type MessageAction,
 } from "./sushantalk.js";
 import { logger as rootLogger } from "./logger.js";
 
@@ -47,6 +49,62 @@ const ROOM_NAME = "🔔 NCR 알림";
 // ────────────────────────────────────────────────────────────────
 // Message builders
 // ────────────────────────────────────────────────────────────────
+
+/**
+ * To 수신자 메시지에 포함할 인터랙티브 버튼 목록 생성.
+ * HMAC 서명으로 위변조를 방지한다.
+ * 버튼 없는 상태(IN_REVIEW, ERP_SYNCED)는 빈 배열 반환.
+ */
+function buildToActions(
+  report: NonConformityReport,
+  to: QcStatus,
+  appUrl: string,
+): MessageAction[] {
+  const secret = process.env.NCR_WEBHOOK_SECRET ?? "";
+  if (!secret) return [];
+
+  const reportId = report.id;
+  const callbackUrl = `${appUrl}/api/webhooks/ncr-action`;
+  const viewBtn: MessageAction = {
+    id: "view",
+    label: "📋 보고서 보기",
+    value: `${appUrl}/ledger?reportId=${reportId}`,
+    style: "default",
+    type: "url",
+  };
+
+  function postback(targetStatus: QcStatus, label: string, style: MessageAction["style"]): MessageAction {
+    const sig = createHmac("sha256", secret)
+      .update(`${reportId}:${targetStatus}`)
+      .digest("hex")
+      .slice(0, 10);
+    return {
+      id: targetStatus.toLowerCase(),
+      label,
+      value: `${targetStatus}:${reportId}:${sig}`,
+      style,
+      type: "postback",
+      callbackUrl,
+    };
+  }
+
+  switch (to) {
+    case "OPEN":
+      return [postback("IN_REVIEW", "🔍 검토 시작", "primary"), viewBtn];
+    case "RESOLVED":
+      return [
+        postback("APPROVED", "✅ 승인", "primary"),
+        postback("IN_REVIEW", "↩️ 반려", "danger"),
+        viewBtn,
+      ];
+    case "APPROVED":
+      return [postback("ERP_SYNCED", "🖥️ ERP 등록 완료", "primary"), viewBtn];
+    case "PENDING_COLLAB":
+      return [postback("IN_REVIEW", "✅ 확인 완료", "primary"), viewBtn];
+    default:
+      return [viewBtn];
+  }
+}
 
 function buildToMessage(report: NonConformityReport, to: QcStatus, appUrl: string): string {
   const label = STATUS_LABELS[to] ?? to;
@@ -249,8 +307,15 @@ export async function notifyStatusTransition(opts: {
     // 4a. PAT 개인 DM 발송
     if (usePat) {
       if (dmTo.length > 0) {
+        const toActions = buildToActions(report, to, appUrl);
         dispatches.push(
-          sendBulkDm({ recipients: dmTo, content: toMsg, botName: BOT_NAME, roomName: ROOM_NAME })
+          sendBulkDm({
+            recipients: dmTo,
+            content: toMsg,
+            botName: BOT_NAME,
+            roomName: ROOM_NAME,
+            actions: toActions.length > 0 ? toActions : undefined,
+          })
             .then(({ sent, failed }) => log.info({ sent, failed }, "PAT DM To sent"))
             .catch((e) => log.warn({ e }, "PAT bulk DM To failed")),
         );

@@ -10,6 +10,7 @@ import authRouter from "./auth";
 import usersRouter from "./users";
 import erpRouter from "./erp";
 import commentsRouter from "./comments";
+import webhooksRouter from "./webhooks";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(rpaRouter);
 router.use(masterRouter);
 router.use(erpRouter);
 router.use(commentsRouter);
+router.use(webhooksRouter);
 
 export default router;
