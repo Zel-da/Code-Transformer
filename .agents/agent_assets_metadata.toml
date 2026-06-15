@@ -1,8 +1,13 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "hrRSDFJaDotJuGl0wH2-c"
 uri = "file://artifacts/ncr-mobile/assets/images/icon.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "B8ulrW45gLslHg4AhHkOk"
+uri = "file://수산톡_알림_발송_방식.md"
+type = "text"
+title = "수산톡 알림 발송 방식 정리"
