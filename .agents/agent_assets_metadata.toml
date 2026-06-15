@@ -11,3 +11,9 @@ id = "B8ulrW45gLslHg4AhHkOk"
 uri = "file://수산톡_알림_발송_방식.md"
 type = "text"
 title = "수산톡 알림 발송 방식 정리"
+
+[[outputs]]
+id = "tiN4lMIIbVqp5cWdIoPzG"
+uri = "file://수산톡_버튼_인터랙션_구현_명세서.md"
+type = "text"
+title = "수산톡 버튼 인터랙션 구현 명세서"
