@@ -11,6 +11,7 @@ import usersRouter from "./users";
 import erpRouter from "./erp";
 import commentsRouter from "./comments";
 import webhooksRouter from "./webhooks";
+import devRouter from "./dev";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(masterRouter);
 router.use(erpRouter);
 router.use(commentsRouter);
 router.use(webhooksRouter);
+router.use(devRouter);
 
 export default router;

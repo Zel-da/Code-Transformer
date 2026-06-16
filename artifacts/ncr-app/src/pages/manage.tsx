@@ -224,7 +224,7 @@ export default function ManagePage() {
     return () => { _onUnauthorized = null; };
   }, [logout]);
 
-  const [activeTab, setActiveTab] = useState<"reports" | "users" | "settings">("reports");
+  const [activeTab, setActiveTab] = useState<"reports" | "users" | "settings" | "simulator">("reports");
 
   const [page, setPage] = useState(1);
   const [editingReport, setEditingReport] = useState<Report | null>(null);
@@ -258,6 +258,12 @@ export default function ManagePage() {
   const [deptWebhooks, setDeptWebhooks] = useState<Record<string, string>>({});
   const [deptSaving, setDeptSaving] = useState<Record<string, boolean>>({});
   const [deptTesting, setDeptTesting] = useState<Record<string, boolean>>({});
+
+  const [simReportId, setSimReportId] = useState("");
+  const [simTargetStatus, setSimTargetStatus] = useState("");
+  const [simEmail, setSimEmail] = useState("");
+  const [simRunning, setSimRunning] = useState(false);
+  const [simResult, setSimResult] = useState<{ ok: boolean; from: string; to: string; message: string } | null>(null);
 
   const departments = useListDepartments();
   const updateDept = useUpdateDepartment();
@@ -590,10 +596,50 @@ export default function ManagePage() {
     }
   };
 
+  const SIM_TRANSITION_MAP: Record<string, string[]> = {
+    OPEN:           ["IN_REVIEW"],
+    IN_REVIEW:      ["PENDING_COLLAB", "RESOLVED", "OPEN"],
+    PENDING_COLLAB: ["RESOLVED", "IN_REVIEW"],
+    RESOLVED:       ["APPROVED", "IN_REVIEW"],
+    APPROVED:       [],
+    ERP_SYNCED:     [],
+  };
+
+  const SIM_STATUS_LABELS: Record<string, string> = {
+    OPEN: "접수", IN_REVIEW: "검토 중", PENDING_COLLAB: "협업 대기",
+    RESOLVED: "조치 완료", APPROVED: "승인 완료", ERP_SYNCED: "ERP 등록",
+  };
+
+  const simReport = reports.find((r) => String(r.id) === simReportId);
+  const simCurrentStatus = simReport?.qcStatus ?? null;
+  const simValidTargets = simCurrentStatus ? (SIM_TRANSITION_MAP[simCurrentStatus] ?? []) : [];
+
+  const handleSimulate = async () => {
+    if (!simReportId || !simTargetStatus || !simEmail) return;
+    setSimRunning(true);
+    setSimResult(null);
+    try {
+      const data = await apiJson<{ ok: boolean; from: string; to: string; message: string }>(
+        `${API}/dev/simulate-ncr-button`,
+        {
+          method: "POST",
+          body: JSON.stringify({ reportId: Number(simReportId), targetStatus: simTargetStatus, email: simEmail }),
+        },
+      );
+      setSimResult(data);
+      if (data.ok) invalidateAll(Number(simReportId));
+    } catch (err) {
+      setSimResult({ ok: false, from: "", to: "", message: err instanceof Error ? err.message : "오류 발생" });
+    } finally {
+      setSimRunning(false);
+    }
+  };
+
   const TABS = [
     { key: "reports" as const, label: "보고서" },
     { key: "users" as const, label: "사용자" },
     { key: "settings" as const, label: "설정" },
+    { key: "simulator" as const, label: "🧪 시뮬레이터" },
   ];
 
   return (
@@ -1111,6 +1157,160 @@ export default function ManagePage() {
                   RPA 실행 버튼을 누르면 <span className="font-semibold text-amber-600">대기(PENDING)</span> 상태의 모든 보고서를 자동으로 ERP에 동기화합니다.
                 </div>
               ) : null}
+            </div>
+          </div>
+        )}
+
+        {/* ── 시뮬레이터 탭 ── */}
+        {activeTab === "simulator" && (
+          <div className="space-y-5 max-w-xl">
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-start gap-2.5">
+              <FlaskConical className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-[12px] text-amber-700 leading-relaxed">
+                수산톡 버튼 클릭을 시뮬레이션합니다. 서버에서 HMAC 서명을 생성하고 실제 웹훅 핸들러를 실행하므로 감사 로그와 후속 알림이 함께 발송됩니다.
+              </p>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+              <div className="px-5 py-4 border-b border-[#F2F4F6]">
+                <h2 className="font-semibold text-[14px] text-[#191F28]">수산톡 버튼 시뮬레이터</h2>
+                <p className="text-[12px] text-[#8B95A1] mt-0.5">보고서 선택 → 대상 상태 → 클릭 사용자 이메일</p>
+              </div>
+
+              <div className="px-5 py-4 space-y-4">
+                {/* 보고서 선택 */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold text-[#8B95A1]">보고서</label>
+                  <Select
+                    value={simReportId}
+                    onValueChange={(v) => {
+                      setSimReportId(v);
+                      setSimTargetStatus("");
+                      setSimResult(null);
+                    }}
+                  >
+                    <SelectTrigger className="h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus:ring-0">
+                      <SelectValue placeholder="보고서를 선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl max-h-60">
+                      {isLoading ? (
+                        <div className="py-3 text-center text-[12px] text-[#8B95A1]">로딩 중...</div>
+                      ) : reports.length === 0 ? (
+                        <div className="py-3 text-center text-[12px] text-[#8B95A1]">보고서 없음</div>
+                      ) : (
+                        reports.map((r) => (
+                          <SelectItem key={r.id} value={String(r.id)}>
+                            <span className="font-mono font-semibold text-[12px]">{r.ncrNumber ?? `#${r.id}`}</span>
+                            <span className="ml-2 text-[11px] text-[#8B95A1]">
+                              {SIM_STATUS_LABELS[r.qcStatus ?? ""] ?? r.qcStatus ?? "미접수"}
+                            </span>
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+
+                  {simReport && (
+                    <div className="flex items-center gap-2 px-1">
+                      <span className="text-[11px] text-[#8B95A1]">현재 상태:</span>
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                        simCurrentStatus === "OPEN" ? "bg-blue-50 text-blue-700" :
+                        simCurrentStatus === "IN_REVIEW" ? "bg-amber-50 text-amber-700" :
+                        simCurrentStatus === "PENDING_COLLAB" ? "bg-purple-50 text-purple-700" :
+                        simCurrentStatus === "RESOLVED" ? "bg-emerald-50 text-emerald-700" :
+                        simCurrentStatus === "APPROVED" ? "bg-teal-50 text-teal-700" :
+                        "bg-[#F2F4F6] text-[#4E5968]"
+                      }`}>
+                        {SIM_STATUS_LABELS[simCurrentStatus ?? ""] ?? simCurrentStatus ?? "미접수"}
+                      </span>
+                      {simValidTargets.length === 0 && (
+                        <span className="text-[11px] text-red-500">전이 가능한 상태 없음</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* 대상 상태 */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold text-[#8B95A1]">전이할 상태 (버튼)</label>
+                  {simValidTargets.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {simValidTargets.map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => { setSimTargetStatus(s); setSimResult(null); }}
+                          className={`px-3 py-1.5 rounded-xl text-[12px] font-semibold border-2 transition-all ${
+                            simTargetStatus === s
+                              ? "border-[#1A1A1A] bg-[#1A1A1A] text-white"
+                              : "border-[#E5E8EB] text-[#4E5968] bg-[#F8F9FA] hover:border-[#BEC5CC]"
+                          }`}
+                        >
+                          {SIM_STATUS_LABELS[s] ?? s}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="h-9 rounded-xl bg-[#F8F9FA] border border-[#E5E8EB] flex items-center px-3">
+                      <span className="text-[12px] text-[#BEC5CC]">보고서를 먼저 선택하세요</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 사용자 이메일 */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold text-[#8B95A1]">클릭 사용자 (수산톡 이메일)</label>
+                  <Select
+                    value={simEmail}
+                    onValueChange={(v) => { setSimEmail(v); setSimResult(null); }}
+                  >
+                    <SelectTrigger className="h-9 rounded-xl text-[13px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] focus:ring-0">
+                      <SelectValue placeholder="이메일 선택" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl max-h-48">
+                      {users
+                        .filter((u) => u.email && u.isActive)
+                        .map((u) => (
+                          <SelectItem key={u.id} value={u.email!}>
+                            <span className="font-semibold text-[12px]">{u.displayName}</span>
+                            <span className="ml-1.5 text-[11px] text-[#8B95A1]">{u.email}</span>
+                            <span className="ml-1.5 text-[10px] text-[#BEC5CC]">{ROLE_LABELS[u.role] ?? u.role}</span>
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 실행 버튼 */}
+                <button
+                  onClick={handleSimulate}
+                  disabled={!simReportId || !simTargetStatus || !simEmail || simRunning}
+                  className={`w-full ${BTN_DARK} flex items-center justify-center gap-2 text-[13px]`}
+                >
+                  {simRunning ? (
+                    <><RefreshCw className="h-4 w-4 animate-spin" />시뮬레이션 중...</>
+                  ) : (
+                    <><FlaskConical className="h-4 w-4" />버튼 클릭 시뮬레이션 실행</>
+                  )}
+                </button>
+
+                {/* 결과 */}
+                {simResult && (
+                  <div className={`rounded-xl px-4 py-3 ${simResult.ok ? "bg-emerald-50 border border-emerald-200" : "bg-red-50 border border-red-200"}`}>
+                    <p className={`text-[13px] font-semibold mb-1 ${simResult.ok ? "text-emerald-700" : "text-red-600"}`}>
+                      {simResult.ok ? "✅ 전이 성공" : "⚠️ 전이 실패"}
+                    </p>
+                    <p className={`text-[12px] ${simResult.ok ? "text-emerald-600" : "text-red-500"}`}>
+                      {simResult.message}
+                    </p>
+                    {simResult.ok && (
+                      <p className="text-[11px] text-emerald-500 mt-1">
+                        감사 로그 기록 완료 · 후속 알림 발송 중
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
