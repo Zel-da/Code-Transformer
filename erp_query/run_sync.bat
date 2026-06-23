@@ -9,4 +9,8 @@ REM 확장 문자(자재명/거래처명에 등장)를 못 받아 UnicodeEncodeE
 set PYTHONIOENCODING=utf-8
 echo [%date% %time%] sync start >> "%LOG%"
 "%PY%" "%DIR%\run_all.py" >> "%LOG%" 2>&1
-echo [%date% %time%] sync done (exit %errorlevel%) >> "%LOG%"
+set RC=%errorlevel%
+echo [%date% %time%] sync done (exit %RC%) >> "%LOG%"
+REM Task Scheduler 가 진짜 실패 코드를 보도록 그대로 전파.
+REM (기존엔 echo 가 마지막 명령이라 errorlevel=0 으로 덮였음 → "성공" 거짓 보고)
+exit /b %RC%
