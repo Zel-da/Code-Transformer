@@ -35,6 +35,37 @@ def _show_error(message: str) -> None:
         pass
 
 
+def _is_admin() -> bool:
+    """현재 프로세스가 관리자 권한인지 검사."""
+    try:
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return False
+
+
+def _enforce_admin() -> None:
+    """관리자 아니면 명확한 안내 후 종료.
+
+    UNIERP 가 관리자로 실행되는 환경에서는 Windows UIPI(User Interface
+    Privilege Isolation) 가 비관리자 프로세스의 창 열거·조작을 차단한다.
+    이 상태에서 그냥 진행하면 "창을 못 찾음"·"클릭 무반응" 등 원인 불명 오류로
+    조용히 실패하므로, 진입점에서 미리 걸러 사용자에게 알린다.
+    (`시작.bat` 은 자동으로 UAC 승격하므로 정상 경로에선 걸리지 않는다.)
+    """
+    if _is_admin():
+        return
+    msg = (
+        "관리자 권한으로 실행해야 합니다.\n\n"
+        "UNIERP 가 관리자 권한으로 뜨는 환경에서는 이 프로그램도 관리자여야\n"
+        "창을 조작할 수 있습니다 (Windows UIPI 제약).\n\n"
+        "해결: '시작.bat' 을 우클릭 → '관리자 권한으로 실행'\n"
+        "     또는 만들어진 바로가기를 사용하세요."
+    )
+    _show_error(msg)
+    sys.stderr.write(msg + "\n")
+    sys.exit(2)
+
+
 def _find_free_port(host: str, start_port: int, max_tries: int = 20) -> int:
     """start_port부터 순회하며 사용 가능한 포트를 반환한다."""
     for offset in range(max_tries):
@@ -50,6 +81,7 @@ def _find_free_port(host: str, start_port: int, max_tries: int = 20) -> int:
 
 def main():
     """애플리케이션 메인 함수."""
+    _enforce_admin()
     settings = ConfigLoader.load(get_config_dir() / "settings.json")
 
     log_cfg = settings.get("logging", {})
