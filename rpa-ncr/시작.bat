@@ -9,7 +9,7 @@ REM ===========================================
 net session 1>NUL 2>NUL
 if errorlevel 1 (
     echo.
-    echo 관리자 권한이 필요합니다. UAC 동의창에서 [예] 눌러주세요...
+    echo 관리자 권한이 필요합니다. UAC 승격창에서 [예] 눌러주세요...
     echo.
     powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
     exit /b
@@ -38,22 +38,30 @@ if errorlevel 1 (
 )
 
 REM ===========================================
-REM Step 1: 첫 실행이면 자동 설치
+REM Step 1: 첫 실행이면 자동 설치 (원자성)
+REM   .venv 만 있고 .install_ok 마커가 없으면 이전 pip 실패 잔재 →
+REM   자동 재설치. 마커는 pip 성공 직후에만 생성된다.
 REM ===========================================
-if not exist ".venv\Scripts\python.exe" (
+set NEED_INSTALL=0
+if not exist ".venv\Scripts\python.exe" set NEED_INSTALL=1
+if not exist ".venv\.install_ok" set NEED_INSTALL=1
+
+if "%NEED_INSTALL%"=="1" (
     echo.
     echo =====================================================
-    echo  첫 실행 - 필요한 프로그램을 자동 설치합니다
+    echo  첫 실행 또는 이전 설치 미완료 - 필요한 프로그램을 자동 설치합니다
     echo  인터넷 연결 필요, 약 2~3분 소요
     echo =====================================================
     echo.
 
-    echo [1/3] 가상환경 생성 중...
-    python -m venv .venv
-    if errorlevel 1 (
-        echo [오류] 가상환경 생성 실패
-        pause
-        exit /b 1
+    if not exist ".venv\Scripts\python.exe" (
+        echo [1/3] 가상환경 생성 중...
+        python -m venv .venv
+        if errorlevel 1 (
+            echo [오류] 가상환경 생성 실패
+            pause
+            exit /b 1
+        )
     )
 
     echo.
@@ -67,9 +75,13 @@ if not exist ".venv\Scripts\python.exe" (
         echo.
         echo [오류] 패키지 설치 실패
         echo 인터넷 연결과 Python 3.11 또는 3.12 사용 여부를 확인하세요.
+        echo 마커 파일을 남기지 않으므로 다음 실행에서 재시도합니다.
         pause
         exit /b 1
     )
+
+    REM 성공 마커 - pip 성공 직후에만 생성. 다음 실행에서 설치 스킵의 기준이 됨.
+    echo installed > ".venv\.install_ok"
 
     echo.
     echo =====================================================
@@ -96,7 +108,7 @@ REM ===========================================
 
 if errorlevel 1 (
     echo.
-    echo [오류] 프로그램이 비정상 종료되었습니다.
+    echo [오류] 프로그램이 오류로 종료되었습니다.
     echo logs\ 폴더의 최신 로그 파일을 확인하세요.
     echo.
     pause
