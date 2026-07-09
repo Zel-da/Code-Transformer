@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>RPA 사용 가이드 — NCR → UNIERP 자동 입력</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", "맑은 고딕", sans-serif;
+    max-width: 960px;
+    margin: 40px auto;
+    padding: 0 24px 80px;
+    color: #222;
+    line-height: 1.6;
+  }
+  h1 {
+    font-size: 28px;
+    border-bottom: 3px solid #2c5aa0;
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 32px;
+  }
+  h2 {
+    font-size: 22px;
+    color: #2c5aa0;
+    border-left: 5px solid #2c5aa0;
+    padding-left: 12px;
+    margin-top: 48px;
+  }
+  h3 {
+    font-size: 17px;
+    color: #333;
+    margin-top: 28px;
+    border-bottom: 1px dashed #ddd;
+    padding-bottom: 4px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+    font-size: 14px;
+  }
+  th {
+    background: #f4f7fc;
+    font-weight: 600;
+  }
+  code, pre {
+    font-family: "Consolas", "Cascadia Mono", monospace;
+    font-size: 13px;
+  }
+  code {
+    background: #f4f4f4;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: #c7254e;
+  }
+  pre {
+    background: #2d2d2d;
+    color: #f8f8f2;
+    padding: 14px 18px;
+    border-radius: 6px;
+    overflow-x: auto;
+    line-height: 1.5;
+  }
+  pre code {
+    background: transparent;
+    padding: 0;
+    color: inherit;
+  }
+  .callout {
+    border-left: 4px solid #f0ad4e;
+    background: #fdf6ec;
+    padding: 12px 16px;
+    margin: 16px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .callout.warn {
+    border-color: #d9534f;
+    background: #fdf0ef;
+  }
+  .callout.info {
+    border-color: #5bc0de;
+    background: #eef7fb;
+  }
+  .callout.ok {
+    border-color: #5cb85c;
+    background: #eff8ef;
+  }
+  figure {
+    margin: 20px 0;
+    text-align: center;
+  }
+  figure img {
+    max-width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  figcaption {
+    margin-top: 8px;
+    color: #666;
+    font-size: 13px;
+    font-style: italic;
+  }
+  .step-num {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    background: #d9534f;
+    color: white;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 28px;
+    font-size: 14px;
+    font-weight: bold;
+    margin-right: 10px;
+    vertical-align: middle;
+  }
+  .btn-demo {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    margin: 0 2px;
+    vertical-align: baseline;
+  }
+  .btn-primary { background: #2c5aa0; color: white; }
+  .btn-default { background: #f4f7fc; color: #2c5aa0; border: 1px solid #2c5aa0; }
+  .btn-danger { background: #d9534f; color: white; }
+  .btn-secondary { background: #e9e9e9; color: #333; border: 1px solid #ccc; }
+  ol, ul { padding-left: 22px; }
+  li { margin: 5px 0; }
+  .toc {
+    background: #f7f7f7;
+    padding: 16px 24px;
+    border-radius: 6px;
+    margin: 24px 0 40px;
+  }
+  .toc ul { margin: 0; padding-left: 20px; }
+  .toc li { margin: 4px 0; }
+  .toc a { color: #2c5aa0; text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  hr { border: 0; border-top: 1px solid #ddd; margin: 40px 0; }
+  .keyseq {
+    background: #eee;
+    border: 1px solid #ccc;
+    border-bottom-width: 2px;
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-family: "Consolas", monospace;
+    font-size: 12px;
+    color: #333;
+  }
+  @media print {
+    body { margin: 20px; padding: 0; }
+    pre { background: #f4f4f4; color: #222; border: 1px solid #ccc; }
+    figure { page-break-inside: avoid; }
+    h2 { page-break-before: auto; page-break-after: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<h1>RPA 사용 가이드</h1>
+<div class="subtitle">NCR 부적합 보고 → UNIERP 부적합등록(S) 자동 입력 워커</div>
+
+<div class="toc">
+  <strong>목차</strong>
+  <ul>
+    <li><a href="#start">1. 프로그램 시작</a></li>
+    <li><a href="#dashboard">2. 대시보드 화면 구성</a></li>
+    <li><a href="#workflow">3. 일상 사용 흐름 (4단계)</a></li>
+    <li><a href="#review">4. 검토 워크플로 — 어긋난 항목만 재실행</a></li>
+    <li><a href="#stopcontrol">5. 일시정지·중지</a></li>
+    <li><a href="#troubleshoot">6. 자주 발생하는 상황</a></li>
+    <li><a href="#shutdown">7. 프로그램 종료</a></li>
+  </ul>
+</div>
+
+<!-- ============================================================== -->
+<h2 id="start">1. 프로그램 시작</h2>
+
+<p><strong>바탕화면의 "NCR RPA" 아이콘을 더블클릭</strong>하면 끝.</p>
+<p>(아이콘이 없으면 <code>rpa-ncr</code> 폴더의 <code>시작.bat</code> 파일을 더블클릭. 처음 한 번만
+<code>바탕화면에 바로가기 만들기.bat</code> 을 실행하면 다음부터는 바탕화면에서 바로 켤 수 있습니다.)</p>
+
+<div class="callout info">
+  <strong>첫 실행 시:</strong> 검은 콘솔 창이 뜨면서 "필요한 프로그램을 자동 설치합니다" 메시지가 나옵니다.
+  인터넷이 연결돼 있으면 2~3분 정도 기다리면 자동으로 진행되고, 끝나면 브라우저가 열립니다.<br>
+  <strong>2회차부터는</strong> 설치 단계 없이 몇 초 만에 바로 열립니다.
+</div>
+
+<p>아래와 같은 콘솔이 뜨면 정상:</p>
+<pre><code>==================================================
+  NCR → UNIERP RPA 자동 입력 서버
+  http://127.0.0.1:8010
+
+  ※ 이 창을 닫으면 서버가 종료됩니다
+==================================================</code></pre>
+
+<p>기본 브라우저가 <code>http://127.0.0.1:8010</code> 으로 자동 오픈됩니다.</p>
+
+<div class="callout warn">
+  <strong>주의:</strong> 검은 콘솔 창을 닫으면 서버가 같이 꺼집니다. 작업 중에는 콘솔을 그대로 두세요
+  (최소화는 OK).
+</div>
+
+<!-- ============================================================== -->
+<h2 id="dashboard">2. 대시보드 화면 구성</h2>
+
+<figure>
+  <img src="images/00_dashboard_annotated.png" alt="대시보드 전체 — 번호 표시">
+  <figcaption>대시보드 전체 — 6개 섹션</figcaption>
+</figure>
+
+<table>
+  <thead>
+    <tr><th style="width:60px">번호</th><th style="width:180px">섹션</th><th>역할</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>①</td><td>설정 점검 배너</td><td>필수 설정 누락 시 빨간 경고, 정상이면 ✓ 표시. 설치 직후 한 번만 확인.</td></tr>
+    <tr><td>②</td><td>데이터 소스</td><td>리플릿 API / Neon DB 중 어디서 보고를 받아올지 선택 (보통 <strong>공용 DB</strong>).</td></tr>
+    <tr><td>③</td><td>ERP 설정</td><td>UNIERP 창 제목·실행경로·로그인PW 등. 한 번 맞춰두면 안 건드림.</td></tr>
+    <tr><td>④</td><td>실행</td><td>PENDING 조회 / ERP 창 확인 / 입력 시작·일시정지·중지.</td></tr>
+    <tr><td>⑤</td><td>큐</td><td>현재 처리할 보고 목록과 상태(대기/진행/완료/실패).</td></tr>
+    <tr><td>⑥</td><td>실시간 로그</td><td>RPA가 한 줄씩 무슨 작업을 하는지 라이브 출력.</td></tr>
+  </tbody>
+</table>
+
+<h3>② 데이터 소스</h3>
+<figure>
+  <img src="images/03_section_data_source.png" alt="데이터 소스 섹션">
+</figure>
+<ul>
+  <li><strong>공용 DB (Neon)</strong> 를 선택한 상태가 기본입니다.</li>
+  <li><span class="btn-demo btn-default">연결 테스트</span> 누르면 "DB 연결 OK (Neon)" 메시지가 떠야 정상.</li>
+  <li>실패 시 → <code>PRIVATE/app_db.json</code> 파일이 있는지, 인터넷 연결이 되는지 확인.</li>
+</ul>
+
+<h3>③ ERP 설정</h3>
+<figure>
+  <img src="images/04_section_erp_settings.png" alt="ERP 설정 섹션">
+</figure>
+<table>
+  <thead><tr><th style="width:160px">항목</th><th>값</th></tr></thead>
+  <tbody>
+    <tr><td>창 제목</td><td><code>UNIERP</code> (고정)</td></tr>
+    <tr><td>실행 경로</td><td>직장님 PC의 UNIERP 바로가기 경로 (예: <code>c:/Users/&lt;계정&gt;/OneDrive/Desktop/UNIERP/UNIERP.appref-ms</code>)</td></tr>
+    <tr><td>로그인 비밀번호</td><td>직장님 ERP 비밀번호 (비워두면 본인이 직접 로그인 필요)</td></tr>
+    <tr><td>대상 메뉴</td><td><code>부적합등록(S)(QD211MA1_CKO063)</code> (고정)</td></tr>
+    <tr><td>첫 필드 Tab 수</td><td><code>10</code> (캘리브레이션 완료값)</td></tr>
+    <tr><td>저장 단축키</td><td><code>^s</code> (Ctrl+S)</td></tr>
+    <tr><td>그리드 열</td><td>비워둠 (단일 품목 모드)</td></tr>
+  </tbody>
+</table>
+<p>변경한 뒤 <span class="btn-demo btn-default">ERP 설정 저장</span> 클릭.</p>
+
+<h3>④ 실행 / ⑤ 큐 / ⑥ 실시간 로그</h3>
+<figure>
+  <img src="images/05_section_execution.png" alt="실행 섹션 — 버튼 5개">
+</figure>
+<table>
+  <thead><tr><th style="width:160px">버튼</th><th>동작</th></tr></thead>
+  <tbody>
+    <tr><td><span class="btn-demo btn-default">PENDING 조회</span></td>
+        <td>DB에서 sync_status=PENDING 보고를 받아 ⑤ 큐에 채움.</td></tr>
+    <tr><td><span class="btn-demo btn-default">ERP 창 확인</span></td>
+        <td>UNIERP 창이 떠 있는지 확인. 없으면 자동으로 실행 시도.</td></tr>
+    <tr><td><span class="btn-demo btn-primary">입력 시작</span></td>
+        <td>큐의 보고를 1건씩 UNIERP 폼에 자동 입력. 각 보고 끝나면 검토 패널 표시.</td></tr>
+    <tr><td><span class="btn-demo btn-secondary">일시정지/재개</span></td>
+        <td>다음 키 입력 전 대기. 다시 누르면 재개.</td></tr>
+    <tr><td><span class="btn-demo btn-danger">중지</span></td>
+        <td>즉시 중단. 처리 중이던 보고는 PENDING으로 복원.</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================================================== -->
+<h2 id="workflow">3. 일상 사용 흐름 (4단계)</h2>
+
+<div class="callout info">
+  <strong>요약:</strong>
+  ① UNIERP 켜고 로그인 → ② 부적합등록(S) 폼 직접 한 번 열기 →
+  ③ 대시보드에서 PENDING 조회 → ④ 입력 시작 → 검토 → 완료 확인.
+</div>
+
+<h3><span class="step-num">1</span>UNIERP 준비</h3>
+<ol>
+  <li>UNIERP를 평소대로 실행하고 로그인.</li>
+  <li>메뉴찾기(<span class="keyseq">F3</span>)에서 <code>부적합등록(S)</code> 검색해 폼을 한 번 띄워둡니다.
+    <br><span style="color:#888;font-size:13px">※ 이미 열려있으면 RPA가 중복 탭을 안 열고 그대로 사용합니다.</span></li>
+</ol>
+
+<h3><span class="step-num">2</span>PENDING 조회</h3>
+<ol>
+  <li>대시보드에서 <span class="btn-demo btn-default">PENDING 조회</span> 클릭.</li>
+  <li>큐 테이블에 보고 건수가 채워지면 성공.</li>
+  <li>건수가 <code>0건</code> 이면 현재 처리할 신규 보고가 없다는 뜻 — 그냥 종료해도 됨.</li>
+</ol>
+
+<h3><span class="step-num">3</span>입력 시작</h3>
+<ol>
+  <li><span class="btn-demo btn-default">ERP 창 확인</span> 한 번 눌러서 "UNIERP 메인 창 찾음" 메시지 확인.</li>
+  <li><span class="btn-demo btn-primary">입력 시작</span> 클릭.</li>
+  <li>실시간 로그에 한 줄씩 진행 상황이 흐릅니다 (예: <code>#7 공정: 'A01' 입력 OK</code>).</li>
+  <li><strong>마우스를 건드리지 말고</strong> 끝날 때까지 대기 — 다른 창 클릭하면 자동 중지됩니다.</li>
+</ol>
+
+<div class="callout warn">
+  <strong>RPA 도는 중 금지 행위:</strong> 마우스 클릭, 키보드 입력, 창 전환, 채팅·메일·브라우저 확인.
+  잠깐 자리 비울 시간을 두고 시작하세요. (1건당 약 30~60초 예상)
+</div>
+
+<h3><span class="step-num">4</span>검토 → 완료 확인</h3>
+<p>한 보고의 입력이 끝나면 자동으로 <strong>검토 패널</strong>이 열립니다 (다음 섹션 참고).
+다 맞으면 <span class="btn-demo btn-primary">완료 확인</span> → DB에 COMPLETED 마킹 → 다음 보고로 진행.</p>
+
+<!-- ============================================================== -->
+<h2 id="review">4. 검토 워크플로 — 어긋난 항목만 재실행</h2>
+
+<p>RPA가 17개 필드를 다 채운 뒤 화면이 다음과 같이 바뀝니다:</p>
+
+<table>
+  <thead><tr><th style="width:80px">#</th><th>필드</th><th>값</th><th>방법</th><th>재실행</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>발행팀코드</td><td>SH11610100</td><td>type</td><td><span class="btn-demo btn-default">재실행 #1</span></td></tr>
+    <tr><td>2</td><td>부적합구분</td><td>3</td><td>dropdown</td><td><span class="btn-demo btn-default">재실행 #2</span></td></tr>
+    <tr><td>...</td><td colspan="4">(총 17행)</td></tr>
+  </tbody>
+</table>
+
+<p>위에 다음 두 버튼:</p>
+<ul>
+  <li><span class="btn-demo btn-secondary">처음부터</span> — 17개 필드 전부 다시 (폼 새로 열어서 시작)</li>
+  <li><span class="btn-demo btn-primary">완료 확인</span> — 다 맞다고 판정. 서버에 COMPLETED 통보 후 다음 보고로</li>
+</ul>
+
+<h3>검토 절차</h3>
+<ol>
+  <li><strong>UNIERP 폼을 직접 눈으로 확인.</strong> 17개 필드가 다 제대로 들어갔는지 본다.</li>
+  <li>어긋난 필드가 있으면 → 해당 행의 <span class="btn-demo btn-default">재실행 #N</span> 클릭.
+    <ul>
+      <li>해당 필드 위치만 다시 클릭하고 값 재입력.</li>
+      <li>잘 들어가면 다음 어긋난 항목 찾아 같은 식으로.</li>
+    </ul>
+  </li>
+  <li>전체적으로 위치가 다 어긋났으면 → <span class="btn-demo btn-secondary">처음부터</span> (폼을 닫고 새로 열어 처음부터).</li>
+  <li>다 맞으면 → <span class="btn-demo btn-primary">완료 확인</span>.
+    <br>이때 비로소 서버 DB에 <code>sync_status = COMPLETED</code> 가 기록됩니다.
+    <br><strong>완료 확인을 누르지 않으면 PENDING으로 남아 다음에 또 처리 대상이 됩니다.</strong></li>
+</ol>
+
+<div class="callout info">
+  <strong>왜 이렇게 만들었나?</strong>
+  RPA가 "다 했다"고 자기 판단으로 COMPLETED 마킹하면, 사실은 위치가 어긋나 빈 칸으로 저장돼도
+  서버는 완료된 줄 알게 됩니다. 사람 눈으로 한 번 더 확인하는 안전장치입니다.
+</div>
+
+<!-- ============================================================== -->
+<h2 id="stopcontrol">5. 일시정지·중지</h2>
+
+<table>
+  <thead><tr><th style="width:160px">버튼</th><th>동작</th><th>언제 쓰나</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><span class="btn-demo btn-secondary">일시정지/재개</span></td>
+      <td>현재 키 입력 끝낸 뒤 다음 단계 직전에 대기. 한 번 더 누르면 재개.</td>
+      <td>잠깐 다른 일 처리해야 할 때 (전화·확인 등). 보고 처리 상태는 그대로 유지.</td>
+    </tr>
+    <tr>
+      <td><span class="btn-demo btn-danger">중지</span></td>
+      <td>즉시 중단. 처리 중이던 보고는 <strong>PENDING으로 복원</strong>되어 다음에 다시 처리 가능.</td>
+      <td>뭔가 잘못됐을 때 / 강제로 끊고 싶을 때.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout ok">
+  <strong>자동 중지:</strong> RPA가 도는 중에 다른 창을 클릭하거나 ERP 창이 백그라운드로 가면
+  포커스 보호 기능이 작동해 자동으로 멈춥니다. (의도하지 않은 입력 사고 방지)
+</div>
+
+<!-- ============================================================== -->
+<h2 id="troubleshoot">6. 자주 발생하는 상황</h2>
+
+<h3>상황 1 — "ERP 창을 찾을 수 없습니다"</h3>
+<ul>
+  <li>UNIERP가 켜져 있는지 확인. 없으면 직접 실행 후 다시 시도.</li>
+  <li>Chrome에 "UNIERP" 글자가 있는 탭이 켜져 있으면 혼동될 수 있으나, 프로세스명(Bizentro) 필터로 거른다 → 보통 문제 없음.</li>
+</ul>
+
+<h3>상황 2 — 입력값에 ERP가 모르는 코드라 검색창이 뜬다</h3>
+<p>RPA가 일시정지 상태로 들어갑니다. 사용자가 직접:</p>
+<ol>
+  <li>검색창에서 정확한 값을 선택해 닫기.</li>
+  <li>대시보드의 <span class="btn-demo btn-secondary">일시정지/재개</span> 한 번 더 눌러 재개.</li>
+</ol>
+<p>매번 같은 코드에서 막힌다면 DB의 마스터 동기화 점검 (item_groups, vendors, processes).</p>
+
+<h3>상황 3 — 입력 위치가 1~2 픽셀 어긋남</h3>
+<ul>
+  <li>해상도 차이 때문일 수 있음. 검토 패널에서 해당 필드만 재실행하면 보통 잘 들어감.</li>
+  <li>매번 어긋난다면 본사에서 <code>config/field_mapping.json</code> 의 좌표 재캘리브레이션 필요.</li>
+</ul>
+
+<h3>상황 4 — ERP에 에러창이 뜬다</h3>
+<p>RPA가 자동으로 에러창을 닫고 처리 종료. 어떤 필드에서 났는지 로그에 기록됨.
+같은 보고가 PENDING으로 복원되며, 다음 회차에 재시도되지만 같은 데이터면 또 실패 가능 — 데이터 자체 점검 필요.</p>
+
+<h3>상황 5 — 한 보고만 계속 실패 (FAILED 상태)</h3>
+<p>큐 테이블에 "실패" 표시된 보고. 더블클릭으로 펼쳐서 오류 원인 로그 확인:</p>
+<ul>
+  <li>품목코드가 ERP에 없는 경우 → 본사에 등록 요청.</li>
+  <li>거래처가 valid_flg=N인 경우 → 마스터 데이터 점검.</li>
+  <li>로그 확인 후 직접 ERP에 수기 입력하는 게 빠를 수 있음.</li>
+</ul>
+
+<!-- ============================================================== -->
+<h2 id="shutdown">7. 프로그램 종료</h2>
+
+<ol>
+  <li>현재 진행 중인 보고가 있으면 끝까지 (혹은 <span class="btn-demo btn-danger">중지</span>) 마무리.</li>
+  <li>브라우저 탭은 그냥 닫아도 됨 (UI만 사라짐, 서버는 계속 떠있음).</li>
+  <li>완전히 끄려면 <strong>콘솔(검은 창)</strong>에서 <span class="keyseq">Ctrl</span> + <span class="keyseq">C</span> 또는 콘솔 창 우상단 <strong>X</strong> 버튼.</li>
+</ol>
+
+<hr>
+
+<h2>부록: 매일 운영 체크리스트</h2>
+<table>
+  <thead><tr><th style="width:60px">단계</th><th>할 일</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>UNIERP 켜고 로그인</td></tr>
+    <tr><td>2</td><td>부적합등록(S) 폼 한 번 직접 열어둠</td></tr>
+    <tr><td>3</td><td>바탕화면 <strong>"NCR RPA"</strong> 아이콘 더블클릭 → 브라우저 자동 오픈 확인</td></tr>
+    <tr><td>4</td><td><span class="btn-demo btn-default">PENDING 조회</span> → 큐 채워졌는지 확인</td></tr>
+    <tr><td>5</td><td><span class="btn-demo btn-default">ERP 창 확인</span> → "메인 창 찾음" 확인</td></tr>
+    <tr><td>6</td><td><span class="btn-demo btn-primary">입력 시작</span> → 마우스 안 만짐</td></tr>
+    <tr><td>7</td><td>한 건 끝나면 검토 → <span class="btn-demo btn-primary">완료 확인</span> → 다음 건</td></tr>
+    <tr><td>8</td><td>큐 다 비면 콘솔 닫아 종료</td></tr>
+  </tbody>
+</table>
+
+<div class="subtitle" style="margin-top: 50px; text-align: center; color: #999;">
+  안예준 · CE Botics · 2026<br>
+  문의: 안예준 (rpa-ncr 개발자)
+</div>
+
+</body>
+</html>

@@ -128,15 +128,25 @@ class NCRConnector:
         return self._connected
 
     def launch_and_connect(self) -> bool:
-        """ERP 실행 + 로그인 후 연결한다."""
+        """ERP 실행 + 로그인 후 연결한다.
+
+        우선순위:
+          0) 이미 로그인된 메인 윈도우가 있으면 즉시 사용 (launch/login 모두 스킵)
+          1) 로그인 다이얼로그가 있으면 그것에 로그인 시도
+          2) 둘 다 없으면 launch_path 실행 후 로그인 흐름
+        """
         wc = self._window_controller
+
+        # 0. 이미 떠있는 메인 윈도우 — 가장 빠른 경로
+        if wc.is_main_window_open():
+            self._emit_log("이미 로그인된 UNIERP 메인 윈도우 발견 — launch/login 건너뜀")
+            if wc.connect():
+                self._connected = True
+                return True
+            self._emit_log("연결 시도 실패 — launch 흐름으로 폴백")
+
         launch_path = self._settings.get("launch_path", "")
         login_pw = self._settings.get("login_pw", "")
-
-        if not launch_path:
-            self._emit_log("ERP 실행 경로가 설정되지 않았습니다 (erp.launch_path)")
-            # 이미 떠 있는 창에 연결 시도
-            return self.connect()
 
         self._emit_log("ERP 프로그램 실행 중...")
         if not wc.launch_erp(launch_path, timeout=60):
@@ -149,7 +159,15 @@ class NCRConnector:
             if wc.login(login_pw):
                 self._emit_log("로그인 완료")
             else:
-                self._emit_log("로그인 실패 — 이미 로그인된 상태일 수 있음")
+                self._emit_log("로그인 자동 입력 실패 — 메인 창 직접 탐색 시도")
+
+        # 로그인 결과 무관하게 메인 윈도우 한 번 더 찾아본다
+        if not wc.is_connected():
+            self._emit_log("메인 윈도우 재탐색 중...")
+            if wc.connect():
+                self._emit_log("ERP 메인 윈도우 연결됨")
+            else:
+                self._emit_log("ERP 메인 윈도우 못 찾음 — UNIERP를 직접 로그인 후 [입력 시작] 재시도")
 
         self._connected = wc.is_connected()
         return self._connected
@@ -225,7 +243,11 @@ class NCRConnector:
                 wc.bring_to_front()
             else:
                 self._emit_log(f"메뉴 진입: {target_menu}")
-                wc.navigate_to_menu(target_menu)
+                wc.navigate_to_menu(
+                    target_menu,
+                    menu_input_rel_x=self._settings.get("menu_input_rel_x", 146),
+                    menu_input_rel_y=self._settings.get("menu_input_rel_y", 41),
+                )
                 time.sleep(2)
                 wc.bring_to_front()
 
@@ -280,6 +302,11 @@ class NCRConnector:
                     self._emit_log(f"  {i}. {ev}")
 
             self._emit_log(f"===== 보고 #{report.id} 입력 완료 =====")
+
+            # 다음 보고를 위해 새 빈 폼 열기 (Shift+Insert → Enter)
+            # UNIERP는 저장 후 같은 폼에 입력값이 남아있어서 새 폼을 명시적으로 열어야 함
+            if self._mode == "pywinauto":
+                self._open_new_form()
         finally:
             self._stop_focus_watchdog()
 
@@ -309,6 +336,26 @@ class NCRConnector:
             return
 
         self._emit_log("⚠ 저장 방법 미설정 (erp.save_shortcut 또는 actions.save) — 저장 건너뜀")
+
+    # ------------------------------------------------------------------
+    # 새 폼 열기 (저장 후 다음 보고 입력용)
+    # ------------------------------------------------------------------
+
+    def _open_new_form(self) -> None:
+        """UNIERP 부적합등록 폼에서 저장 후 새 빈 폼을 연다.
+
+        UNIERP는 저장해도 같은 폼에 입력값이 남아있어 신규 입력하려면
+        Shift+Insert (신규) → Enter (확인 다이얼로그) 시퀀스가 필요.
+        """
+        wc = self._window_controller
+        try:
+            self._emit_log("새 폼 열기: Shift+Insert → Enter")
+            wc.send_keys("+{INSERT}")  # pywinauto syntax: + = Shift
+            time.sleep(0.5)
+            wc.send_keys("{ENTER}")
+            time.sleep(1.0)
+        except Exception as e:
+            self._emit_log(f"⚠ 새 폼 열기 실패: {e}")
 
     # ------------------------------------------------------------------
     # 스텝 실행

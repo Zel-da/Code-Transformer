@@ -13,12 +13,15 @@
         "_comment": "비워두면 env DATABASE_URL → PRIVATE/app_db.json[database_url] 순으로 탐색 (erp_query 패턴과 동일)"
     },
     "erp": {
-        "window_title": "UNIERP",
+        "window_title": "UNIERP - SOOSAN CEBOTICS",
         "process_name": "Bizentro",
         "launch_path": "c:/Users/SOOSAN/OneDrive/Desktop/UNIERP/UNIERP.appref-ms",
         "login_id": "",
         "login_pw": "soosan5008!",
         "target_menu": "부적합등록(S)(QD211MA1_CKO063)",
+        "menu_input_rel_x": 132,
+        "menu_input_rel_y": 46,
+        "_menu_input_note": "ERP 상단 메뉴찾기 입력칸의 창 기준 상대좌표. ERP가 보조 모니터 left=1920에 최대화돼 있을 때 절대좌표 (2052, 46) ↔ 창 상대 (132, 46).",
         "first_field_tabs": 10,
         "save_shortcut": "^s",
         "grid_columns": "",

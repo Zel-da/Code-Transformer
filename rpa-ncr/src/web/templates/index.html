@@ -44,6 +44,7 @@
             <div class="row">
                 <button id="btnFetch" class="btn">PENDING 조회</button>
                 <button id="btnErpTest" class="btn btn-secondary">ERP 창 확인</button>
+                <button id="btnCalib" class="btn btn-secondary">필드 좌표 편집</button>
             </div>
             <div class="row">
                 <button id="btnStart" class="btn btn-primary">입력 시작</button>
@@ -53,15 +54,51 @@
             <div id="runStatus" class="result"></div>
         </section>
 
-        <!-- 검토 패널: input_report 끝나면 활성화 -->
-        <section id="reviewPanel" class="card hidden">
-            <h2>검토 중 <span id="reviewReportLabel" class="muted"></span></h2>
-            <p class="muted" style="margin:0 0 10px">ERP에서 결과 확인 후 → 잘못된 필드만 클릭(ERP 폼에서) → 아래 [재실행 #N] 클릭. 다 맞으면 [완료 확인].</p>
+        <!-- 캘리브레이션 패널: [필드 좌표 편집] 클릭 시 활성화 -->
+        <section id="calibPanel" class="card hidden">
+            <h2>필드 좌표 편집 <span class="muted" style="font-size:13px">— 1920×1080 기준, 창 크기에 비례 변환</span></h2>
+            <p class="muted" style="margin:0 0 10px">
+                각 필드의 X·Y 좌표(박스 중앙)를 ERP 폼에 맞춰 조정 후 [좌표 저장]. 이 PC의 <code>config/field_mapping.json</code>에 저장됩니다.
+            </p>
             <div class="row">
-                <button id="btnRedoAll" class="btn btn-secondary">처음부터</button>
-                <button id="btnConfirm" class="btn btn-primary">완료 확인</button>
+                <button id="btnCalibSave" class="btn btn-primary">좌표 저장</button>
+                <button id="btnCalibReload" class="btn btn-secondary">다시 불러오기</button>
+                <button id="btnCalibClose" class="btn">닫기</button>
+            </div>
+            <div id="calibResult" class="result"></div>
+            <table class="queue">
+                <thead>
+                    <tr>
+                        <th style="width:40px">#</th>
+                        <th>필드 라벨</th>
+                        <th style="width:90px">ref_x</th>
+                        <th style="width:90px">ref_y</th>
+                        <th style="width:90px">method</th>
+                        <th>값/키</th>
+                    </tr>
+                </thead>
+                <tbody id="calibBody"></tbody>
+            </table>
+        </section>
+
+        <!-- 배치 검토 패널: 모든 보고 입력+저장 후 활성화. 1 보고 = 1 페이지 -->
+        <section id="reviewPanel" class="card hidden">
+            <h2>일괄 검토 — <span id="reviewReportLabel"></span></h2>
+            <p class="muted" style="margin:0 0 10px">
+                전체 보고 입력+저장 완료. 좌우 버튼으로 보고를 넘기며 ERP 결과 확인 → 보고별 [완료 확인] (또는 한꺼번에 [모두 확인]).
+                잘못된 필드는 [재실행 #N], 보고 전체 재입력은 [처음부터].
+            </p>
+            <div class="row">
+                <button id="btnRedoAll" class="btn btn-secondary">처음부터 (현재 보고)</button>
+                <button id="btnConfirm" class="btn btn-primary">이 보고 완료 확인</button>
+                <button id="btnConfirmAll" class="btn btn-primary" style="background:#5cb85c">모두 확인</button>
             </div>
             <div id="reviewResult" class="result"></div>
+            <div class="row" style="align-items:center; gap:10px; margin-top:8px">
+                <button id="btnReviewPrev" class="btn btn-secondary">◀ 이전 보고</button>
+                <span id="reviewPager" class="muted" style="min-width:200px; text-align:center">—</span>
+                <button id="btnReviewNext" class="btn btn-secondary">다음 보고 ▶</button>
+            </div>
             <table class="queue">
                 <thead><tr><th>#</th><th>필드</th><th>값</th><th>방법</th><th>재실행</th></tr></thead>
                 <tbody id="reviewSteps"></tbody>

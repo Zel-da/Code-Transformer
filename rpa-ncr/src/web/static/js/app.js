@@ -99,22 +99,50 @@ function handleErp(d) {
     }
 }
 
-// ── 검토 패널 ──
+// ── 배치 검토 패널 (1 보고 = 1 페이지) ──
+let _reviewState = { reports: [], page: 0 };
+
 function showReviewPanel(d) {
     const panel = $("reviewPanel");
     panel.classList.remove("hidden");
-    $("reviewReportLabel").textContent = `(보고 #${d.report_id})`;
     $("reviewResult").textContent = "";
+    // 새 페이로드: d.reports = [{queue_index, report_id, steps, status}, ...]
+    // 옛 호환: 단일 d.steps + d.report_id면 1개짜리 배열로 감쌈
+    if (Array.isArray(d.reports)) {
+        _reviewState = { reports: d.reports, page: 0 };
+    } else if (d.steps) {
+        _reviewState = { reports: [{ report_id: d.report_id, steps: d.steps, status: "pending" }], page: 0 };
+    } else {
+        _reviewState = { reports: [], page: 0 };
+    }
+    renderReviewPage();
+}
+
+function renderReviewPage() {
+    const { reports, page } = _reviewState;
+    const total = reports.length;
+    if (total === 0) { hideReviewPanel(); return; }
+    const cur = Math.max(0, Math.min(page, total - 1));
+    _reviewState.page = cur;
+    const r = reports[cur];
+
+    // 헤더 — 보고 번호 + 상태
+    const statusBadge = r.status === "confirmed"
+        ? '<span style="color:#5cb85c;font-weight:bold">✓ 확인됨</span>'
+        : '<span style="color:#f0ad4e">대기 중</span>';
+    $("reviewReportLabel").innerHTML = `보고 #${r.report_id} — ${statusBadge}`;
+
+    // 17 필드 테이블
     const tbody = $("reviewSteps");
     tbody.innerHTML = "";
-    d.steps.forEach((s) => {
+    (r.steps || []).forEach((s) => {
         const tr = document.createElement("tr");
         const valDisplay = s.value === "" || s.value === null ? "—" : s.value;
         const isSkip = s.method === "skip" || s.skippable;
         tr.innerHTML =
-            `<td>${s.idx + 1}</td><td>${s.label}</td>` +
-            `<td><code>${valDisplay}</code></td>` +
-            `<td class="muted">${s.method}</td>` +
+            `<td>${s.idx + 1}</td><td>${escapeHtml(s.label)}</td>` +
+            `<td><code>${escapeHtml(String(valDisplay))}</code></td>` +
+            `<td class="muted">${escapeHtml(s.method)}</td>` +
             `<td>${isSkip
                 ? '<span class="muted">(SKIP)</span>'
                 : `<button class="btn btn-secondary" data-redo="${s.idx}">재실행 #${s.idx + 1}</button>`}</td>`;
@@ -124,15 +152,35 @@ function showReviewPanel(d) {
         btn.onclick = async () => {
             const idx = parseInt(btn.dataset.redo, 10);
             try {
-                const r = await api("POST", "/api/erp/review/redo-step", { step_index: idx });
-                setResult("reviewResult", r.message, true);
+                const resp = await api("POST", "/api/erp/review/redo-step",
+                    { step_index: idx, report_id: r.report_id });
+                setResult("reviewResult", resp.message, true);
             } catch (e) { setResult("reviewResult", e.message, false); }
         };
     });
+
+    // pager
+    const confirmedCount = reports.filter(x => x.status === "confirmed").length;
+    const pager = $("reviewPager");
+    if (pager) {
+        pager.textContent = `보고 ${cur + 1} / ${total}  (확인됨 ${confirmedCount}/${total})`;
+    }
+    const btnPrev = $("btnReviewPrev");
+    const btnNext = $("btnReviewNext");
+    if (btnPrev) btnPrev.disabled = cur === 0;
+    if (btnNext) btnNext.disabled = cur >= total - 1;
+
+    // 완료 확인 / 모두 확인 버튼 상태
+    const btnConfirm = $("btnConfirm");
+    if (btnConfirm) {
+        btnConfirm.disabled = r.status === "confirmed";
+        btnConfirm.textContent = r.status === "confirmed" ? "이미 확인됨" : "이 보고 완료 확인";
+    }
 }
 
 function hideReviewPanel() {
     $("reviewPanel").classList.add("hidden");
+    _reviewState = { reports: [], page: 0 };
 }
 
 // ── 소스 ──
@@ -209,6 +257,27 @@ function bind() {
             logLine(d.connected ? `✓ ERP 창 발견: ${d.window_title}` : `✗ ${d.error}`, d.connected ? null : "err");
         } catch (e) { logLine(e.message, "err"); }
     };
+    $("btnCalib").onclick = () => showCalibPanel();
+    $("btnCalibClose").onclick = () => $("calibPanel").classList.add("hidden");
+    $("btnCalibReload").onclick = () => loadCalib();
+    $("btnCalibSave").onclick = async () => {
+        const rows = document.querySelectorAll("#calibBody tr");
+        const fields = [];
+        rows.forEach(tr => {
+            fields.push({
+                label: tr.dataset.label,
+                ref_x: parseInt(tr.querySelector("input.ref-x").value, 10),
+                ref_y: parseInt(tr.querySelector("input.ref-y").value, 10),
+            });
+        });
+        try {
+            const d = await api("PUT", "/api/field-mapping", { fields });
+            setResult("calibResult", d.message, true);
+            logLine(`✓ ${d.message}`);
+        } catch (e) {
+            setResult("calibResult", e.message, false);
+        }
+    };
     $("btnStart").onclick = async () => {
         try { const d = await api("POST", "/api/erp/start", { mode: "pywinauto" }); setResult("runStatus", d.message, true); }
         catch (e) { setResult("runStatus", e.message, false); }
@@ -222,16 +291,82 @@ function bind() {
         catch (e) { setResult("runStatus", e.message, false); }
     };
     $("btnRedoAll").onclick = async () => {
-        try { const d = await api("POST", "/api/erp/review/redo-all"); setResult("reviewResult", d.message, true); }
+        const r = _reviewState.reports[_reviewState.page];
+        if (!r) return;
+        try { const d = await api("POST", "/api/erp/review/redo-all", { report_id: r.report_id }); setResult("reviewResult", d.message, true); }
         catch (e) { setResult("reviewResult", e.message, false); }
     };
     $("btnConfirm").onclick = async () => {
+        const r = _reviewState.reports[_reviewState.page];
+        if (!r) return;
         try {
-            const d = await api("POST", "/api/erp/review/confirm");
+            const d = await api("POST", "/api/erp/review/confirm", { report_id: r.report_id });
             setResult("reviewResult", d.message, true);
+            r.status = "confirmed";
+            // 다음 미확인 페이지로 자동 이동
+            const next = _reviewState.reports.findIndex((x, i) => i > _reviewState.page && x.status !== "confirmed");
+            if (next >= 0) _reviewState.page = next;
+            renderReviewPage();
+        } catch (e) { setResult("reviewResult", e.message, false); }
+    };
+    const btnConfirmAll = $("btnConfirmAll");
+    if (btnConfirmAll) btnConfirmAll.onclick = async () => {
+        if (!confirm(`${_reviewState.reports.length}건 모두 완료로 표시하시겠습니까?`)) return;
+        try {
+            const d = await api("POST", "/api/erp/review/confirm", { report_id: null });
+            setResult("reviewResult", d.message, true);
+            _reviewState.reports.forEach(x => x.status = "confirmed");
             hideReviewPanel();
         } catch (e) { setResult("reviewResult", e.message, false); }
     };
+    // 검토 페이지 이동
+    const btnPrev = $("btnReviewPrev");
+    const btnNext = $("btnReviewNext");
+    if (btnPrev) btnPrev.onclick = () => { _reviewState.page = Math.max(0, _reviewState.page - 1); renderReviewPage(); };
+    if (btnNext) btnNext.onclick = () => { _reviewState.page = _reviewState.page + 1; renderReviewPage(); };
+}
+
+// ── 캘리브레이션 패널 ──
+
+async function showCalibPanel() {
+    $("calibPanel").classList.remove("hidden");
+    await loadCalib();
+    $("calibPanel").scrollIntoView({ behavior: "smooth" });
+}
+
+async function loadCalib() {
+    setResult("calibResult", "불러오는 중...", true);
+    try {
+        const d = await api("GET", "/api/field-mapping");
+        const tbody = $("calibBody");
+        tbody.innerHTML = "";
+        (d.fields || []).forEach(f => {
+            const tr = document.createElement("tr");
+            tr.dataset.label = f.label;
+            const valueDisplay = f.literal ? `literal: "${f.literal}"`
+                                : f.ncr_key ? `key: ${f.ncr_key}`
+                                : "—";
+            tr.innerHTML = `
+                <td>${f.index}</td>
+                <td>${escapeHtml(f.label)}</td>
+                <td><input class="ref-x" type="number" value="${f.ref_x ?? ''}" style="width:80px"></td>
+                <td><input class="ref-y" type="number" value="${f.ref_y ?? ''}" style="width:80px"></td>
+                <td><span class="muted">${escapeHtml(f.method)}</span></td>
+                <td><span class="muted">${escapeHtml(valueDisplay)}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+        const cal = d.calibration || {};
+        const ref = cal.ref_resolution ? cal.ref_resolution.join("x") : "1920x1080";
+        setResult("calibResult", `${d.fields.length}개 필드 로드됨 (ref: ${ref})`, true);
+    } catch (e) {
+        setResult("calibResult", e.message, false);
+    }
+}
+
+function escapeHtml(s) {
+    if (s === null || s === undefined) return "";
+    return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 
 // 새로고침 후 검토 중이었으면 복원

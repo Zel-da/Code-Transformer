@@ -46,7 +46,7 @@ _CORE_SELECT_PARTS: tuple[str, ...] = (
     'r.vendor_cd        AS "vendorCd"',
     'r.vendor_nm        AS "vendorNm"',
     'ic.name            AS "itemName"',  # item_codes 마스터에서 늘 따올 수 있음
-    'ig.group_cd        AS "itemGroupCd"',  # 품목그룹 코드 (예: CL411) — UNIERP 폼 입력용
+    # itemGroupCd(ig.group_cd)는 item_groups 테이블 존재 여부에 따라 동적으로 추가
 )
 
 # 동적으로 존재 여부를 확인하는 선택 컬럼 (snake_case → camelCase 별칭).
@@ -60,14 +60,12 @@ _OPTIONAL_NON_CONFORMITY_COLS: tuple[tuple[str, str], ...] = (
     ("ncr_number",         "ncrNumber"),
 )
 
-# 보고서 → 품목 마스터 → 품목그룹 마스터를 LEFT JOIN.
-# RPA가 부적합등록 폼의 "품목그룹" 칸에 group_cd(예: CL411)를 박을 수 있도록
-# ic.category(=group_nm)로 item_groups에서 group_cd를 끌어온다.
-_FROM = (
+# 항상 포함되는 기본 FROM 절. item_groups는 존재 여부 확인 후 동적으로 JOIN 추가.
+_FROM_BASE = (
     "non_conformity_reports r "
-    "LEFT JOIN item_codes ic ON ic.code = r.item_code "
-    "LEFT JOIN item_groups ig ON ig.group_nm = ic.category"
+    "LEFT JOIN item_codes ic ON ic.code = r.item_code"
 )
+_FROM_ITEM_GROUPS_JOIN = " LEFT JOIN item_groups ig ON ig.group_nm = ic.category"
 
 
 def _resolve_database_url(cfg: dict[str, Any]) -> str:
@@ -98,7 +96,8 @@ def _resolve_database_url(cfg: dict[str, Any]) -> str:
 class DbSource(DataSource):
     def __init__(self, cfg: dict[str, Any]):
         self._url = _resolve_database_url(cfg)
-        self._select_clause: str | None = None  # 첫 조회에서 정보스키마 보고 캐시
+        # 첫 조회에서 정보스키마 보고 (select_clause, from_clause) 튜플 캐시
+        self._query_parts: tuple[str, str] | None = None
         if not self._url:
             logger.warning(
                 "DB URL 미설정 — settings.db.database_url / env DATABASE_URL / "
@@ -111,42 +110,62 @@ class DbSource(DataSource):
             raise RuntimeError("DB URL이 설정되지 않았습니다.")
         return psycopg2.connect(self._url)
 
-    def _get_select_clause(self, cur) -> str:
-        """non_conformity_reports의 컬럼 존재 여부를 정보스키마로 확인해 SELECT 절을 만든다.
+    def _get_query_parts(self, cur) -> tuple[str, str]:
+        """(SELECT 절, FROM 절) 튜플을 정보스키마 기반으로 동적 빌드해 캐시.
 
-        - 핵심 컬럼은 항상 포함
-        - itemGroup은 r.item_group 존재 시 COALESCE(r.item_group, ic.category), 아니면 ic.category
-        - 신규 컬럼들(remarks/shipmentDateFrom·To/managerCd·Nm/ncrNumber)은 존재할 때만 포함
+        - non_conformity_reports의 선택적 컬럼들 존재 여부 확인
+        - item_groups 테이블 존재 여부 확인 → 없으면 JOIN 생략 + itemGroupCd 제외
         한 번 빌드 후 인스턴스 변수에 캐시.
         """
-        if self._select_clause:
-            return self._select_clause
+        if self._query_parts:
+            return self._query_parts
 
+        # non_conformity_reports 컬럼 존재 여부
         cur.execute(
             "SELECT column_name FROM information_schema.columns "
             "WHERE table_name='non_conformity_reports'"
         )
-        # RealDictCursor라 각 row는 dict이므로 column_name 키로 추출
-        existing = {(r["column_name"] if isinstance(r, dict) else r[0]) for r in cur.fetchall()}
+        existing_cols = {(r["column_name"] if isinstance(r, dict) else r[0]) for r in cur.fetchall()}
+
+        # item_groups 테이블 존재 여부 (없으면 JOIN/itemGroupCd 생략)
+        cur.execute(
+            "SELECT 1 FROM information_schema.tables WHERE table_name='item_groups'"
+        )
+        has_item_groups = cur.fetchone() is not None
 
         parts = list(_CORE_SELECT_PARTS)
 
         # itemGroup: 직접 컬럼 우선 + JOIN fallback
-        if "item_group" in existing:
+        if "item_group" in existing_cols:
             parts.append('COALESCE(r.item_group, ic.category) AS "itemGroup"')
         else:
             parts.append('ic.category AS "itemGroup"')
 
+        # itemGroupCd: item_groups 테이블이 있을 때만
+        if has_item_groups:
+            parts.append('ig.group_cd AS "itemGroupCd"')
+        else:
+            logger.warning(
+                "item_groups 테이블이 없습니다 — RPA #9 품목그룹 필드는 비워집니다. "
+                "ERP에서 sync_item_groups.py로 동기화하세요."
+            )
+
         # 신규 컬럼: 존재할 때만 SELECT (Replit 푸시 전후 모두 안전)
         for snake, camel in _OPTIONAL_NON_CONFORMITY_COLS:
-            if snake in existing:
+            if snake in existing_cols:
                 parts.append(f'r.{snake} AS "{camel}"')
 
-        self._select_clause = ",\n    ".join(parts)
-        logger.info("DbSource SELECT 캐시 구성: %d 컬럼 (신규 %d개 감지)",
-                    len(parts),
-                    sum(1 for s, _ in _OPTIONAL_NON_CONFORMITY_COLS if s in existing))
-        return self._select_clause
+        select_clause = ",\n    ".join(parts)
+        from_clause = _FROM_BASE + (_FROM_ITEM_GROUPS_JOIN if has_item_groups else "")
+
+        self._query_parts = (select_clause, from_clause)
+        logger.info(
+            "DbSource 쿼리 캐시: %d 컬럼 (신규 %d개, item_groups=%s)",
+            len(parts),
+            sum(1 for s, _ in _OPTIONAL_NON_CONFORMITY_COLS if s in existing_cols),
+            "있음" if has_item_groups else "없음",
+        )
+        return self._query_parts
 
     # ------------------------------------------------------------------
     # 조회
@@ -156,9 +175,9 @@ class DbSource(DataSource):
         from psycopg2.extras import RealDictCursor
         with self._connect() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                select_clause = self._get_select_clause(cur)
+                select_clause, from_clause = self._get_query_parts(cur)
                 sql = (
-                    f"SELECT {select_clause} FROM {_FROM} "
+                    f"SELECT {select_clause} FROM {from_clause} "
                     f"WHERE r.sync_status = %s ORDER BY r.created_at"
                 )
                 cur.execute(sql, (ReportStatus.PENDING.value,))
@@ -171,8 +190,8 @@ class DbSource(DataSource):
         from psycopg2.extras import RealDictCursor
         with self._connect() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                select_clause = self._get_select_clause(cur)
-                sql = f"SELECT {select_clause} FROM {_FROM} WHERE r.id = %s"
+                select_clause, from_clause = self._get_query_parts(cur)
+                sql = f"SELECT {select_clause} FROM {from_clause} WHERE r.id = %s"
                 cur.execute(sql, (report_id,))
                 row = cur.fetchone()
         if not row:

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>RPA 설치 가이드 — 백승기 직장님 PC</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", "Malgun Gothic", "맑은 고딕", sans-serif;
+    max-width: 880px;
+    margin: 40px auto;
+    padding: 0 24px 60px;
+    color: #222;
+    line-height: 1.6;
+  }
+  h1 {
+    font-size: 28px;
+    border-bottom: 3px solid #2c5aa0;
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 32px;
+  }
+  h2 {
+    font-size: 22px;
+    color: #2c5aa0;
+    border-left: 5px solid #2c5aa0;
+    padding-left: 12px;
+    margin-top: 40px;
+  }
+  h3 {
+    font-size: 17px;
+    color: #333;
+    margin-top: 24px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: #f4f7fc;
+    font-weight: 600;
+  }
+  td:first-child { text-align: center; width: 40px; }
+  code, pre {
+    font-family: "Consolas", "Cascadia Mono", monospace;
+    font-size: 13px;
+  }
+  code {
+    background: #f4f4f4;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: #c7254e;
+  }
+  pre {
+    background: #2d2d2d;
+    color: #f8f8f2;
+    padding: 14px 18px;
+    border-radius: 6px;
+    overflow-x: auto;
+    line-height: 1.5;
+  }
+  pre code {
+    background: transparent;
+    padding: 0;
+    color: inherit;
+  }
+  .callout {
+    border-left: 4px solid #f0ad4e;
+    background: #fdf6ec;
+    padding: 12px 16px;
+    margin: 16px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .callout.warn {
+    border-color: #d9534f;
+    background: #fdf0ef;
+  }
+  .callout.info {
+    border-color: #5bc0de;
+    background: #eef7fb;
+  }
+  .checklist {
+    list-style: none;
+    padding-left: 0;
+  }
+  .checklist li {
+    padding: 6px 0;
+    padding-left: 28px;
+    position: relative;
+  }
+  .checklist li::before {
+    content: "☐";
+    position: absolute;
+    left: 4px;
+    top: 5px;
+    font-size: 18px;
+    color: #2c5aa0;
+  }
+  ol li, ul li { margin: 6px 0; }
+  .step-num {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    background: #2c5aa0;
+    color: white;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 24px;
+    font-size: 13px;
+    font-weight: bold;
+    margin-right: 8px;
+  }
+  a { color: #2c5aa0; word-break: break-all; }
+  hr { border: 0; border-top: 1px solid #ddd; margin: 32px 0; }
+  .label-required {
+    display: inline-block;
+    background: #d9534f;
+    color: white;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  @media print {
+    body { margin: 20px; padding: 0; }
+    pre { background: #f4f4f4; color: #222; border: 1px solid #ccc; }
+  }
+</style>
+</head>
+<body>
+
+<h1>RPA 설치 가이드</h1>
+<div class="subtitle">NCR(부적합 보고) → UNIERP 자동 입력 워커 — 백승기 직장님 PC 설치용</div>
+
+<h2>A. 설치할 프로그램</h2>
+<p>아래 순서대로 설치합니다.</p>
+<table>
+  <thead>
+    <tr><th>#</th><th>프로그램</th><th>용도</th><th>다운로드</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td><strong>Git for Windows</strong></td>
+      <td>레포 클론 + 업데이트</td>
+      <td><a href="https://git-scm.com/download/win">git-scm.com/download/win</a></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><strong>Python 3.11 또는 3.12</strong><span class="label-required">필수</span></td>
+      <td>RPA 실행 환경</td>
+      <td>
+        <a href="https://www.python.org/downloads/windows/">python.org/downloads/windows</a><br>
+        설치 시 <strong>✅ "Add Python to PATH"</strong> 체크 필수
+      </td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><strong>UNIERP</strong></td>
+      <td>자동 입력 대상 (이미 설치돼 있을 것)</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>VS Code <span style="color:#888;font-size:12px;">(선택)</span></td>
+      <td>설정 파일 편집·로그 확인 편함</td>
+      <td><a href="https://code.visualstudio.com/">code.visualstudio.com</a></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <strong>주의:</strong> Python <strong>3.13</strong> 버전은 <code>psycopg2-binary</code> 휠이 아직 안 올라와 설치 실패할 수 있습니다.
+  반드시 <strong>3.11 또는 3.12</strong> 사용하세요.
+</div>
+
+<hr>
+
+<h2>B. 설치 절차 (3단계 — 명령어 입력 없음)</h2>
+
+<h3><span class="step-num">1</span>ZIP 파일 풀기</h3>
+<p>USB로 받은 <code>rpa-ncr_for_install.zip</code> 을 원하는 위치에 압축 해제. 권장 위치:</p>
+<pre><code>C:\Users\&lt;직장님계정&gt;\Documents\rpa-ncr\</code></pre>
+
+<h3><span class="step-num">2</span>DB 접속정보 파일 복사 (USB에서)</h3>
+<p>USB에 들어있는 <code>app_db.json</code> 파일을 다음 경로에 복사:</p>
+<pre><code>rpa-ncr\PRIVATE\app_db.json</code></pre>
+<div class="callout warn">
+  <strong>보안:</strong> <code>app_db.json</code> 은 <strong>USB로 직접 복사</strong>만 하세요.
+  메일·메신저·클라우드 업로드 금지.
+</div>
+
+<h3><span class="step-num">3</span>시작.bat 더블클릭</h3>
+<p>압축 푼 폴더에 <code>시작.bat</code> 파일을 <strong>더블클릭</strong>하면 끝.</p>
+<div class="callout info">
+  <strong>첫 실행 시 자동으로 처리하는 것:</strong>
+  <ol style="margin: 6px 0 0">
+    <li>Python 설치 여부 검사</li>
+    <li>가상환경 자동 생성 (<code>.venv</code> 폴더)</li>
+    <li>필요한 패키지 11개 자동 설치 (인터넷 필요, 약 2~3분)</li>
+    <li>설치 완료 시 자동으로 웹 대시보드 실행</li>
+  </ol>
+  <strong>2회차부터는</strong> 설치 단계를 건너뛰고 바로 실행됩니다 (몇 초 내).
+</div>
+
+<h3 style="margin-top:24px">(선택) 바탕화면 바로가기 만들기</h3>
+<p>매번 폴더 들어가기 귀찮으면 <code>바탕화면에 바로가기 만들기.bat</code> 을 한 번 더블클릭 →
+  바탕화면에 <strong>"NCR RPA"</strong> 아이콘 생성. 이후로는 바탕화면 아이콘만 클릭하면 됩니다.</p>
+
+<h3 style="margin-top:24px">ERP 환경값 조정 (선택)</h3>
+<p>직장님 PC의 UNIERP 경로·비밀번호가 다르면 대시보드의 <strong>"ERP 설정"</strong> 섹션에서 바로 수정 가능.
+직접 파일을 편집하려면 <code>config\settings.json</code>:</p>
+<table>
+  <thead>
+    <tr><th style="width:auto">키</th><th>설명</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>erp.launch_path</code></td>
+      <td>직장님 PC의 UNIERP 바로가기 실제 경로<br>
+        예: <code>C:/Users/&lt;계정&gt;/OneDrive/Desktop/UNIERP/UNIERP.appref-ms</code></td>
+    </tr>
+    <tr>
+      <td><code>erp.login_pw</code></td>
+      <td>직장님 ERP 비밀번호 (비워두면 본인이 직접 로그인)</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>C. 첫 실행 + 캘리브레이션</h2>
+
+<h3><span class="step-num">1</span>프로그램 실행</h3>
+<p><code>시작.bat</code> 더블클릭. 첫 실행이면 자동 설치 진행 후 브라우저가 <code>http://127.0.0.1:8010</code> 으로 자동 오픈됩니다.</p>
+
+<h3><span class="step-num">2</span>캘리브레이션 <span style="color:#d9534f">★중요</span></h3>
+<div class="callout info">
+  <strong>왜 필요?</strong>
+  field_mapping.json의 좌표는 본인 PC(2576×1408) 기준으로 잡혀 있고,
+  창 크기에 맞춰 자동 비례 변환되지만 — 직장님 PC 해상도가 다르면 첫 1건은 반드시 사람이 지켜보면서 확인해야 합니다.
+</div>
+<ol>
+  <li>UNIERP 로그인 → <strong>부적합등록(S)</strong> 폼을 한 번 직접 열어둔다</li>
+  <li>대시보드에서 <strong>"PENDING 조회"</strong> → 1건만 <strong>"입력 시작"</strong></li>
+  <li>17개 필드 들어가는 위치가 어긋나면 → <code>field_mapping.json</code>의 <code>ref_x/ref_y</code> 미세 조정</li>
+  <li>대시보드 <strong>검토 패널</strong>에서 어긋난 항목만 <strong>"재실행"</strong> → 다 맞으면 <strong>"완료 확인"</strong> 클릭해서 서버에 완료 통보</li>
+</ol>
+
+<h3><span class="step-num">3</span>정상 동작 확인되면 일상 운영</h3>
+<ul>
+  <li><strong>수동 일괄</strong>: 대시보드 "PENDING 조회" → "입력 시작"</li>
+  <li><strong>자동 폴링</strong>: <code>python run_worker.py --poll</code> (주기적으로 PENDING 자동 처리)</li>
+</ul>
+
+<hr>
+
+<h2>D. 가져갈 것 체크리스트</h2>
+<ul class="checklist">
+  <li><strong>USB</strong> — <code>PRIVATE/app_db.json</code> 복사용</li>
+  <li>본인 <strong>노트북</strong> — 직장님 PC에서 인터넷 안 될 때 venv 통째로 복사할 수 있게</li>
+  <li>직장님 <strong>ERP 계정·비밀번호</strong> 미리 확인</li>
+  <li>직장님 PC 해상도 미리 확인 (FHD/QHD/4K?)</li>
+</ul>
+
+<h2>E. 자주 발생할 문제</h2>
+<table>
+  <thead>
+    <tr><th style="width:35%">증상</th><th>원인 / 조치</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>psycopg2-binary</code> 설치 실패</td>
+      <td>Python 3.13 사용 중. → Python 3.11 또는 3.12 재설치</td>
+    </tr>
+    <tr>
+      <td>입력 위치가 1~2 필드 어긋남</td>
+      <td>해상도 차이. <code>field_mapping.json</code> <code>ref_x/ref_y</code> 미세 조정</td>
+    </tr>
+    <tr>
+      <td>입력 위치가 완전히 다른 곳</td>
+      <td>UNIERP 창이 최대화 안 됨 / 다른 폼이 떠 있음. 부적합등록(S) 폼을 먼저 띄울 것</td>
+    </tr>
+    <tr>
+      <td>"부적합등록(S)" 메뉴 안 보임</td>
+      <td>직장님 ERP 계정에 메뉴 권한 없음. IT/관리자에게 권한 요청</td>
+    </tr>
+    <tr>
+      <td>"DB 연결 실패"</td>
+      <td><code>PRIVATE/app_db.json</code> 파일 누락/오타. 경로·JSON 형식 확인</td>
+    </tr>
+    <tr>
+      <td>다른 창 클릭하면 즉시 멈춤</td>
+      <td>정상 동작 (포커스 이탈 보호). RPA 도는 동안 다른 작업 자제</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>F. 업데이트 (나중에 코드 갱신 시)</h2>
+<pre><code>cd C:\Users\&lt;직장님계정&gt;\Documents\Code-Transformer
+git pull
+cd rpa-ncr
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe main.py</code></pre>
+
+<div class="subtitle" style="margin-top: 40px; text-align: center; color: #999;">
+  안예준 · CE Botics · 2026
+</div>
+
+</body>
+</html>

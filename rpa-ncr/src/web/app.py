@@ -38,6 +38,8 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
 
     app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
     templates = Jinja2Templates(directory=str(WEB_DIR / "templates"))
+    # Python 3.13 + 일부 Jinja2 빌드의 LRUCache 키 해싱 충돌 회피 — 캐시 비활성화
+    templates.env.cache = None
 
     def _save_settings() -> None:
         ConfigLoader.save(str(get_config_dir() / "settings.json"), settings)
@@ -46,7 +48,8 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request):
-        return templates.TemplateResponse("index.html", {"request": request})
+        # starlette 1.x: TemplateResponse(request, name) — request가 첫 인자
+        return templates.TemplateResponse(request, "index.html")
 
     @app.get("/api/status")
     async def status():
@@ -344,6 +347,62 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
         except Exception as e:
             return JSONResponse({"error": f"저장 실패: {e}"}, status_code=500)
 
+    # ── 필드 매핑 캘리브레이션 ──
+
+    @app.get("/api/field-mapping")
+    async def field_mapping_get():
+        """현재 17개 필드 라벨·ref_x·ref_y 등 반환. UI 편집용."""
+        try:
+            mapping = ConfigLoader.load(get_config_dir() / "field_mapping.json", use_cache=False)
+            cal = mapping.get("_calibration", {})
+            fields = []
+            for i, f in enumerate(mapping.get("header_fields", [])):
+                fields.append({
+                    "index": i + 1,
+                    "label": f.get("label", ""),
+                    "ref_x": f.get("ref_x"),
+                    "ref_y": f.get("ref_y"),
+                    "method": f.get("method", ""),
+                    "ncr_key": f.get("ncr_key", ""),
+                    "literal": f.get("literal", ""),
+                    "form_label": f.get("form_label", ""),
+                })
+            return {"fields": fields, "calibration": cal}
+        except Exception as e:
+            return JSONResponse({"error": f"로드 실패: {e}"}, status_code=500)
+
+    @app.put("/api/field-mapping")
+    async def field_mapping_put(request: Request):
+        """편집된 좌표 저장. body: {fields: [{label, ref_x, ref_y}, ...]}"""
+        body = await request.json()
+        new_fields = body.get("fields", [])
+        if not isinstance(new_fields, list):
+            return JSONResponse({"error": "fields는 배열이어야 합니다."}, status_code=400)
+        path = get_config_dir() / "field_mapping.json"
+        try:
+            mapping = ConfigLoader.load(path, use_cache=False)
+            existing = mapping.get("header_fields", [])
+            updated = 0
+            for new in new_fields:
+                lbl = new.get("label")
+                if not lbl:
+                    continue
+                for i, ex in enumerate(existing):
+                    if ex.get("label") == lbl:
+                        if "ref_x" in new and new["ref_x"] is not None and new["ref_x"] != "":
+                            existing[i]["ref_x"] = int(new["ref_x"])
+                        if "ref_y" in new and new["ref_y"] is not None and new["ref_y"] != "":
+                            existing[i]["ref_y"] = int(new["ref_y"])
+                        updated += 1
+                        break
+            mapping["header_fields"] = existing
+            ConfigLoader.save(str(path), mapping)
+            logger.info(f"field_mapping.json 저장: {updated}개 필드 좌표 업데이트")
+            return MessageResponse(message=f"{updated}개 필드 좌표 저장 완료")
+        except Exception as e:
+            logger.error(f"field_mapping 저장 실패: {e}", exc_info=True)
+            return JSONResponse({"error": f"저장 실패: {e}"}, status_code=500)
+
     @app.post("/api/erp/launch")
     async def erp_launch():
         if state.erp_running:
@@ -469,58 +528,58 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
                         log_cb(f"오류: {e}")
                         continue
 
-                    # ── 검토 모드 진입 ──
-                    # 자동 mark_completed 대신 사용자 확인 대기.
-                    # 사용자가 "재실행 #N" / "처음부터" / "완료 확인" / "중지" 중 결정.
-                    state.erp_review_index = i
-                    state.erp_review_report = report
-                    state.erp_review_steps = connector.build_sequence_info(report)
-                    state.erp_review_action = ""
-                    state.erp_review_resolved.clear()
-                    state.erp_queue[i]["status"] = "검토"
+                    # 배치 모드: 검토 대기 안 하고 다음 보고로 진행. 검토는 끝나고 한꺼번에.
+                    state.erp_review_queue.append({
+                        "queue_index": i,
+                        "report_id": report.id,
+                        "report": report,
+                        "steps": connector.build_sequence_info(report),
+                        "status": "pending",  # 사용자가 [완료 확인] 누르면 confirmed
+                    })
+                    state.erp_queue[i]["status"] = "저장됨"
                     state.erp_queue[i]["progress"] = "검토 대기"
                     state.broadcast_erp_sync(loop, {"type": "queue_update", "index": i,
-                                                    "status": "검토", "progress": "검토 대기"})
+                                                    "status": "저장됨", "progress": "검토 대기"})
+                    log_cb(f"✓ 보고 #{report.id} 입력+저장 완료 (검토는 끝나고 한꺼번에)")
+
+                # ── 모든 보고 처리 완료, 배치 검토 시작 ──
+                if state.erp_review_queue:
+                    state.erp_review_resolved.clear()
+                    payload_reports = [
+                        {"queue_index": r["queue_index"], "report_id": r["report_id"],
+                         "steps": r["steps"], "status": r["status"]}
+                        for r in state.erp_review_queue
+                    ]
                     state.broadcast_erp_sync(loop, {
                         "type": "review_required",
-                        "index": i, "report_id": report.id,
-                        "steps": state.erp_review_steps,
+                        "reports": payload_reports,
                     })
-                    log_cb(f"⏸ 보고 #{report.id} 입력 완료 — ERP 확인 후 "
-                           "[재실행 #N] / [처음부터] / [완료 확인] 중 선택")
+                    log_cb(f"⏸ 전체 {len(state.erp_review_queue)}건 입력 완료. "
+                           "검토 패널에서 페이지별로 확인 후 [완료 확인] 또는 [모두 확인].")
 
-                    # 사용자 결정 대기 (중지도 결정의 하나)
+                    # 사용자가 모든 보고 확인할 때까지 대기 (중지도 종결의 하나)
                     while not state.erp_review_resolved.is_set():
                         if state.erp_stop_event.is_set():
                             break
-                        state.erp_review_resolved.wait(0.2)
+                        # 모두 confirmed면 자동 종료
+                        if all(r["status"] != "pending" for r in state.erp_review_queue):
+                            state.erp_review_resolved.set()
+                        state.erp_review_resolved.wait(0.3)
 
-                    state.broadcast_erp_sync(loop, {"type": "review_resolved", "index": i})
+                    # 중지된 경우 pending 보고들 PENDING으로 복원
+                    if state.erp_stop_event.is_set():
+                        for r in state.erp_review_queue:
+                            if r["status"] == "pending":
+                                try:
+                                    source.mark_pending(r["report_id"])
+                                except Exception as me:
+                                    log_cb(f"⚠ #{r['report_id']} PENDING 복원 실패: {me}")
+                        log_cb("중지 — 미확인 보고들 PENDING 복원")
+                    else:
+                        log_cb("전체 검토 완료")
 
-                    if state.erp_stop_event.is_set() or state.erp_review_action == "stopped":
-                        try:
-                            source.mark_pending(report.id)
-                        except Exception as me:
-                            log_cb(f"⚠ PENDING 복원 실패: {me}")
-                        state.erp_queue[i]["status"] = "중지"
-                        state.erp_queue[i]["progress"] = "-"
-                        state.broadcast_erp_sync(loop, {"type": "queue_update", "index": i,
-                                                        "status": "중지", "progress": "-"})
-                        log_cb(f"중지로 #{report.id} PENDING 복원")
-                        break
-
-                    # confirmed → mark_completed
-                    try:
-                        source.mark_completed(report.id)
-                    except Exception as e:
-                        log_cb(f"⚠ COMPLETED 표시 실패: {e}")
-                    state.erp_queue[i]["status"] = "완료"
-                    state.erp_queue[i]["progress"] = "100%"
-                    state.broadcast_erp_sync(loop, {"type": "queue_update", "index": i,
-                                                    "status": "완료", "progress": "100%"})
-                    state.erp_review_index = None
-                    state.erp_review_report = None
-                    state.erp_review_steps = []
+                    state.broadcast_erp_sync(loop, {"type": "review_resolved"})
+                    state.erp_review_queue.clear()
 
                 log_cb("ERP 입력 완료")
                 state.broadcast_erp_sync(loop, {"type": "running", "value": False})
@@ -534,45 +593,72 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
         threading.Thread(target=worker, daemon=True).start()
         return MessageResponse(message=f"ERP 입력 시작 (모드: {req.mode})")
 
-    # ── 검토 모드 엔드포인트 ──
+    # ── 배치 검토 모드 엔드포인트 ──
 
     @app.get("/api/erp/review")
     async def erp_review_status():
-        """현재 검토 중인 보고와 스텝 목록."""
-        if state.erp_review_index is None:
+        """배치 검토 중인 보고 목록 + 각 status."""
+        if not state.erp_review_queue:
             return {"active": False}
-        rep = state.erp_review_report
         return {
             "active": True,
-            "index": state.erp_review_index,
-            "report_id": getattr(rep, "id", None),
-            "item_code": rep.get_str("itemCode") if rep else "",
-            "steps": state.erp_review_steps,
+            "reports": [
+                {"queue_index": r["queue_index"], "report_id": r["report_id"],
+                 "steps": r["steps"], "status": r["status"]}
+                for r in state.erp_review_queue
+            ],
         }
 
+    class _ConfirmBody(BaseModel):
+        report_id: int | None = None  # None이면 전체 확인
+
     @app.post("/api/erp/review/confirm")
-    async def erp_review_confirm():
-        """완료 확인 — 워커가 mark_completed 후 다음 보고로 진행."""
-        if state.erp_review_index is None:
+    async def erp_review_confirm(body: _ConfirmBody):
+        """완료 확인 — report_id 단일 또는 전체. mark_completed 후 큐 상태 갱신."""
+        if not state.erp_review_queue:
             return JSONResponse({"error": "검토 중인 보고가 없습니다."}, status_code=400)
-        state.erp_review_action = "confirmed"
-        state.erp_review_resolved.set()
-        return MessageResponse(message="완료 확인 — 다음 보고로 진행")
+        source = get_source(settings)
+        confirmed_ids = []
+        for r in state.erp_review_queue:
+            if body.report_id is not None and r["report_id"] != body.report_id:
+                continue
+            if r["status"] == "pending":
+                try:
+                    source.mark_completed(r["report_id"])
+                    r["status"] = "confirmed"
+                    confirmed_ids.append(r["report_id"])
+                    # 큐 UI도 업데이트
+                    qi = r["queue_index"]
+                    state.erp_queue[qi]["status"] = "완료"
+                    state.erp_queue[qi]["progress"] = "100%"
+                    loop = asyncio.get_event_loop()
+                    state.broadcast_erp_sync(loop, {"type": "queue_update", "index": qi,
+                                                    "status": "완료", "progress": "100%"})
+                except Exception as e:
+                    return JSONResponse({"error": f"COMPLETED 실패: {e}"}, status_code=500)
+        # 모두 confirmed면 워커 해제
+        if all(r["status"] != "pending" for r in state.erp_review_queue):
+            state.erp_review_resolved.set()
+        return MessageResponse(message=f"{len(confirmed_ids)}건 확인 완료: {confirmed_ids}")
 
     class _RedoStepBody(BaseModel):
         step_index: int
+        report_id: int | None = None  # 어떤 보고의 스텝인지
 
     @app.post("/api/erp/review/redo-step")
     async def erp_review_redo_step(body: _RedoStepBody):
-        """현재 포커스된 ERP 필드에 N번 스텝 값만 다시 타이핑 (Tab/메뉴 없음)."""
-        if state.erp_review_index is None or state.erp_review_report is None:
-            return JSONResponse({"error": "검토 중인 보고가 없습니다."}, status_code=400)
+        """현재 포커스된 ERP 필드에 N번 스텝 값만 다시 타이핑."""
+        target = None
+        for r in state.erp_review_queue:
+            if body.report_id is None or r["report_id"] == body.report_id:
+                target = r; break
+        if target is None:
+            return JSONResponse({"error": "대상 보고를 찾을 수 없음"}, status_code=400)
         connector = state.erp_connector
         if connector is None:
             return JSONResponse({"error": "ERP 연결 안 됨"}, status_code=400)
-        report = state.erp_review_report
+        report = target["report"]
         step_index = body.step_index
-
         loop = asyncio.get_event_loop()
 
         def log_cb(msg: str):
@@ -586,18 +672,24 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
                 log_cb(f"재실행 #{step_index+1} 오류: {e}")
 
         threading.Thread(target=redo_worker, daemon=True).start()
-        return MessageResponse(message=f"스텝 #{step_index+1} 재실행")
+        return MessageResponse(message=f"보고 #{report.id} 스텝 #{step_index+1} 재실행")
+
+    class _RedoAllBody(BaseModel):
+        report_id: int | None = None
 
     @app.post("/api/erp/review/redo-all")
-    async def erp_review_redo_all():
-        """처음부터 다시 입력 (메뉴 진입 새 폼). 이전 폼은 사용자가 직접 닫아야 함."""
-        if state.erp_review_index is None or state.erp_review_report is None:
-            return JSONResponse({"error": "검토 중인 보고가 없습니다."}, status_code=400)
+    async def erp_review_redo_all(body: _RedoAllBody):
+        """처음부터 다시 입력 (메뉴 진입 새 폼)."""
+        target = None
+        for r in state.erp_review_queue:
+            if body.report_id is None or r["report_id"] == body.report_id:
+                target = r; break
+        if target is None:
+            return JSONResponse({"error": "대상 보고를 찾을 수 없음"}, status_code=400)
         connector = state.erp_connector
         if connector is None:
             return JSONResponse({"error": "ERP 연결 안 됨"}, status_code=400)
-        report = state.erp_review_report
-
+        report = target["report"]
         loop = asyncio.get_event_loop()
 
         def log_cb(msg: str):
@@ -606,9 +698,9 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
 
         def redo_worker():
             try:
-                log_cb(f"🔄 보고 #{report.id} 처음부터 재입력 (메뉴 진입 → 새 폼)")
+                log_cb(f"🔄 보고 #{report.id} 처음부터 재입력")
                 connector.input_report(report, navigate=True)
-                log_cb(f"🔄 재입력 완료 — ERP 확인 후 [완료 확인] 또는 추가 재실행 선택")
+                log_cb(f"🔄 #{report.id} 재입력 완료")
             except Exception as e:
                 log_cb(f"처음부터 재입력 오류: {e}")
 
@@ -632,9 +724,8 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
         state.erp_stop_event.set()
         state.erp_pause_event.clear()
         state.erp_running = False
-        # 검토 대기 중이면 즉시 해제 (워커가 mark_pending 처리)
-        if state.erp_review_index is not None:
-            state.erp_review_action = "stopped"
+        # 배치 검토 대기 중이면 즉시 해제 (워커가 pending 보고 mark_pending)
+        if state.erp_review_queue:
             state.erp_review_resolved.set()
         msg = "ERP 입력 중지 요청"
         state.erp_logs.append(msg)

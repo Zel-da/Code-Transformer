@@ -28,13 +28,11 @@ class AppState:
         self.erp_connected: bool = False
         self.erp_queue: list[dict[str, Any]] = []
         self.erp_logs: list[str] = []
-        # 검토 모드: input_report 끝난 뒤 사용자가 완료확인/재실행/처음부터 결정할 때까지 대기
-        self.erp_review_index: int | None = None        # 검토 중인 큐 인덱스
-        self.erp_review_report: Any = None              # 검토 중인 NcrReport
-        self.erp_review_steps: list[dict[str, Any]] = []  # 현 보고의 17 스텝 미리보기
-        self.erp_review_resolved = threading.Event()    # 사용자가 결정하면 set
-        self.erp_review_action: str = ""                # "confirmed" | "stopped" | ""
-        self.erp_connector: Any = None                  # 재실행/처음부터 핸들러가 접근
+        # 배치 검토 모드: 모든 보고 입력+저장 끝난 후 한꺼번에 사용자 검토
+        # queue 엔트리: {"report_id": int, "report": NcrReport, "steps": [...], "status": "pending"|"confirmed"|"failed"}
+        self.erp_review_queue: list[dict[str, Any]] = []
+        self.erp_review_resolved = threading.Event()    # 모든 보고 결정되면 set
+        self.erp_connector: Any = None                  # 재실행/완료 핸들러가 접근
 
         # WebSocket 연결
         self._progress_clients: list[WebSocket] = []

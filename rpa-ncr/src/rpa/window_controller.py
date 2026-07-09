@@ -61,46 +61,79 @@ class WindowController:
     # 프로세스명 기반 윈도우 탐색 (Chrome 탭 등 오인 방지)
     # ------------------------------------------------------------------
 
-    def _find_erp_windows(self, exclude_login: bool = False) -> list:
+    def _find_erp_windows(self, exclude_login: bool = False, verbose: bool = False) -> list:
         """ERP 프로세스에 속한 보이는 top-level 윈도우 리스트.
 
         - process_name이 설정돼 있으면 그 프로세스만
         - 아니면 window_title 부분 매칭
         - exclude_login=True면 "로그인" 다이얼로그 제외
+        - verbose=True면 거부된 후보까지 로그 출력 (진단용)
         """
         from pywinauto import Desktop
         try:
             import psutil
         except ImportError:
             psutil = None
+            if verbose:
+                logger.warning("psutil 미설치 — process_name 필터 미동작, title-only 폴백")
 
         result = []
+        # 진단용: 모든 후보를 수집해 거부 사유 로그
+        rejected_for_diag: list[tuple[str, str, str]] = []  # (title, pname, reason)
+
         for win in Desktop(backend="uia").windows():
             try:
                 title = win.window_text()
                 if not title:
                     continue
                 if exclude_login and "로그인" in title:
+                    if verbose:
+                        rejected_for_diag.append((title, "?", "로그인 다이얼로그 제외"))
                     continue
+                pname = ""
                 if self._process_name and psutil:
                     pid = win.process_id()
                     if not pid:
+                        if verbose:
+                            rejected_for_diag.append((title, "?", "PID 없음"))
                         continue
                     try:
                         pname = psutil.Process(pid).name().lower()
-                    except Exception:
+                    except Exception as e:
+                        if verbose:
+                            rejected_for_diag.append((title, "?", f"psutil 실패: {e}"))
                         continue
-                    if self._process_name not in pname:
+                    if self._process_name.lower() not in pname:
+                        if verbose:
+                            # UNIERP 관련 후보만 로그 (잡음 줄임)
+                            if 'unierp' in title.lower() or 'bizentro' in pname.lower():
+                                rejected_for_diag.append((title, pname,
+                                    f"process_name '{self._process_name}' ⊄ '{pname}'"))
                         continue
                 elif self._window_title:
-                    # 프로세스명 미설정 시 타이틀 매칭으로 폴백
-                    if self._window_title.lower() not in title.lower():
+                    # psutil 없을 때 폴백: 우선 정확 매칭 시도, 실패하면 "UNIERP" 약식 매칭
+                    full_match = self._window_title.lower() in title.lower()
+                    fallback_match = "unierp" in title.lower() and "탐색기" not in title and "파일" not in title
+                    if not (full_match or fallback_match):
+                        if verbose and 'unierp' in title.lower():
+                            rejected_for_diag.append((title, pname,
+                                f"window_title '{self._window_title}' ⊄ '{title}'"))
                         continue
                 else:
                     continue
                 result.append(win)
-            except Exception:
+                if verbose:
+                    logger.info(f"  ✓ 후보 채택: {title!r} (proc={pname or 'N/A'})")
+            except Exception as e:
+                if verbose:
+                    rejected_for_diag.append(("?", "?", f"예외: {e}"))
                 continue
+
+        if verbose:
+            for t, p, r in rejected_for_diag:
+                logger.info(f"  ✗ 거부: {t!r} proc={p!r} — {r}")
+            logger.info(f"_find_erp_windows: 총 {len(result)}개 채택 "
+                        f"(process_name={self._process_name!r}, title={self._window_title!r})")
         return result
 
     def _find_login_window(self):
@@ -128,9 +161,22 @@ class WindowController:
                 continue
         return None
 
+    def is_main_window_open(self) -> bool:
+        """ERP 메인 윈도우가 이미 떠있는지 (로그/연결 시도 없이) 가볍게 확인."""
+        return bool(self._find_erp_windows(exclude_login=True))
+
     def connect(self) -> bool:
-        """ERP 메인 윈도우에 연결한다 (로그인 다이얼로그 제외)."""
+        """ERP 메인 윈도우에 연결한다 (로그인 다이얼로그 제외).
+
+        최소화된 창도 자동 복원해서 좌표 기반 입력 가능 상태로 만든다.
+        못 찾으면 거부된 후보 + 사유를 로그에 자세히 출력 (PC별 환경 차이 진단용).
+        """
+        # 1차: 평소대로 조용히 시도
         wins = self._find_erp_windows(exclude_login=True)
+        if not wins:
+            # 실패 시 — 거부 사유 포함해서 한 번 더 (진단 로그)
+            logger.info("ERP 윈도우 못 찾음 → 진단 모드 재실행:")
+            wins = self._find_erp_windows(exclude_login=True, verbose=True)
         if not wins:
             login_dlg = self._find_login_window()
             if login_dlg:
@@ -139,12 +185,33 @@ class WindowController:
                 logger.error("ERP 윈도우를 찾을 수 없음 "
                              f"(process_name={self._process_name!r}, title={self._window_title!r})")
             return False
-        # 가장 큰 윈도우를 메인으로 선택 (보통 최대화된 메인)
         try:
             from pywinauto import Application
-            best = max(wins, key=lambda w: (w.rectangle().width() * w.rectangle().height()))
+            # 가시 + 가장 큰 윈도우 우선. 다 최소화면 그래도 첫 번째 사용
+            def score(w):
+                try:
+                    r = w.rectangle()
+                    area = r.width() * r.height()
+                    visible_bonus = 1_000_000_000 if (area > 0 and r.left > -10000) else 0
+                    return visible_bonus + area
+                except Exception:
+                    return 0
+            best = max(wins, key=score)
             self._app = Application(backend="uia").connect(handle=best.handle)
             self._main_window = self._app.window(handle=best.handle)
+
+            # 최소화 상태면 복원 (Restore via ShowWindow SW_RESTORE=9)
+            try:
+                r = best.rectangle()
+                if r.width() == 0 or r.left < -10000:
+                    logger.info("ERP 창이 최소화 상태 — 복원 시도")
+                    _user32.ShowWindow(best.handle, 9)  # SW_RESTORE
+                    time.sleep(0.5)
+                    _user32.SetForegroundWindow(best.handle)
+                    time.sleep(0.3)
+            except Exception as e:
+                logger.warning(f"창 복원 실패 (계속 진행): {e}")
+
             self._main_window.wait("ready", timeout=10)
             logger.info(f"ERP 윈도우 연결됨: '{best.window_text()}' (handle={best.handle})")
             return True
@@ -152,16 +219,42 @@ class WindowController:
             logger.error(f"ERP 윈도우 연결 실패: {e}")
             return False
 
+    def _discover_launch_path(self) -> str | None:
+        """바탕화면·OneDrive·시작 메뉴에서 UNIERP 단축아이콘 자동 탐색.
+
+        Windows 사용자별 + 시스템 공통 위치를 모두 살핀다. 첫 매치 반환.
+        """
+        import os
+
+        candidates = [
+            os.path.expandvars(r"%USERPROFILE%\Desktop"),
+            os.path.expandvars(r"%USERPROFILE%\OneDrive\Desktop"),
+            os.path.expandvars(r"%APPDATA%\Microsoft\Windows\Start Menu\Programs"),
+            os.path.expandvars(r"%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs"),
+        ]
+        EXTS = (".appref-ms", ".lnk", ".exe")
+        for base in candidates:
+            if not os.path.isdir(base):
+                continue
+            for root, _dirs, files in os.walk(base):
+                for fname in files:
+                    fl = fname.lower()
+                    if "unierp" in fl and fl.endswith(EXTS):
+                        path = os.path.join(root, fname)
+                        logger.info(f"UNIERP 단축아이콘 발견: {path}")
+                        return path
+        return None
+
     def launch_erp(self, launch_path: str, timeout: float = 60.0) -> bool:
         """ERP 프로그램을 실행한다.
 
         1. 이미 ERP 메인 윈도우가 있으면(로그인 다이얼로그 제외) 그걸 사용
         2. 로그인 다이얼로그만 있으면 그것을 잡고 로그인 단계로
-        3. 둘 다 없으면 launch_path 실행 후 로그인 또는 메인 윈도우 대기
+        3. 둘 다 없으면 launch_path 실행
+           - launch_path가 유효하지 않으면 자동 탐색
+           - 그래도 못 찾으면 친절한 안내 후 False
         """
         import os
-
-        logger.info(f"ERP 실행: {launch_path}")
 
         # 1. 이미 메인 윈도우가 떠있는지 (Chrome 등 오인 방지: 프로세스명 우선)
         wins = self._find_erp_windows(exclude_login=True)
@@ -182,7 +275,23 @@ class WindowController:
             logger.info("ERP 로그인 다이얼로그 이미 떠있음 — 그것을 사용")
             return True
 
-        # 3. 실행
+        # 3. launch_path 검증 + 자동 탐색
+        if not launch_path or not os.path.exists(launch_path):
+            logger.warning(f"launch_path 무효: {launch_path!r} — 시스템에서 UNIERP 단축아이콘 자동 탐색")
+            discovered = self._discover_launch_path()
+            if discovered:
+                launch_path = discovered
+            else:
+                logger.error(
+                    "UNIERP 단축아이콘을 자동으로 찾을 수 없습니다. "
+                    "다음 중 하나로 해결하세요:\n"
+                    "  (1) UNIERP를 먼저 직접 실행한 뒤 다시 [입력 시작] 클릭\n"
+                    "  (2) ERP 설정 → 실행 경로에 UNIERP 단축아이콘 경로 입력 후 저장\n"
+                    f"  탐색한 위치: 바탕화면, OneDrive\\Desktop, 시작 메뉴"
+                )
+                return False
+
+        logger.info(f"ERP 실행: {launch_path}")
         try:
             os.startfile(launch_path)
         except Exception as e:
@@ -321,51 +430,51 @@ class WindowController:
             logger.error(f"로그인 입력 실패: {e}")
             return False
 
-        # 메인 윈도우 대기
+        # 메인 윈도우 대기 — process_name 필터링된 _find_erp_windows() 사용
+        # (title_re 매칭은 특수문자·다중매치에서 실패 사례가 있어 회피)
         logger.info("UNIERP 메인 윈도우 대기 중...")
         start = time.time()
         while time.time() - start < timeout:
-            try:
-                app = Application(backend="uia").connect(
-                    title_re=f".*{self._window_title}.*",
-                    timeout=3,
-                )
-                self._app = app
-                self._main_window = app.window(title_re=f".*{self._window_title}.*")
-                self._main_window.wait("ready", timeout=10)
-                logger.info(f"UNIERP 메인 윈도우 연결됨: {self._main_window.window_text()}")
-                return True
-            except Exception:
-                time.sleep(2)
+            wins = self._find_erp_windows(exclude_login=True)
+            if wins:
+                try:
+                    best = max(wins, key=lambda w: (w.rectangle().width() * w.rectangle().height()))
+                    self._app = Application(backend="uia").connect(handle=best.handle)
+                    self._main_window = self._app.window(handle=best.handle)
+                    self._main_window.wait("ready", timeout=10)
+                    logger.info(f"UNIERP 메인 윈도우 연결됨: '{best.window_text()}' (handle={best.handle})")
+                    return True
+                except Exception as e:
+                    logger.warning(f"메인 윈도우 connect 실패, 재시도: {e}")
+            time.sleep(2)
 
-        logger.error(f"메인 윈도우 대기 타임아웃 ({timeout}초)")
+        logger.error(f"메인 윈도우 대기 타임아웃 ({timeout}초) — UNIERP가 열렸는지 직접 확인 후 [입력 시작] 재시도")
         return False
 
-    def navigate_to_menu(self, menu_name: str) -> bool:
-        """메뉴찾기로 메뉴 이동한다.
+    def navigate_to_menu(self, menu_name: str, **_ignored) -> bool:
+        """메뉴찾기로 메뉴 이동한다 (F3 단축키 방식).
 
-        1) F3 키로 '메뉴찾기' 창 호출 (좌표 클릭 대체 — 모니터/해상도 무관)
-        2) 검색 필드에 메뉴명 입력 → Enter
+        1) ERP 창 최대화 + 포커스
+        2) F3 키 전송 → 메뉴찾기 팝업
+        3) 메뉴명 클립보드 붙여넣기 → Enter
 
-        Args:
-            menu_name: 메뉴 이름 (예: "계약조건품의서등록")
-
-        Returns:
-            이동 성공 여부
+        **_ignored: 옛 좌표 인자 호환용 (menu_input_rel_x/y 전달돼도 무시).
         """
         from pywinauto import keyboard
+        import pyperclip
 
         if not self._main_window:
             return False
 
         try:
-            # 전체화면으로 전환
+            # 1단계: 포커스 + 최대화
             self._main_window.set_focus()
             time.sleep(0.3)
-            self._main_window.maximize()
-            time.sleep(0.5)
+            if not self._main_window.is_maximized():
+                self._main_window.maximize()
+                time.sleep(0.5)
 
-            # 1단계: F3으로 메뉴찾기 창 호출 (메인 윈도우에 직접 전송, 포그라운드 강제)
+            # 2단계: F3 키 전송 (메인 윈도우에 직접, 포그라운드 강제)
             try:
                 self._main_window.type_keys("{F3}", set_foreground=True)
             except Exception:
@@ -373,10 +482,7 @@ class WindowController:
             logger.info("메뉴찾기: F3 키 전송")
             time.sleep(0.6)
 
-            # 2단계: 캐시된 메뉴찾기 팝업 위치가 있으면 클릭으로 포커스 보장
-            #  - 첫 호출에서는 캐시가 비어있어 스킵 (F3만으로 포커스 OK)
-            #  - 두 번째 이상에서는 F3은 열리지만 이전 메뉴 탭에 포커스가 남아있어
-            #    팝업 위치 클릭으로 강제 전환
+            # 3단계: 캐시된 메뉴찾기 팝업 위치 있으면 클릭(2회차+ 포커스 보장)
             import pywinauto.mouse as pymouse
             if self._menu_finder_pos is not None:
                 cx, cy = self._menu_finder_pos
@@ -384,13 +490,13 @@ class WindowController:
                 logger.info(f"메뉴찾기 캐시 위치 클릭: ({cx},{cy})")
                 time.sleep(0.2)
 
-            # 3단계: 팝업 감지 → 위치 캐시 (다음 호출용)
+            # 4단계: 팝업 감지 → 위치 캐시 (다음 호출용)
             popup = self._find_popup_window()
             if popup is not None:
                 try:
                     rect = popup.rectangle()
                     cx = (rect.left + rect.right) // 2
-                    cy = rect.top + 40  # 팝업 상단(입력 필드 근처)
+                    cy = rect.top + 40
                     self._menu_finder_pos = (cx, cy)
                     logger.info(f"메뉴찾기 팝업 위치 캐시: ({cx},{cy})")
                 except Exception as e:
@@ -398,8 +504,7 @@ class WindowController:
             else:
                 logger.info("메뉴찾기 팝업 감지 안 됨 (캐시 갱신 스킵)")
 
-            # 2단계: 메뉴명 입력 → Enter (클립보드로 입력 — 괄호 등 특수문자 안전)
-            import pyperclip
+            # 5단계: 메뉴명 입력 → Enter (클립보드: 괄호 등 특수문자 안전)
             keyboard.send_keys("^a")
             time.sleep(0.1)
             pyperclip.copy(menu_name)
