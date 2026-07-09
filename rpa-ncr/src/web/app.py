@@ -31,10 +31,30 @@ def _web_dir() -> Path:
 WEB_DIR = _web_dir()
 
 
+_ALLOWED_HOSTS = frozenset({"127.0.0.1", "localhost", "[::1]", "::1"})
+_MUTATING_METHODS = frozenset({"PUT", "POST", "PATCH", "DELETE"})
+
+
 def create_app(settings: dict[str, Any]) -> FastAPI:
     """FastAPI 앱을 생성하고 반환한다."""
     app = FastAPI(title="NCR → UNIERP RPA 자동 입력")
     state = AppState(settings)
+
+    # ── 로컬 전용 방어: 상태변경 요청은 Host 헤더가 로컬이어야 함 ──
+    # 이 앱은 127.0.0.1 바인딩이 전제(main.py) 이지만, DNS rebinding 계열
+    # 공격/오조작 시 브라우저가 실제 호스트명으로 요청을 보낼 수 있으므로
+    # PUT/POST/PATCH/DELETE 에 한해 Host 헤더의 hostname 검증. GET 은 통과.
+    @app.middleware("http")
+    async def _host_guard(request: Request, call_next):
+        if request.method in _MUTATING_METHODS:
+            host_hdr = request.headers.get("host", "")
+            hostname = host_hdr.rsplit(":", 1)[0] if host_hdr else ""
+            if hostname not in _ALLOWED_HOSTS:
+                return JSONResponse(
+                    {"error": f"허용되지 않은 Host: {host_hdr!r} (로컬 전용)"},
+                    status_code=400,
+                )
+        return await call_next(request)
 
     app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
     templates = Jinja2Templates(directory=str(WEB_DIR / "templates"))
@@ -371,6 +391,20 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
         except Exception as e:
             return JSONResponse({"error": f"로드 실패: {e}"}, status_code=500)
 
+    _COORD_MIN, _COORD_MAX = 0, 20000  # 가상 스크린 최대치(4K 듀얼) 여유
+
+    def _validate_coord(value: Any, name: str) -> int:
+        """좌표 값을 int 로 변환하고 범위 검증. 실패 시 ValueError."""
+        if isinstance(value, bool):  # bool 은 int 하위형이지만 좌표로 부적절
+            raise ValueError(f"{name} 는 정수여야 합니다: {value!r}")
+        try:
+            v = int(value)
+        except (TypeError, ValueError):
+            raise ValueError(f"{name} 를 정수로 변환할 수 없습니다: {value!r}")
+        if not (_COORD_MIN <= v <= _COORD_MAX):
+            raise ValueError(f"{name} 범위 초과({_COORD_MIN}~{_COORD_MAX}): {v}")
+        return v
+
     @app.put("/api/field-mapping")
     async def field_mapping_put(request: Request):
         """편집된 좌표 저장. body: {fields: [{label, ref_x, ref_y}, ...]}"""
@@ -379,20 +413,40 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
         if not isinstance(new_fields, list):
             return JSONResponse({"error": "fields는 배열이어야 합니다."}, status_code=400)
         path = get_config_dir() / "field_mapping.json"
+
+        # 저장 전 전량 검증 — 하나라도 실패하면 파일 손대지 않음(원자성).
+        try:
+            validated: list[tuple[str, int | None, int | None]] = []
+            for idx, new in enumerate(new_fields):
+                if not isinstance(new, dict):
+                    return JSONResponse(
+                        {"error": f"fields[{idx}] 는 객체여야 합니다."}, status_code=422,
+                    )
+                lbl = new.get("label")
+                if not lbl or not isinstance(lbl, str):
+                    return JSONResponse(
+                        {"error": f"fields[{idx}].label 이 비었거나 문자열이 아닙니다."},
+                        status_code=422,
+                    )
+                rx = new.get("ref_x")
+                ry = new.get("ref_y")
+                rx_v = _validate_coord(rx, f"fields[{idx}].ref_x") if rx not in (None, "") else None
+                ry_v = _validate_coord(ry, f"fields[{idx}].ref_y") if ry not in (None, "") else None
+                validated.append((lbl, rx_v, ry_v))
+        except ValueError as e:
+            return JSONResponse({"error": str(e)}, status_code=422)
+
         try:
             mapping = ConfigLoader.load(path, use_cache=False)
             existing = mapping.get("header_fields", [])
             updated = 0
-            for new in new_fields:
-                lbl = new.get("label")
-                if not lbl:
-                    continue
+            for lbl, rx_v, ry_v in validated:
                 for i, ex in enumerate(existing):
                     if ex.get("label") == lbl:
-                        if "ref_x" in new and new["ref_x"] is not None and new["ref_x"] != "":
-                            existing[i]["ref_x"] = int(new["ref_x"])
-                        if "ref_y" in new and new["ref_y"] is not None and new["ref_y"] != "":
-                            existing[i]["ref_y"] = int(new["ref_y"])
+                        if rx_v is not None:
+                            existing[i]["ref_x"] = rx_v
+                        if ry_v is not None:
+                            existing[i]["ref_y"] = ry_v
                         updated += 1
                         break
             mapping["header_fields"] = existing

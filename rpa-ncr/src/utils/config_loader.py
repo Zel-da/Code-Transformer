@@ -1,5 +1,6 @@
 """JSON 설정 로드/저장 유틸리티 (OCR_EU에서 포팅)."""
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -37,16 +38,24 @@ class ConfigLoader:
 
     @classmethod
     def save(cls, path: str | Path, data: dict[str, Any]) -> None:
-        """설정을 JSON 파일로 저장한다."""
+        """설정을 JSON 파일로 원자적으로 저장한다.
+
+        임시 파일에 쓰고 fsync 한 뒤 os.replace 로 원자 교체.
+        저장 도중 크래시/전원차단 시에도 기존 JSON 은 손상되지 않는다.
+        """
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(path, "w", encoding="utf-8") as f:
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
 
         key = str(path.resolve())
         cls._cache[key] = data
-        logger.debug(f"설정 파일 저장됨: {path}")
+        logger.debug(f"설정 파일 저장됨(원자적): {path}")
 
     @classmethod
     def clear_cache(cls) -> None:
