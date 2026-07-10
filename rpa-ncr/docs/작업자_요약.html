@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>현장 작업자 요약</title>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<h1>현장 작업자 요약<span class="role-badge role-worker">현장 작업자</span></h1><div class="subtitle">부적합 발견 → 5분 안에 등록 완료</div>
+<div class="doc-header">
+현장에서 <strong>부적합(NCR)을 발견하면 이 순서대로</strong> 등록하세요. 자세한 설명·예외는
+<a href="작업자_상세.html">상세 가이드</a>에.
+</div>
+
+<h2 id="3">3단계로 끝</h2>
+<ol>
+<li><strong>모바일/PC 브라우저</strong>에서 NCR 앱 접속 → 로그인</li>
+<li><strong>[신규 등록]</strong> → 부품/호기 검색해서 <strong>ERP 자동채움</strong> → 사진·설명 추가</li>
+<li><strong>[저장]</strong> → 끝. QC 담당자에게 자동 알림 감</li>
+</ol>
+<h2 id="_1">반드시 채우는 것 (필수)</h2>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>부품코드</td>
+<td>검색으로 찾음. 없으면 담당자에게 문의</td>
+</tr>
+<tr>
+<td>공정</td>
+<td>발생 공정 (자동 목록)</td>
+</tr>
+<tr>
+<td>상세 설명</td>
+<td>어떤 부적합인지 짧게라도</td>
+</tr>
+<tr>
+<td>조치방향</td>
+<td>등록 시점 선택 (기본값 있음)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="3_1">편하게 만드는 팁 3개</h2>
+<ul>
+<li><strong>부품코드 대신 제품명 검색</strong>: <code>T-380N</code> 처럼 모델명으로 검색 가능</li>
+<li><strong>호기로 검색</strong>: <code>345</code> 처럼 호기 번호만 넣어도 부품·거래처 자동 매칭</li>
+<li><strong>거래처만으로 검색</strong>: <code>리파츠</code> 같은 거래처명으로도 관련 부품 찾음</li>
+</ul>
+<h2 id="_2">검색이 안 될 때</h2>
+<blockquote class="warn">
+[!warn] 방금 ERP 에 등록된 신규 자재는 <strong>최대 5시간</strong> 지나야 앱에서 검색됩니다
+(하루 4회 자동 동기화: 05:00 / 10:00 / 12:30 / 17:00).
+급하면 담당자에게 알려주세요. 우선 <strong>부품코드를 수동 입력</strong>하고 나머지 필드는 비워도 저장됩니다.
+</blockquote>
+
+<h2 id="_3">사진 첨부</h2>
+<ul>
+<li>부적합 부위를 사진으로 찍어 첨부 (모바일 카메라 바로 사용 가능)</li>
+<li>자동으로 크기 압축돼 업로드 (원본 크기 걱정 X)</li>
+<li>여러 장 필요하면 상세 설명에 언급</li>
+</ul>
+<h2 id="_4">자주 헷갈리는 것</h2>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>어떻게</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>호기 (제조호기) vs 출하호기</td>
+<td><strong>같은 호기 필드</strong>. RPA 가 알아서 구분</td>
+</tr>
+<tr>
+<td>거래처 못 찾음</td>
+<td>비워두고 저장. QC 담당자가 나중에 채움</td>
+</tr>
+<tr>
+<td>잘못 저장했음</td>
+<td><strong>삭제 불가</strong>. QC 담당자에게 코멘트로 알림</td>
+</tr>
+<tr>
+<td>두 번 눌러서 두 번 등록됨</td>
+<td>저장 버튼은 <strong>1회만 눌러도 잠김</strong> — 걱정 X</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_5">저장 후</h2>
+<ul>
+<li>자동으로 <strong>QC 담당자에게 알림</strong></li>
+<li>사용자는 <strong>목록에서 상태 추적</strong> 가능</li>
+<li>상태 <span class="tag tag-completed">COMPLETED</span> 로 바뀌면 UNIERP 반영 끝</li>
+</ul>
+<hr>
+<p><strong>5분 안에 등록 안 되면 상세 가이드 보세요.</strong>  → <a href="작업자_상세.html">상세로</a></p>
+<div class="doc-footer"><a href="INDEX.html">← 문서 목차로</a></div>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IT / 관리자 요약</title>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<h1>IT / 관리자 요약<span class="role-badge role-admin">IT/관리자</span></h1><div class="subtitle">전체 흐름 이해 + 자주 겪는 3가지 문제 대응</div>
+<div class="doc-header">
+NCR 시스템의 <strong>전체 구조·모니터링 포인트·긴급 대응</strong>. 자세한 것은
+<a href="IT관리자_상세.html">상세</a>.
+</div>
+
+<h2 id="4">시스템 4계층</h2>
+<pre><code>[Frontend]        [Backend]         [ETL]              [RPA Worker]
+Vite+React      Express+Drizzle   Python              rpa-ncr
+    │              │                │                   │
+    │              ↓                ↓                   │
+    └─→ REST → Neon Postgres ←─ 4회/일 ← K-System DB     │
+                    │                                   │
+                    └─────── polling ────────────→ UNIERP GUI
+                             (반드시 사내망)
+</code></pre>
+<h2 id="_1">배포·실행 위치</h2>
+<table>
+<thead>
+<tr>
+<th>계층</th>
+<th>어디서 도는가</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ncr-app (프런트)</td>
+<td>Replit autoscale</td>
+</tr>
+<tr>
+<td>api-server</td>
+<td>Replit autoscale</td>
+</tr>
+<tr>
+<td>Neon Postgres</td>
+<td>Neon Cloud (us-east-1)</td>
+</tr>
+<tr>
+<td>erp_query (K-System 동기화)</td>
+<td>사내 PC 1대, Task Scheduler</td>
+</tr>
+<tr>
+<td>rpa-ncr 워커</td>
+<td>백승기 직장님 PC, 수동 실행</td>
+</tr>
+</tbody>
+</table>
+<h2 id="3">자주 겪는 문제 3가지</h2>
+<h3 id="1-silent">1. 동기화 실패 (Silent 아님, 알림 옴)</h3>
+<ul>
+<li><strong>감지</strong>: 슈산톡 웹훅으로 실패 알림 자동 발송</li>
+<li><strong>로그</strong>: <code>C:\ProgramData\ErpQueryApi\sync.log</code> (Windows PC)</li>
+<li><strong>대응</strong>: 로그의 마지막 traceback 확인. 대개 K-System 네트워크·인증 문제</li>
+<li><strong>역대 사고</strong>: 2026-06 cp949 인코딩 문제로 13일 silent 실패 → 해결됨</li>
+</ul>
+<h3 id="2-processing">2. PROCESSING 갇힘 (자동회수됨, 이제)</h3>
+<ul>
+<li><strong>감지</strong>: <code>syncStatus=PROCESSING</code> + <code>updated_at &lt; 5시간 전</code> 카운트</li>
+<li><strong>대응</strong>: <strong>자동 복원됨</strong> (2026-07 T1). 5시간 지나면 다음 조회에서 자동 PENDING</li>
+<li><strong>수동 확인</strong>: <code>SELECT id, updated_at, sync_last_error FROM non_conformity_reports WHERE sync_status='PROCESSING'</code></li>
+</ul>
+<h3 id="3-review">3. REVIEW 오래 남음</h3>
+<ul>
+<li><strong>감지</strong>: <code>syncStatus=REVIEW</code> 상태로 24시간 이상</li>
+<li><strong>원인</strong>: RPA 운영자가 확인 안 하고 방치</li>
+<li><strong>대응</strong>: RPA 운영자에게 확인 요청. DB 조작 필요 없음</li>
+</ul>
+<h2 id="sql">모니터링 SQL 스니펫</h2>
+<pre><code class="language-sql">-- 각 상태별 카운트
+SELECT sync_status, COUNT(*)
+FROM non_conformity_reports
+GROUP BY sync_status;
+
+-- 최근 24h 등록된 보고
+SELECT id, ncr_number, sync_status, item_code, factory
+FROM non_conformity_reports
+WHERE created_at &gt; now() - interval '24 hours'
+ORDER BY created_at DESC;
+
+-- REVIEW 상태 24h 이상 남은 것
+SELECT id, ncr_number, updated_at
+FROM non_conformity_reports
+WHERE sync_status = 'REVIEW' AND updated_at &lt; now() - interval '24 hours';
+</code></pre>
+<h2 id="windows-task-scheduler">동기화 스케줄 (Windows Task Scheduler)</h2>
+<table>
+<thead>
+<tr>
+<th>트리거</th>
+<th>시각</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>야간 반영</td>
+<td>05:00</td>
+</tr>
+<tr>
+<td>오전 반영</td>
+<td>10:00</td>
+</tr>
+<tr>
+<td>점심 반영</td>
+<td>12:30</td>
+</tr>
+<tr>
+<td>오후 마감 전</td>
+<td>17:00</td>
+</tr>
+</tbody>
+</table>
+<p>수정: <code>Set-ScheduledTask -TaskName ErpItemSync -Trigger @(...)</code> (관리자 PowerShell)</p>
+<h2 id="_2">시크릿·구성 파일 위치</h2>
+<table>
+<thead>
+<tr>
+<th>파일</th>
+<th>위치</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PRIVATE/erp_db.json</code></td>
+<td>사내 PC (gitignore)</td>
+<td>K-System 접속 (사용자·PW·서버)</td>
+</tr>
+<tr>
+<td><code>PRIVATE/app_db.json</code></td>
+<td>사내 PC + Replit env</td>
+<td>Neon 접속 URL</td>
+</tr>
+<tr>
+<td>Replit secrets</td>
+<td>Replit console</td>
+<td>SESSION_SECRET, WEBHOOK_URL 등</td>
+</tr>
+<tr>
+<td><code>PRIVATE/notify.json</code></td>
+<td>사내 PC</td>
+<td>동기화 실패 알림 웹훅</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_3">긴급 대응</h2>
+<table>
+<thead>
+<tr>
+<th>상황</th>
+<th>즉시 조치</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>앱 다운 (Replit)</td>
+<td>Replit 대시보드에서 재시작</td>
+</tr>
+<tr>
+<td>Neon DB 다운</td>
+<td>Neon 콘솔 상태 확인</td>
+</tr>
+<tr>
+<td>K-System 동기화 실패 알림 왔음</td>
+<td>sync.log 확인 → 재시도 (<code>python run_all.py</code> 수동)</td>
+</tr>
+<tr>
+<td>다수 보고가 <span class="tag tag-failed">FAILED</span></td>
+<td>RPA 운영자 문의. UNIERP 상태·좌표 캘리브 확인</td>
+</tr>
+<tr>
+<td>사용자 로그인 안 됨</td>
+<td>Replit 로그 확인 → 필요 시 계정 재설정</td>
+</tr>
+</tbody>
+</table>
+<p>→ <a href="IT관리자_상세.html">상세 가이드</a></p>
+<div class="doc-footer"><a href="INDEX.html">← 문서 목차로</a></div>
+</body>
+</html>

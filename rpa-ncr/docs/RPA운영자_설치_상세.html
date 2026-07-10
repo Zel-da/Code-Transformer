@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RPA 설치 상세 가이드</title>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<h1>RPA 설치 상세 가이드<span class="role-badge role-operator">RPA 운영자</span></h1><div class="subtitle">백승기 직장님 PC 최초 설치 · 2회차 이후 갱신</div>
+<div class="doc-header">
+UNIERP 가 설치된 PC 에서 <strong>rpa-ncr 워커를 실행할 수 있게 세팅</strong> 하는 과정.
+한 번만 하면 되고, 이후에는 <code>git pull</code> 정도만 하면 됩니다.
+</div>
+
+<h2 id="a">A. 사전 설치 프로그램</h2>
+<p>아래 순서대로 설치.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">#</th>
+<th>프로그램</th>
+<th>용도</th>
+<th>다운로드</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">1</td>
+<td><strong>Git for Windows</strong></td>
+<td>코드 클론·업데이트</td>
+<td><a href="https://git-scm.com/download/win">git-scm.com/download/win</a></td>
+</tr>
+<tr>
+<td style="text-align: center;">2</td>
+<td><strong>Python 3.11 또는 3.12</strong> <em>(필수)</em></td>
+<td>RPA 실행 환경</td>
+<td><a href="https://www.python.org/downloads/windows/">python.org/downloads/windows</a></td>
+</tr>
+<tr>
+<td style="text-align: center;">3</td>
+<td><strong>크롬 or 엣지</strong></td>
+<td>대시보드 브라우저</td>
+<td>기본값</td>
+</tr>
+</tbody>
+</table>
+<blockquote class="warn">
+[!warn] Python 설치 시 <strong>"Add Python to PATH"</strong> 체크박스 꼭 켜세요.
+설치 후 <code>python --version</code> 이 콘솔에서 잘 나오는지 확인.
+</blockquote>
+
+<h2 id="b">B. 코드 받기</h2>
+<pre><code class="language-powershell">cd C:\Users\Administrator\Downloads
+git clone https://github.com/Zel-da/Code-Transformer.git
+cd Code-Transformer\rpa-ncr
+</code></pre>
+<h2 id="c-private">C. PRIVATE 폴더 세팅</h2>
+<p><code>PRIVATE/app_db.json</code> 파일을 담당자에게 받아 아래 위치에 저장:</p>
+<pre><code>Code-Transformer/
+├── PRIVATE/
+│   └── app_db.json      ← 담당자에게 받아 여기
+├── rpa-ncr/
+</code></pre>
+<blockquote class="warn">
+[!warn] <code>PRIVATE</code> 폴더는 <code>.gitignore</code> 되어 있어 git 에 안 올라갑니다.
+비밀번호가 담긴 파일이므로 <strong>공유 폴더·이메일·채팅 등에 올리지 마세요</strong>.
+USB 로 전달 권장.
+</blockquote>
+
+<h2 id="d">D. 원클릭 실행 (첫 실행 시 자동 설치됨)</h2>
+<p><code>rpa-ncr\시작.bat</code> 를 <strong>더블클릭</strong>하면 다음이 자동으로 됨:</p>
+<ol>
+<li><strong>관리자 권한 승격</strong> (UAC 창 → [예])</li>
+<li>Python 설치 확인</li>
+<li><code>.venv</code> 가상환경 생성</li>
+<li><code>requirements.txt</code> 자동 설치 <em>(2~3분)</em></li>
+<li>설치 성공 표시 <code>.venv/.install_ok</code> 마커 생성</li>
+<li><code>main.py</code> 실행 → 브라우저 자동 열림</li>
+</ol>
+<blockquote class="info">
+[!info] <strong>왜 관리자 권한이 필요한가?</strong>
+UNIERP 가 관리자로 실행되면 Windows UIPI 제약 때문에 일반 프로세스는
+UNIERP 창을 조작할 수 없습니다. RPA 워커도 관리자여야 UIA 로 UNIERP 를 제어할 수 있어요.
+</blockquote>
+
+<blockquote class="warn">
+[!warn] <strong>설치 실패 시</strong>: 인터넷 연결 확인 후 다시 실행. <code>.install_ok</code> 마커는
+성공했을 때만 만들어지므로 반쪽 상태 걱정 없이 다시 눌러도 됩니다.
+</blockquote>
+
+<h2 id="e-1">E. 바탕화면 바로가기 만들기 (1회)</h2>
+<p><code>rpa-ncr\바탕화면에 바로가기 만들기.bat</code> 를 <strong>1회</strong> 더블클릭 → 다음부터는 바탕화면 아이콘으로 실행.</p>
+<h2 id="f">F. 첫 실행 후 확인</h2>
+<p>브라우저에서 <code>http://127.0.0.1:8010</code> 이 자동 열리면:</p>
+<ol>
+<li>상단 <strong>설정 점검 배너</strong> → 초록 ✓ 있으면 정상</li>
+<li><strong>데이터 소스 → [연결 테스트]</strong> → "DB 연결 OK (Neon)" 확인</li>
+<li><strong>ERP 설정</strong> 값들이 예상대로 채워져 있는지 확인 (창 제목·실행 경로 등)</li>
+</ol>
+<h2 id="g-2">G. 코드 업데이트 (2회차 이후)</h2>
+<p>새 기능이 나오면:</p>
+<pre><code class="language-powershell">cd C:\Users\Administrator\Downloads\Code-Transformer
+git pull
+</code></pre>
+<p>그다음 <code>시작.bat</code> 을 다시 실행. <code>requirements.txt</code> 가 바뀌었으면:</p>
+<pre><code class="language-powershell">cd rpa-ncr
+del .venv\.install_ok
+</code></pre>
+<p>로 마커를 지우면 다음 실행에서 자동 재설치됨.</p>
+<h2 id="h">H. 문제 진단</h2>
+<p><code>rpa-ncr\진단.bat</code> 를 실행하면 다음을 자동 확인:
+- Python 버전
+- venv 상태
+- 필수 패키지 설치 여부
+- Neon DB 연결
+- UNIERP 창 감지 여부</p>
+<blockquote class="info">
+[!info] 진단 결과를 캡처해서 IT 관리자에게 보내면 원인 파악이 빨라집니다.
+</blockquote>
+
+<h2 id="i">I. 흔한 설치 오류</h2>
+<table>
+<thead>
+<tr>
+<th>증상</th>
+<th>원인</th>
+<th>해결</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>python --version</code> 오류</td>
+<td>PATH 미등록</td>
+<td>재설치 시 "Add Python to PATH" 체크</td>
+</tr>
+<tr>
+<td><code>pip install</code> 도중 실패</td>
+<td>회사 프록시·사내망 방화벽</td>
+<td>IT 팀 문의, <code>pip config</code> 프록시 설정</td>
+</tr>
+<tr>
+<td>브라우저 안 열림</td>
+<td>포트 8010 사용 중</td>
+<td>콘솔 로그에 "포트 8011 사용" 등 표시 → 그 주소로 접속</td>
+</tr>
+<tr>
+<td>UAC 승격 후 창 즉시 꺼짐</td>
+<td>백신·EDR 차단</td>
+<td>IT 팀에 예외 등록 요청</td>
+</tr>
+<tr>
+<td><code>PRIVATE/app_db.json 없음</code> 경고</td>
+<td>파일 미배치</td>
+<td>C-D 단계 참고</td>
+</tr>
+<tr>
+<td>ERP 설정 저장 실패</td>
+<td>관리자 권한 아님</td>
+<td>시작.bat 을 반드시 UAC 승격 경로로 실행</td>
+</tr>
+</tbody>
+</table>
+<h2 id="j">J. 관련 파일</h2>
+<table>
+<thead>
+<tr>
+<th>경로</th>
+<th>역할</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rpa-ncr/시작.bat</code></td>
+<td>원클릭 실행 (UAC 승격 + 자동 설치 + 실행)</td>
+</tr>
+<tr>
+<td><code>rpa-ncr/바탕화면에 바로가기 만들기.bat</code></td>
+<td>1회용</td>
+</tr>
+<tr>
+<td><code>rpa-ncr/진단.bat</code></td>
+<td>문제 진단</td>
+</tr>
+<tr>
+<td><code>rpa-ncr/config/settings.json</code></td>
+<td>대부분 설정 (UI 로도 편집 가능)</td>
+</tr>
+<tr>
+<td><code>rpa-ncr/config/field_mapping.json</code></td>
+<td>필드 좌표 매핑 (UI 로 편집)</td>
+</tr>
+<tr>
+<td><code>rpa-ncr/logs/*.log</code></td>
+<td>실행 로그 (문제 발생 시 최신 파일 확인)</td>
+</tr>
+<tr>
+<td><code>PRIVATE/app_db.json</code></td>
+<td>Neon DB 접속 (gitignore)</td>
+</tr>
+</tbody>
+</table>
+<div class="doc-footer"><a href="INDEX.html">← 문서 목차로</a></div>
+</body>
+</html>

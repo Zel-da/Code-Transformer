@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RPA 운영자 요약</title>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<h1>RPA 운영자 요약<span class="role-badge role-operator">RPA 운영자</span></h1><div class="subtitle">5분에 익히는 일상 사용 흐름</div>
+<div class="doc-header">
+UNIERP 자동입력 워커를 <strong>일상 사용</strong> 하는 데 필요한 최소 지식.
+설치·상세는 <a href="RPA운영자_설치_상세.html">설치</a> · <a href="RPA운영자_사용_상세.html">사용</a>.
+</div>
+
+<h2 id="_1">하루 사용 순서</h2>
+<ol>
+<li><strong>UNIERP 켜고 로그인</strong> → 부적합등록(S) 폼 한 번 열어둠</li>
+<li><strong>바탕화면 <code>NCR RPA</code> 더블클릭</strong> → 콘솔 뜨고 브라우저 자동 열림 (<code>127.0.0.1:8010</code>)</li>
+<li>대시보드에서:
+   - <strong>[PENDING 조회]</strong> → 큐 채움
+   - <strong>[ERP 창 확인]</strong> → "메인 창 찾음"
+   - <strong>[입력 시작]</strong> → 자리 비우고 대기</li>
+<li><strong>검토 패널</strong> 뜨면 각 보고 확인 → <strong>[완료 확인]</strong> 또는 <strong>[모두 확인]</strong></li>
+</ol>
+<h2 id="_2">절대 지킬 것</h2>
+<blockquote class="warn">
+[!warn] <strong>RPA 도는 중 마우스·키보드 금지</strong>. 다른 창 클릭·채팅·메일 확인 X.
+포커스 이탈 감지되면 자동 중지되고 <span class="tag tag-failed">FAILED</span> 마킹.
+</blockquote>
+
+<h2 id="2026-07">새로 알아둘 것 (2026-07 반영)</h2>
+<h3 id="t1">T1 — 갇힌 보고 자동회수</h3>
+<ul>
+<li>이전엔 RPA 크래시하면 보고가 <span class="tag tag-processing">PROCESSING</span> 로 갇혀 손으로 DB 열어야 했음</li>
+<li><strong>이제 5시간 지나면 자동 <span class="tag tag-pending">PENDING</span> 로 복원</strong> → 다음 조회에서 다시 처리</li>
+<li>아무것도 안 해도 됨. 로그에서 <code>[auto-recovered]</code> 표시 확인 가능</li>
+</ul>
+<h3 id="t2-review">T2 — REVIEW 상태</h3>
+<ul>
+<li>이전 배치 검토 큐는 서버 재시작하면 사라짐 → <strong>UNIERP 이중입력 위험</strong> 있었음</li>
+<li>이제 UNIERP 저장 직후 DB 에 <span class="tag tag-review">REVIEW</span> 로 기록</li>
+<li><strong>브라우저 닫아도, 콘솔 닫아도, PC 재부팅해도</strong> 검토 대기 그대로 남음</li>
+<li>다시 대시보드 열면 자동으로 <strong>이전 세션 REVIEW 보고들이 복원됨</strong></li>
+</ul>
+<h3 id="t3-4">T3 — 동기화 4회/일</h3>
+<ul>
+<li>ERP 신규 자재/거래처가 앱에 반영되기까지 최대 12h → <strong>약 5h</strong> 로 단축</li>
+<li>하루 4회: 05:00 / 10:00 / 12:30 / 17:00</li>
+</ul>
+<h2 id="_3">자주 겪는 상황</h2>
+<table>
+<thead>
+<tr>
+<th>상황</th>
+<th>대응</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UNIERP 창 못 찾음</td>
+<td>창 켜져 있는지 확인. 최소화도 안 됨. <code>[ERP 창 확인]</code> 재클릭</td>
+</tr>
+<tr>
+<td>로그인 창에서 멈춤</td>
+<td>비밀번호 확인. 대시보드 ③번 섹션에서 설정</td>
+</tr>
+<tr>
+<td>필드 좌표 어긋남</td>
+<td>⑧번 좌표 편집 UI 에서 조정 (<code>/api/field-mapping</code>)</td>
+</tr>
+<tr>
+<td>도중에 잘못됨</td>
+<td>즉시 <strong>[중지]</strong> → 처리 중 보고는 자동 PENDING 복원</td>
+</tr>
+<tr>
+<td>여러 보고 REVIEW 로 쌓임</td>
+<td>검토 패널에서 하나씩 UNIERP 화면 대조 → 확인</td>
+</tr>
+<tr>
+<td>서버 재시작 후 REVIEW 남음</td>
+<td>대시보드 다시 열면 자동 복원됨. 확인만 하면 됨</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_4">종료</h2>
+<ul>
+<li><strong>콘솔 창을 닫으면 서버 종료</strong></li>
+<li>검토 안 끝난 REVIEW 는 DB 에 그대로 남음 (다음에 이어서 확인)</li>
+<li>브라우저만 닫으면 서버는 계속 실행 중 (콘솔 살아있으면)</li>
+</ul>
+<p>→ <a href="RPA운영자_설치_상세.html">설치 상세</a> · <a href="RPA운영자_사용_상세.html">사용 상세</a></p>
+<div class="doc-footer"><a href="INDEX.html">← 문서 목차로</a></div>
+</body>
+</html>

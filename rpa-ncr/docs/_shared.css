@@ -1,0 +1,163 @@
+/* NCR 시스템 문서 공통 스타일 (기존 설치가이드.html 에서 추출 + 배지·그리드 추가) */
+* { box-sizing: border-box; }
+body {
+  font-family: "Segoe UI", "Malgun Gothic", "맑은 고딕", sans-serif;
+  max-width: 880px;
+  margin: 40px auto;
+  padding: 0 24px 60px;
+  color: #222;
+  line-height: 1.6;
+}
+h1 {
+  font-size: 28px;
+  border-bottom: 3px solid #2c5aa0;
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+}
+.subtitle {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 32px;
+}
+h2 {
+  font-size: 22px;
+  color: #2c5aa0;
+  border-left: 5px solid #2c5aa0;
+  padding-left: 12px;
+  margin-top: 40px;
+}
+h3 {
+  font-size: 17px;
+  color: #333;
+  margin-top: 24px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+th, td {
+  border: 1px solid #ddd;
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+th {
+  background: #f4f7fc;
+  font-weight: 600;
+}
+code, pre {
+  font-family: "Consolas", "Cascadia Mono", monospace;
+  font-size: 13px;
+}
+code {
+  background: #f4f4f4;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #c7254e;
+}
+pre {
+  background: #2d2d2d;
+  color: #f8f8f2;
+  padding: 14px 18px;
+  border-radius: 6px;
+  overflow-x: auto;
+  line-height: 1.5;
+}
+pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+blockquote {
+  border-left: 4px solid #f0ad4e;
+  background: #fdf6ec;
+  padding: 12px 16px;
+  margin: 16px 0;
+  border-radius: 0 6px 6px 0;
+  color: #444;
+}
+blockquote.warn {
+  border-color: #d9534f;
+  background: #fdf0ef;
+}
+blockquote.info {
+  border-color: #5bc0de;
+  background: #eef7fb;
+}
+ol li, ul li { margin: 6px 0; }
+a { color: #2c5aa0; word-break: break-all; }
+hr { border: 0; border-top: 1px solid #ddd; margin: 32px 0; }
+
+/* 대상 배지 (문서 헤더에 표시) */
+.role-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.role-worker    { background: #e3f2fd; color: #0d47a1; }
+.role-qc        { background: #f3e5f5; color: #4a148c; }
+.role-operator  { background: #fff3e0; color: #e65100; }
+.role-admin     { background: #e8f5e9; color: #1b5e20; }
+
+/* 상태 태그 (본문 안) */
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: "Consolas", monospace;
+  vertical-align: middle;
+}
+.tag-pending     { background: #ffe0b2; color: #6d3400; }
+.tag-processing  { background: #b3e5fc; color: #01579b; }
+.tag-review      { background: #d1c4e9; color: #4527a0; }
+.tag-completed   { background: #c8e6c9; color: #1b5e20; }
+.tag-failed      { background: #ffcdd2; color: #b71c1c; }
+
+/* 2단 카드 그리드 (요약본) */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 20px 0;
+}
+.grid-2 > div {
+  border: 1px solid #ddd;
+  padding: 16px;
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+/* 문서 상단 대상 안내 배너 */
+.doc-header {
+  background: #f4f7fc;
+  border: 1px solid #cfd8e3;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin: 24px 0 32px;
+  font-size: 14px;
+  color: #333;
+}
+.doc-header strong { color: #2c5aa0; }
+
+/* 문서 하단 목차 링크 */
+.doc-footer {
+  margin-top: 60px;
+  padding-top: 20px;
+  border-top: 1px solid #ddd;
+  font-size: 13px;
+  color: #666;
+  text-align: center;
+}
+
+@media print {
+  body { margin: 20px; padding: 0; }
+  pre { background: #f4f4f4; color: #222; border: 1px solid #ccc; }
+  .doc-footer { display: none; }
+}

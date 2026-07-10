@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IT / 관리자 상세 가이드</title>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<h1>IT / 관리자 상세 가이드<span class="role-badge role-admin">IT/관리자</span></h1><div class="subtitle">아키텍처 · 배포 · 모니터링 · 트러블슈팅 · 데이터 복구</div>
+<div class="doc-header">
+NCR 시스템의 <strong>전체 기술 지형</strong>. 배포·모니터링·긴급 복구까지.
+</div>
+
+<h2 id="1">1. 시스템 아키텍처</h2>
+<h3 id="11">1.1 모노레포 구조</h3>
+<pre><code>Code-Transformer/
+├── artifacts/
+│   ├── ncr-app/          ← React+Vite 프런트 (모바일/PC 폼)
+│   ├── api-server/       ← Express+Drizzle 백엔드
+│   ├── ncr-mobile/       ← 별도 모바일 (일부)
+│   └── mockup-sandbox/   ← 목업/샌드박스
+├── lib/
+│   ├── db/               ← Drizzle 스키마 (Postgres)
+│   ├── api-spec/         ← OpenAPI 3.0 + orval 코드젠
+│   ├── api-zod/          ← 자동생성 zod 스키마
+│   ├── api-client-react/ ← 자동생성 React 클라이언트
+│   └── object-storage-web/ ← 파일 업로드 (Replit Object Storage)
+├── erp_query/            ← Python, K-System → Neon 동기화 (사내 PC)
+├── rpa-ncr/              ← Python, 사용 중인 RPA 워커
+├── rpa/                  ← 옛 폴더 (deprecated)
+└── PRIVATE/              ← 시크릿 (gitignore)
+</code></pre>
+<h3 id="12">1.2 데이터 흐름</h3>
+<pre><code>[사용자 폼]
+    ↓ HTTPS
+[Replit ncr-app]
+    ↓ /api/*
+[Replit api-server]
+    ↓ Drizzle ORM
+[Neon Postgres]
+    ↑ 4회/일 동기화
+[사내 PC erp_query]
+    ↑ pyodbc/pymssql
+[K-System SQL Server (SOOSANHI)]
+
+[Replit api-server]
+    ↑ HTTP polling
+[사내 PC rpa-ncr worker]
+    ↓ pywinauto UIA
+[UNIERP 데스크톱 앱]
+</code></pre>
+<h3 id="13">1.3 배포 타깃</h3>
+<table>
+<thead>
+<tr>
+<th>컴포넌트</th>
+<th>배포</th>
+<th>재시작 방법</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ncr-app</td>
+<td>Replit autoscale</td>
+<td>Replit 대시보드</td>
+</tr>
+<tr>
+<td>api-server</td>
+<td>Replit autoscale</td>
+<td>자동 (deployment 시)</td>
+</tr>
+<tr>
+<td>Neon</td>
+<td>Neon Cloud (관리 서비스)</td>
+<td>콘솔</td>
+</tr>
+<tr>
+<td>erp_query API</td>
+<td>사내 PC, NSSM 서비스 (<code>ErpQueryApi</code>)</td>
+<td><code>net start/stop ErpQueryApi</code></td>
+</tr>
+<tr>
+<td>erp_query 동기화</td>
+<td>사내 PC, Task Scheduler (<code>ErpItemSync</code>)</td>
+<td><code>Start-ScheduledTask -TaskName ErpItemSync</code> (수동 즉시 실행)</td>
+</tr>
+<tr>
+<td>rpa-ncr 워커</td>
+<td>사내 PC, <code>시작.bat</code></td>
+<td>재실행</td>
+</tr>
+</tbody>
+</table>
+<h2 id="2">2. 시크릿 · 접속 관리</h2>
+<h3 id="21-private-pc-gitignore">2.1 PRIVATE 폴더 (사내 PC, gitignore)</h3>
+<table>
+<thead>
+<tr>
+<th>파일</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PRIVATE/erp_db.json</code></td>
+<td>K-System 접속 (<code>server</code>, <code>database=SOOSANHI</code>, <code>uid</code>, <code>pwd</code>, <code>api_key</code>)</td>
+</tr>
+<tr>
+<td><code>PRIVATE/app_db.json</code></td>
+<td>Neon 접속 URL</td>
+</tr>
+<tr>
+<td><code>PRIVATE/notify.json</code></td>
+<td>슈산톡 웹훅 URL (동기화 실패 알림)</td>
+</tr>
+</tbody>
+</table>
+<blockquote class="warn">
+[!warn] 이 파일들엔 <strong>평문 비밀번호</strong> 들어있음. 절대 이메일·채팅·공유폴더 X.
+USB 전달만.
+</blockquote>
+
+<h3 id="22-replit-secrets">2.2 Replit Secrets</h3>
+<table>
+<thead>
+<tr>
+<th>키</th>
+<th>용도</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DATABASE_URL</code></td>
+<td>Neon 접속</td>
+</tr>
+<tr>
+<td><code>SESSION_SECRET</code></td>
+<td>세션 서명</td>
+</tr>
+<tr>
+<td><code>RPA_STALE_PROCESSING_MINUTES</code> <em>(선택)</em></td>
+<td>T1 임계값 (기본 300)</td>
+</tr>
+<tr>
+<td><code>WEBHOOK_QC_URL</code>, <code>WEBHOOK_LAB_URL</code></td>
+<td>슈산톡 채널</td>
+</tr>
+<tr>
+<td><code>NCR_API_SECRET</code> <em>(선택)</em></td>
+<td>RPA ↔ API 인증 (<code>X-RPA-Secret</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="23-pc-api-erpqueryapi-port-8900">2.3 사내 PC API (<code>ErpQueryApi</code> 서비스, port 8900)</h3>
+<ul>
+<li><strong>LAN 한정</strong>: 미들웨어가 private IP 만 허용 (<code>127.0.0.1</code>, <code>10.*</code>, <code>172.16-31.*</code>, <code>192.168.*</code>)</li>
+<li><strong>API 키 강제</strong>: <code>X-ERP-KEY</code> 헤더 없으면 401. 키 없으면 503 (구성 오류)</li>
+<li>키는 <code>PRIVATE/erp_db.json</code> 의 <code>api_key</code> (43자 URL-safe, 자동 생성)</li>
+</ul>
+<h2 id="3">3. 상태 관리</h2>
+<h3 id="31-syncstatus">3.1 syncStatus 전이</h3>
+<pre><code>PENDING ──┐
+    ↑     ↓ RPA 조회
+    │  PROCESSING ──→ REVIEW ──→ COMPLETED
+    │     │             │
+    │     │             │ 사용자 [실패] 시
+    │     └─→ FAILED ←──┘
+    │         │
+    └─── 5시간 자동회수 (T1)
+</code></pre>
+<h3 id="32-qcstatus-qc">3.2 qcStatus 전이 (QC 워크플로)</h3>
+<pre><code>OPEN → IN_REVIEW → PENDING_COLLAB ↔ IN_REVIEW → RESOLVED → APPROVED → ERP_SYNCED
+</code></pre>
+<h3 id="33">3.3 상태별 액션 매트릭스</h3>
+<table>
+<thead>
+<tr>
+<th>상태</th>
+<th>자동 액션</th>
+<th>담당</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PENDING (신규)</td>
+<td>RPA 다음 폴링에 조회됨</td>
+<td>RPA</td>
+</tr>
+<tr>
+<td>PENDING (자동회수됨)</td>
+<td>재시도 카운트 증가한 채 조회됨</td>
+<td>RPA</td>
+</tr>
+<tr>
+<td>PROCESSING</td>
+<td>5시간 후 자동 PENDING 복원</td>
+<td>자동</td>
+</tr>
+<tr>
+<td>REVIEW</td>
+<td>사용자 확인 대기, DB 에 영속</td>
+<td>RPA 운영자</td>
+</tr>
+<tr>
+<td>COMPLETED</td>
+<td>종결</td>
+<td>—</td>
+</tr>
+<tr>
+<td>FAILED</td>
+<td>재시도 로직 없음 (수동)</td>
+<td>관리자·QC</td>
+</tr>
+</tbody>
+</table>
+<h2 id="4-windows-task-scheduler">4. 동기화 스케줄 (Windows Task Scheduler)</h2>
+<h3 id="41">4.1 현재 트리거</h3>
+<pre><code class="language-powershell">Get-ScheduledTask -TaskName &quot;ErpItemSync&quot; | Select-Object -ExpandProperty Triggers
+</code></pre>
+<ul>
+<li>05:00, 10:00, 12:30, 17:00 (하루 4회)</li>
+</ul>
+<h3 id="42">4.2 시간 변경</h3>
+<pre><code class="language-powershell">$triggers = @(
+    (New-ScheduledTaskTrigger -Daily -At &quot;5:00AM&quot;),
+    (New-ScheduledTaskTrigger -Daily -At &quot;10:00AM&quot;),
+    (New-ScheduledTaskTrigger -Daily -At &quot;12:30PM&quot;),
+    (New-ScheduledTaskTrigger -Daily -At &quot;5:00PM&quot;)
+)
+Set-ScheduledTask -TaskName &quot;ErpItemSync&quot; -Trigger $triggers
+</code></pre>
+<h3 id="43">4.3 즉시 수동 실행</h3>
+<pre><code class="language-powershell">Start-ScheduledTask -TaskName &quot;ErpItemSync&quot;
+</code></pre>
+<p>또는:</p>
+<pre><code class="language-powershell">cd C:\Users\Administrator\Downloads\Code-Transformer\erp_query
+python run_all.py
+</code></pre>
+<h3 id="44-4">4.4 4단계별 소요</h3>
+<table>
+<thead>
+<tr>
+<th>단계</th>
+<th>처리 대상</th>
+<th>소요 (실측)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>items</td>
+<td>~1,145건 upsert</td>
+<td>~5초</td>
+</tr>
+<tr>
+<td>orders</td>
+<td>~264건 upsert</td>
+<td>~3초</td>
+</tr>
+<tr>
+<td>vendors</td>
+<td>~80,140건 upsert</td>
+<td>~23초</td>
+</tr>
+<tr>
+<td>shipments</td>
+<td>~12,481건 TRUNCATE+INSERT</td>
+<td>~5초</td>
+</tr>
+<tr>
+<td><strong>총</strong></td>
+<td>—</td>
+<td><strong>35~40초</strong></td>
+</tr>
+</tbody>
+</table>
+<h2 id="5">5. 로그·모니터링</h2>
+<h3 id="51">5.1 로그 위치</h3>
+<table>
+<thead>
+<tr>
+<th>서비스</th>
+<th>위치</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>API 서버 (Replit)</td>
+<td>Replit 콘솔</td>
+</tr>
+<tr>
+<td>erp_query 동기화</td>
+<td><code>C:\ProgramData\ErpQueryApi\sync.log</code></td>
+</tr>
+<tr>
+<td>erp_query API 서비스</td>
+<td>Windows Event Viewer (NSSM ErpQueryApi)</td>
+</tr>
+<tr>
+<td>rpa-ncr 워커</td>
+<td><code>rpa-ncr/logs/rpa_ncr_YYYY-MM-DD.log</code> (5개 회전)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="52-sql">5.2 모니터링 SQL</h3>
+<pre><code class="language-sql">-- 각 상태별 카운트 + 최신 업데이트 시각
+SELECT sync_status, COUNT(*), MAX(updated_at)
+FROM non_conformity_reports
+GROUP BY sync_status
+ORDER BY 1;
+
+-- 지금 갇힌 것으로 보이는 것 (5시간 초과 PROCESSING)
+SELECT id, ncr_number, item_code, updated_at,
+       EXTRACT(EPOCH FROM (now() - updated_at)) / 60 AS age_minutes
+FROM non_conformity_reports
+WHERE sync_status = 'PROCESSING'
+  AND updated_at &lt; now() - interval '300 minutes'
+ORDER BY updated_at;
+
+-- REVIEW 24시간 이상
+SELECT id, ncr_number, updated_at
+FROM non_conformity_reports
+WHERE sync_status = 'REVIEW'
+  AND updated_at &lt; now() - interval '24 hours';
+
+-- 최근 실패
+SELECT id, ncr_number, sync_last_error, updated_at
+FROM non_conformity_reports
+WHERE sync_status = 'FAILED'
+  AND updated_at &gt; now() - interval '48 hours'
+ORDER BY updated_at DESC;
+
+-- 자동회수된 이력 (sync_last_error 포함)
+SELECT id, sync_status, sync_attempt_count, sync_last_error
+FROM non_conformity_reports
+WHERE sync_last_error LIKE '%auto-recovered%'
+ORDER BY updated_at DESC LIMIT 20;
+</code></pre>
+<h3 id="53-k-system">5.3 K-System 접속 확인</h3>
+<pre><code class="language-powershell"># 사내 PC 에서
+Test-NetConnection -ComputerName &lt;k-system-server&gt; -Port 1433
+</code></pre>
+<h2 id="6-t1">6. T1 자동회수 상세</h2>
+<h3 id="61">6.1 동작</h3>
+<ul>
+<li><code>GET /api/reports/pending</code> 응답 전에:</li>
+<li><code>PROCESSING</code> + <code>updated_at &lt; now() - N분</code> UPDATE → PENDING</li>
+<li><code>sync_last_error</code> 에 자동 복원 표시</li>
+<li><code>sync_attempt_count</code> 증가</li>
+<li>동시에 <code>DbSource.fetch_pending()</code> 도 자체 recovery (RPA 가 DB source 로 동작 시)</li>
+</ul>
+<h3 id="62">6.2 임계값 조절</h3>
+<ul>
+<li>환경변수 <code>RPA_STALE_PROCESSING_MINUTES</code> (기본 300 = 5시간)</li>
+<li>최소 1분, 상한 없음 (하지만 5분 미만은 오탐 위험)</li>
+<li>Replit 에서 설정 후 재배포</li>
+</ul>
+<h3 id="63">6.3 조작 필요 없음</h3>
+<ul>
+<li>이제 갇힌 보고는 수동으로 DB 열지 않아도 됨</li>
+<li>로그에서 확인:
+  <code>[reports/pending] stale PROCESSING 자동 복원: N건 → PENDING (임계값 300분). ids=8,11,15</code></li>
+</ul>
+<h2 id="7-t2-review">7. T2 REVIEW 상세</h2>
+<h3 id="71-db">7.1 DB 승격 시점</h3>
+<ul>
+<li>RPA 워커가 UNIERP 저장 완료 직후 <code>source.mark_review(report.id)</code> 호출</li>
+<li>상태: <span class="tag tag-processing">PROCESSING</span> → <span class="tag tag-review">REVIEW</span></li>
+</ul>
+<h3 id="72">7.2 큐 복원</h3>
+<ul>
+<li><code>GET /api/erp/review</code> 호출 시 큐가 비었으면 <code>fetch_review()</code> 로 DB 스캔</li>
+<li>REVIEW 상태 보고를 큐에 restore (<code>restored: true</code> 플래그)</li>
+<li>워커 실행 중일 땐 hydrate 안 함 (레이스 방지)</li>
+</ul>
+<h3 id="73-completed">7.3 확인 → COMPLETED</h3>
+<ul>
+<li>사용자가 검토 UI 에서 [확인] → <code>mark_completed</code> → COMPLETED</li>
+<li>실패 처리 원하면 [실패] → <code>mark_failed</code></li>
+</ul>
+<h2 id="8">8. 트러블슈팅 시나리오</h2>
+<h3 id="81">8.1 동기화 실패 알림 왔음</h3>
+<ol>
+<li>사내 PC 에서 <code>C:\ProgramData\ErpQueryApi\sync.log</code> 최신 확인</li>
+<li>마지막 traceback 파악</li>
+<li>K-System 네트워크 문제면 잠깐 뒤 재시도 자동</li>
+<li>인증 문제면 <code>PRIVATE/erp_db.json</code> 재확인</li>
+<li>즉시 재실행: <code>Start-ScheduledTask -TaskName ErpItemSync</code></li>
+</ol>
+<h3 id="82">8.2 앱 사용자가 부품코드 검색 안 됨</h3>
+<ol>
+<li>방금 ERP 등록된 자재는 최대 5시간 lag (05·10·12:30·17시 동기화)</li>
+<li><code>SELECT * FROM item_codes WHERE code = '...'</code> 로 앱 DB 확인</li>
+<li>없으면 K-System 에는 있는지 담당자 확인</li>
+<li>급하면 수동 동기화 (6절)</li>
+</ol>
+<h3 id="83-failed">8.3 다수 보고가 FAILED</h3>
+<ol>
+<li><code>sync_last_error</code> 컬럼으로 원인 파악</li>
+<li>UNIERP 창 좌표 어긋남 → RPA 운영자에게 캘리브 요청</li>
+<li>UNIERP 팝업 무한 반복 → 로그의 팝업 이름 확인</li>
+</ol>
+<h3 id="84-review">8.4 REVIEW 오래 남음</h3>
+<ol>
+<li>RPA 운영자에게 확인 요청 (그가 대시보드에서 [완료 확인] 눌러야 함)</li>
+<li>정말 잘못됐다면 수동으로 상태 되돌림 (아래)</li>
+</ol>
+<h3 id="85">8.5 수동 상태 복원 (긴급)</h3>
+<blockquote class="warn">
+[!warn] 아래는 <strong>정말 필요할 때만</strong>. 자동 복구 로직이 도는지 확인 후.
+</blockquote>
+
+<pre><code class="language-sql">-- 특정 보고를 PENDING 으로 되돌림
+UPDATE non_conformity_reports
+SET sync_status = 'PENDING',
+    sync_attempt_count = 0,
+    sync_last_error = NULL,
+    updated_at = now()
+WHERE id = &lt;REPORT_ID&gt;;
+
+-- 여러 개 FAILED 를 재시도 대상으로
+UPDATE non_conformity_reports
+SET sync_status = 'PENDING',
+    updated_at = now()
+WHERE sync_status = 'FAILED' AND id IN (...);
+</code></pre>
+<h2 id="9">9. 배포·업데이트</h2>
+<h3 id="91">9.1 코드 배포</h3>
+<pre><code class="language-bash"># 로컬 커밋 후
+git push origin main
+# Replit 이 자동 감지해서 재배포 (autoscale)
+</code></pre>
+<h3 id="92">9.2 스키마 마이그레이션</h3>
+<ul>
+<li>Drizzle 사용, <code>lib/db/src/schema/*.ts</code> 편집 후:</li>
+<li><code>pnpm --filter @workspace/db run generate</code> (마이그레이션 SQL 자동)</li>
+<li><code>pnpm --filter @workspace/db run push</code> (Neon 에 적용)</li>
+<li><code>syncStatusEnum</code> 처럼 text 타입은 코드만 확장하면 되고 DB 마이그레이션 불요</li>
+</ul>
+<h3 id="93-openapiyaml">9.3 openapi.yaml → 코드젠</h3>
+<ul>
+<li><code>lib/api-spec/openapi.yaml</code> 편집 후:</li>
+<li><code>pnpm --filter @workspace/api-spec run codegen</code></li>
+<li>이걸 안 돌리면 프런트 zod 스키마가 백엔드와 어긋남</li>
+</ul>
+<h2 id="10">10. 테스트</h2>
+<h3 id="101">10.1 회귀 테스트 실행</h3>
+<pre><code class="language-bash">pnpm --filter @workspace/api-server run test
+</code></pre>
+<ul>
+<li><code>artifacts/api-server/tests/erp.test.ts</code> — 5개 통합 케이스 (실 Neon 사용)</li>
+<li>vitest + supertest</li>
+</ul>
+<h3 id="102">10.2 프런트 테스트</h3>
+<ul>
+<li><strong>없음</strong> (알려진 갭). 폼 회귀는 QC 담당자가 수동 확인.</li>
+</ul>
+<h2 id="11_1">11. 최근 큰 사고 이력</h2>
+<table>
+<thead>
+<tr>
+<th>시기</th>
+<th>사고</th>
+<th>원인</th>
+<th>해결</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026-06-10 ~ 06-23</td>
+<td>동기화 13일간 silent 실패</td>
+<td>cp949 인코딩 오류가 나머지 3단계 죽였고 알림 로직도 함께 죽음</td>
+<td>인코딩·격리·exit code 전파 hardening</td>
+</tr>
+<tr>
+<td>2026-06 ~</td>
+<td>id=8,11,15 보고 갇힘</td>
+<td>RPA 크래시 후 PROCESSING 잔재</td>
+<td>2026-07 T1 자동회수 도입 → 즉시 회수</td>
+</tr>
+<tr>
+<td>—</td>
+<td>REVIEW 큐 손실 위험</td>
+<td>in-memory 저장</td>
+<td>2026-07 T2 DB 승격</td>
+</tr>
+</tbody>
+</table>
+<h2 id="12_1">12. 아키텍처 결정 기록</h2>
+<table>
+<thead>
+<tr>
+<th>결정</th>
+<th>이유</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Neon Postgres (Replit 아님)</td>
+<td>Replit DB 는 개발용, 프로덕션엔 Neon serverless</td>
+</tr>
+<tr>
+<td>RPA 워커는 사내 PC</td>
+<td>UNIERP GUI 가 사내망 데스크톱 앱</td>
+</tr>
+<tr>
+<td>사내 PC API <code>LAN 한정</code></td>
+<td>K-System 접속을 외부에 노출 안 함</td>
+</tr>
+<tr>
+<td>동기화 TRUNCATE+INSERT</td>
+<td>소스가 진실이라 upsert 보다 단순·정확 (vendors 는 UPSERT — 8만건 규모)</td>
+</tr>
+<tr>
+<td>REVIEW 상태 도입</td>
+<td>배치 검토 큐를 재시작 안전하게</td>
+</tr>
+<tr>
+<td>Docs 언어 한국어</td>
+<td>실사용자·운영자 전원 한국어</td>
+</tr>
+</tbody>
+</table>
+<div class="doc-footer"><a href="INDEX.html">← 문서 목차로</a></div>
+</body>
+</html>

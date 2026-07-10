@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>현장 작업자 상세 가이드</title>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<h1>현장 작업자 상세 가이드<span class="role-badge role-worker">현장 작업자</span></h1><div class="subtitle">부적합 보고 등록의 모든 필드·자동채움·예외 처리</div>
+<div class="doc-header">
+이 문서는 <strong>NCR 폼 하나하나를 세부적으로 설명</strong>합니다.
+5분 안에 익히려면 <a href="작업자_요약.html">요약</a>부터 보세요.
+</div>
+
+<h2 id="1">1. 접속과 로그인</h2>
+<ul>
+<li>브라우저(<strong>모바일 크롬/사파리, PC 크롬</strong>)에서 회사에서 안내한 앱 주소로 접속</li>
+<li>처음이라면 담당자에게 <strong>계정</strong> 요청</li>
+<li>로그인하면 <strong>본인 이름·소속 공장이 자동 프로필</strong> 로 설정됨</li>
+</ul>
+<h2 id="2">2. 신규 부적합 등록 화면</h2>
+<h3 id="21">2.1 상단 필수 필드</h3>
+<table>
+<thead>
+<tr>
+<th>필드</th>
+<th style="text-align: center;">필수</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>양산/개발</strong></td>
+<td style="text-align: center;">✓</td>
+<td>기본값 "양산". 개발품이면 변경</td>
+</tr>
+<tr>
+<td><strong>등록자</strong></td>
+<td style="text-align: center;">✓</td>
+<td>로그인 이름 자동</td>
+</tr>
+<tr>
+<td><strong>공장</strong></td>
+<td style="text-align: center;">✓</td>
+<td>프로필의 소속 공장 자동 (아산/화성). 다를 때만 변경</td>
+</tr>
+<tr>
+<td><strong>공정</strong></td>
+<td style="text-align: center;">✓</td>
+<td>공장에 맞는 공정 목록에서 선택</td>
+</tr>
+<tr>
+<td><strong>발생일</strong></td>
+<td style="text-align: center;"></td>
+<td>기본값 오늘. 어제 발견이면 변경</td>
+</tr>
+<tr>
+<td><strong>불량수량</strong></td>
+<td style="text-align: center;"></td>
+<td>개수 (숫자)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="22">2.2 부품/제품 검색 — 핵심 편의 기능</h3>
+<p>부품코드 필드 옆의 <strong>[검색]</strong> 을 누르면 여러 방식으로 찾을 수 있습니다:</p>
+<table>
+<thead>
+<tr>
+<th>검색 조합</th>
+<th>결과</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>부품코드</strong> (예: <code>T8NH-0000000-00</code>)</td>
+<td>정확 일치, 단건 자동채움</td>
+</tr>
+<tr>
+<td><strong>부품코드 + 호기</strong> (예: <code>+ 345</code>)</td>
+<td>정확 일치 + 해당 호기 거래처까지 자동</td>
+</tr>
+<tr>
+<td><strong>제품명</strong> (예: <code>T-380N</code>)</td>
+<td>부분 일치 후보 목록</td>
+</tr>
+<tr>
+<td><strong>제품명 + 호기</strong> (예: <code>T-380N + 345</code>)</td>
+<td>후보 좁혀서 단건 자동</td>
+</tr>
+<tr>
+<td><strong>호기만</strong> (예: <code>345</code>)</td>
+<td>이 호기로 생산·출하된 부품 후보</td>
+</tr>
+<tr>
+<td><strong>거래처명</strong> (예: <code>리파츠</code>)</td>
+<td>이 거래처가 납품한 부품 후보</td>
+</tr>
+</tbody>
+</table>
+<blockquote class="info">
+[!info] <strong>한자·로마 숫자 자동 변환</strong>: <code>JD-1400EⅡ</code> 로 검색해도
+<code>JD-1400EII</code> 로 등록된 부품이 매칭됩니다.
+</blockquote>
+
+<p><strong>자동채움되는 값</strong> (한 번의 검색으로 다 채워짐):
+- 부품코드
+- 제품명 / 모델명
+- 품목그룹
+- 공장 / 공장코드
+- 출하호기 (해당하면)
+- 거래처 (해당하면)</p>
+<h3 id="23-3">2.3 검색이 안 되는 3가지 경우</h3>
+<ol>
+<li>
+<p><strong>방금 ERP 에 등록된 신규 자재</strong>
+   → 앱은 하루 4회(05:00 / 10:00 / 12:30 / 17:00) 동기화. 최대 5시간 대기.
+   → 급하면 부품코드만 수동 입력하고 저장. QC 담당자가 나머지 채움.</p>
+</li>
+<li>
+<p><strong>후보가 25건 넘게 뜸</strong>
+   → 호기 번호를 함께 넣어 좁힘. 아니면 스크롤로 골라 선택.</p>
+</li>
+<li>
+<p><strong>거래처가 자동 매칭 안 됨</strong>
+   → 이 부품·호기 조합의 출하 이력이 아직 없는 경우. 비워두고 저장 가능.</p>
+</li>
+</ol>
+<h3 id="24">2.4 사진 첨부</h3>
+<ul>
+<li><strong>[사진 첨부]</strong> 클릭 → 모바일: 카메라 or 갤러리 / PC: 파일 선택</li>
+<li>자동 압축 (약 500px 기준, 원본 크기 걱정 X)</li>
+<li>여러 장이면 상세 설명에 "사진 3장 참조" 라고 명시</li>
+</ul>
+<h3 id="25">2.5 상세 설명</h3>
+<ul>
+<li>부적합이 <strong>어떻게, 어디에서 발생했는지</strong> 짧게라도 기록</li>
+<li>QC 담당자·RPA 가 이 내용을 참고</li>
+<li>자유 텍스트 (개행 가능)</li>
+</ul>
+<h3 id="26">2.6 조치방향</h3>
+<ul>
+<li>등록 시점에 선택 (기본값 있음, 필요 시 변경)</li>
+<li>QC 담당자가 나중에 변경 가능</li>
+</ul>
+<h2 id="3">3. 저장</h2>
+<ul>
+<li><strong>[저장]</strong> 을 누르면:</li>
+<li>서버가 자동으로 부적합 번호(예: <code>QC-2607-0001</code>) 발급</li>
+<li>상태 <span class="tag tag-pending">PENDING</span> 로 등록</li>
+<li>QC 담당자에게 슈산톡/이메일 알림 자동 발송</li>
+<li><strong>버튼 이중 클릭 방지</strong>: 저장 중에는 버튼이 잠기고 잠깐 후에 폼이 초기화됨</li>
+</ul>
+<h2 id="4">4. 등록 후 상태 추적</h2>
+<p><strong>목록</strong> 페이지에서 본인이 등록한 보고 확인 가능:</p>
+<table>
+<thead>
+<tr>
+<th>상태</th>
+<th>뜻</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="tag tag-pending">PENDING</span></td>
+<td>등록 완료, RPA 대기 중</td>
+</tr>
+<tr>
+<td><span class="tag tag-processing">PROCESSING</span></td>
+<td>RPA 가 UNIERP 에 입력 중</td>
+</tr>
+<tr>
+<td><span class="tag tag-review">REVIEW</span></td>
+<td>UNIERP 저장 완료, RPA 운영자 확인 대기</td>
+</tr>
+<tr>
+<td><span class="tag tag-completed">COMPLETED</span></td>
+<td>최종 확인 완료. 종결</td>
+</tr>
+<tr>
+<td><span class="tag tag-failed">FAILED</span></td>
+<td>실패. RPA 운영자에게 문의</td>
+</tr>
+</tbody>
+</table>
+<h2 id="5">5. 자주 하는 질문</h2>
+<p><strong>Q. 잘못 저장했어요. 삭제 가능?</strong>
+A. 삭제 API 는 관리자만 가능. <strong>QC 담당자에게 코멘트로 요청</strong>하거나, 새 보고를 다시 등록하고 이전 보고에 "취소 요청" 코멘트를 남기세요.</p>
+<p><strong>Q. 여러 부품이 동시에 부적합이면?</strong>
+A. 각 부품별로 별개 보고. 부적합 번호가 각각 발급됩니다.</p>
+<p><strong>Q. 오프라인에서 등록 가능?</strong>
+A. 아니오. 네트워크 필요. 오프라인 발생 시 사진만 미리 찍어두고 나중에 등록.</p>
+<p><strong>Q. 로그인 안 됨.</strong>
+A. 회사 담당자에게 계정 활성화 확인 요청. 비밀번호 초기화는 IT 관리자.</p>
+<p><strong>Q. 부품코드 검색이 완전 안 됨.</strong>
+A. 서버 문제일 수 있음. 우선 <strong>부품코드만 수동 입력해서 저장</strong>하고 IT 관리자에게 알림.</p>
+<h2 id="6">6. 언제 누구에게 문의?</h2>
+<table>
+<thead>
+<tr>
+<th>상황</th>
+<th>문의 대상</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>신규 자재가 ERP 에 없음</td>
+<td>자재 담당자</td>
+</tr>
+<tr>
+<td>자동 검색 안 됨</td>
+<td>IT/관리자</td>
+</tr>
+<tr>
+<td>등록 실패, 저장 안 됨</td>
+<td>IT/관리자</td>
+</tr>
+<tr>
+<td>보고 내용 수정·삭제</td>
+<td>QC 담당자</td>
+</tr>
+<tr>
+<td>UNIERP 반영 안 됨 (<span class="tag tag-completed">COMPLETED</span> 안 됨)</td>
+<td>RPA 운영자</td>
+</tr>
+</tbody>
+</table>
+<div class="doc-footer"><a href="INDEX.html">← 문서 목차로</a></div>
+</body>
+</html>
