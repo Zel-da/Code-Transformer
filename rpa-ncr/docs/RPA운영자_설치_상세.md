@@ -80,7 +80,19 @@ UNIERP 창을 조작할 수 없습니다. RPA 워커도 관리자여야 UIA 로 
 브라우저에서 `http://127.0.0.1:8010` 이 자동 열리면:
 
 1. 상단 **설정 점검 배너** → 초록 ✓ 있으면 정상
+
+<figure>
+<img src="images/02_section_setup_banner.png" alt="설정 점검 배너">
+<figcaption>① 설정 점검 배너 — 필수 값 모두 정상이면 초록 ✓</figcaption>
+</figure>
+
 2. **데이터 소스 → [연결 테스트]** → "DB 연결 OK (Neon)" 확인
+
+<figure>
+<img src="images/03_section_data_source.png" alt="데이터 소스 섹션">
+<figcaption>② 데이터 소스 섹션 — 기본 "공용 DB (Neon)"</figcaption>
+</figure>
+
 3. **ERP 설정** 값들이 예상대로 채워져 있는지 확인 (창 제목·실행 경로 등)
 
 ## G. 코드 업데이트 (2회차 이후)

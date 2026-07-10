@@ -156,8 +156,27 @@ hr { border: 0; border-top: 1px solid #ddd; margin: 32px 0; }
   text-align: center;
 }
 
+/* 스크린샷 figure */
+figure {
+  margin: 20px 0;
+  text-align: center;
+}
+figure img {
+  max-width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+figcaption {
+  font-size: 13px;
+  color: #666;
+  margin-top: 8px;
+  font-style: italic;
+}
+
 @media print {
   body { margin: 20px; padding: 0; }
   pre { background: #f4f4f4; color: #222; border: 1px solid #ccc; }
   .doc-footer { display: none; }
+  figure { page-break-inside: avoid; }
 }

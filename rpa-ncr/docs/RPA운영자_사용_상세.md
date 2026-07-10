@@ -14,11 +14,21 @@ UNIERP 자동입력을 <strong>일상 운영</strong> 하는 데 필요한 상�
 - 처음이면 UAC 창 뜸 → **[예]**
 - 검은 콘솔 창 뜨고 → 브라우저가 `http://127.0.0.1:8010` 자동 오픈
 
+<figure>
+<img src="images/01_dashboard_initial.png" alt="첫 실행 시 대시보드">
+<figcaption>첫 실행 시 브라우저 자동 오픈되는 대시보드</figcaption>
+</figure>
+
 <blockquote class="warn">
 [!warn] <strong>콘솔 창을 닫으면 서버 종료</strong>. 최소화만 OK. 브라우저만 닫아도 서버는 살아있음.
 </blockquote>
 
 ## 2. 대시보드 6개 섹션
+
+<figure>
+<img src="images/00_dashboard_annotated.png" alt="대시보드 전체 — 번호 표시">
+<figcaption>대시보드 전체 — 6개 섹션 번호 표시</figcaption>
+</figure>
 
 | # | 섹션 | 역할 |
 |:-:|---|---|
@@ -30,6 +40,11 @@ UNIERP 자동입력을 <strong>일상 운영</strong> 하는 데 필요한 상�
 | ⑥ | 실시간 로그 | RPA 진행 라이브 출력 |
 
 ### 2.1 ERP 설정 (③)
+
+<figure>
+<img src="images/04_section_erp_settings.png" alt="ERP 설정 섹션">
+<figcaption>③ ERP 설정 섹션 — 창 제목·경로·비밀번호</figcaption>
+</figure>
 
 | 항목 | 값 |
 |---|---|
@@ -46,6 +61,11 @@ UNIERP 자동입력을 <strong>일상 운영</strong> 하는 데 필요한 상�
 </blockquote>
 
 ### 2.2 실행 (④) 버튼 5개
+
+<figure>
+<img src="images/05_section_execution.png" alt="실행 섹션 — 버튼 5개">
+<figcaption>④ 실행 섹션 — 조회·확인·시작·정지·중지 5개 버튼</figcaption>
+</figure>
 
 | 버튼 | 동작 |
 |---|---|
@@ -65,6 +85,16 @@ UNIERP 자동입력을 <strong>일상 운영</strong> 하는 데 필요한 상�
 ### Step 2: PENDING 조회
 1. **[PENDING 조회]** → 큐 채움
 2. 0건이면 신규 보고 없음 → 종료해도 됨
+
+<figure>
+<img src="images/06_section_queue.png" alt="큐 섹션">
+<figcaption>⑤ 큐 — 조회된 보고 목록과 각 상태</figcaption>
+</figure>
+
+<figure>
+<img src="images/07_section_log.png" alt="실시간 로그 섹션">
+<figcaption>⑥ 실시간 로그 — 워커가 한 줄씩 진행 상황 출력</figcaption>
+</figure>
 
 <blockquote class="info">
 [!info] 이 시점에 <strong>T1 자동회수</strong> 가 함께 실행됩니다. 이전 세션에서 크래시로
