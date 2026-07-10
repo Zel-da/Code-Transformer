@@ -655,7 +655,7 @@ export default function ManagePage() {
         </div>
 
         {/* Tab Nav */}
-        <div className="flex gap-1 bg-[#F2F4F6] rounded-2xl p-1 mb-5 w-fit">
+        <div data-tour="manage-tabs" className="flex gap-1 bg-[#F2F4F6] rounded-2xl p-1 mb-5 w-fit">
           {TABS.map(({ key, label }) => (
             <button
               key={key}
@@ -870,6 +870,7 @@ export default function ManagePage() {
                   {!isMobile && <p className="text-[12px] text-[#8B95A1]">직원 계정을 생성하고 프로필을 설정합니다</p>}
                 </div>
                 <button
+                  data-tour="manage-user-add"
                   onClick={() => { setEditingUser(null); setNewUserForm(EMPTY_USER_FORM); setShowPw(false); setShowUserDialog(true); }}
                   className={`${BTN_DARK} flex items-center gap-1.5 text-[13px] px-3 py-2`}
                 >
@@ -1028,7 +1029,7 @@ export default function ManagePage() {
         {activeTab === "settings" && (
           <div className="space-y-5">
             {/* Webhook */}
-            <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+            <div data-tour="manage-dept" className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
               <div className="px-5 py-4 flex items-center gap-3">
                 <div className="p-1.5 bg-[#F2F4F6] rounded-lg">
                   <Webhook className="h-4 w-4 text-[#4E5968]" />

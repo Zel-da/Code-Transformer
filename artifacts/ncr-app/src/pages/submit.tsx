@@ -108,14 +108,16 @@ function FieldRow({
   children,
   optional,
   error,
+  dataTour,
 }: {
   label: string;
   children: React.ReactNode;
   optional?: boolean;
   error?: string;
+  dataTour?: string;
 }) {
   return (
-    <div className="px-5 py-4 border-b border-[#F2F4F6]">
+    <div className="px-5 py-4 border-b border-[#F2F4F6]" {...(dataTour ? { "data-tour": dataTour } : {})}>
       <div className="flex items-center justify-between mb-2.5">
         <span className="text-[13px] font-semibold text-[#191F28]">{label}</span>
         {optional && <span className="text-[11px] text-[#BEC5CC]">선택</span>}
@@ -455,7 +457,7 @@ export default function SubmitReport() {
       <div className="bg-white min-h-screen max-w-lg md:max-w-2xl mx-auto" style={{ fontFamily: "'Pretendard', 'Apple SD Gothic Neo', sans-serif" }}>
 
         {/* 페이지 헤더 */}
-        <div className="px-5 pt-5 pb-3 border-b border-[#F2F4F6]">
+        <div data-tour="submit-header" className="px-5 pt-5 pb-3 border-b border-[#F2F4F6]">
           <h1 className="text-[20px] font-bold text-[#191F28]">부적합 보고서 등록</h1>
           <p className="text-[13px] text-[#8B95A1] mt-0.5">현장 부적합 사항을 모바일로 등록합니다</p>
         </div>
@@ -468,7 +470,7 @@ export default function SubmitReport() {
               control={form.control}
               name="productType"
               render={({ field }) => (
-                <FieldRow label="제품 구분">
+                <FieldRow label="제품 구분" dataTour="submit-product-type">
                   <div className="grid grid-cols-2 gap-2">
                     {PRODUCT_TYPES.map((pt) => (
                       <button
@@ -517,7 +519,7 @@ export default function SubmitReport() {
               control={form.control}
               name="factory"
               render={({ field }) => (
-                <FieldRow label="공장 선택" error={form.formState.errors.factory?.message}>
+                <FieldRow label="공장 선택" error={form.formState.errors.factory?.message} dataTour="submit-factory">
                   <div className="grid grid-cols-2 gap-2">
                     {FACTORY_OPTIONS.map((f) => (
                       <button
@@ -568,7 +570,7 @@ export default function SubmitReport() {
             <GroupDivider title="부적합 기본 정보" />
 
             {/* ERP 제품 검색 */}
-            <div className="px-5 py-4 border-b border-[#F2F4F6]">
+            <div data-tour="submit-item" className="px-5 py-4 border-b border-[#F2F4F6]">
               <div className="mb-3">
                 <p className="text-[13px] font-semibold text-[#191F28] mb-0.5">제품 정보 조회</p>
                 <p className="text-[11px] text-[#8B95A1]">부품코드·제품명·품목그룹·거래처 중 아무거나 + (선택) 호기 — 단건이면 자동 입력</p>
@@ -788,7 +790,7 @@ export default function SubmitReport() {
               onChange={handlePhotoSelect}
             />
 
-            <FieldRow label="사진 첨부" optional>
+            <FieldRow label="사진 첨부" optional dataTour="submit-photo">
               {photoPreview ? (
                 <div className="relative rounded-2xl overflow-hidden">
                   <img src={photoPreview} alt="첨부 사진" className="w-full max-h-64 object-cover rounded-2xl" />
@@ -821,7 +823,7 @@ export default function SubmitReport() {
             <div className="h-36 md:hidden" />
 
             {/* 데스크탑 제출 버튼 */}
-            <div className="hidden md:block px-5 py-5 border-t border-[#F2F4F6]">
+            <div data-tour="submit-btn" className="hidden md:block px-5 py-5 border-t border-[#F2F4F6]">
               <button
                 type="submit"
                 disabled={isUploading || createReport.isPending}

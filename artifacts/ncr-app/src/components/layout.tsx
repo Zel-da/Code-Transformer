@@ -1,8 +1,10 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { FileWarning, ClipboardList, Settings2, Download, Bell, X, LogOut, User, BookOpen, FlaskConical, HelpCircle } from "lucide-react";
+import { FileWarning, ClipboardList, Settings2, Download, Bell, X, LogOut, User, BookOpen, FlaskConical, HelpCircle, Play } from "lucide-react";
 import { usePWAInstall, useNotifications } from "@/hooks/usePWA";
 import { useAuth } from "@/contexts/auth";
+import { useTour } from "@/contexts/tour";
+import { TOUR_ALL, TOUR_SUBMIT_ONLY, TOUR_LEDGER_ONLY, TOUR_QC_ONLY } from "@/lib/tour-steps";
 
 export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
@@ -11,6 +13,14 @@ export function Layout({ children }: { children: ReactNode }) {
   const [showNotifBanner, setShowNotifBanner] = useState(false);
   const [notifDismissed, setNotifDismissed] = useState(false);
   const { user, logout } = useAuth();
+  const { start } = useTour();
+
+  const handleStartTour = () => {
+    if (location === "/submit") start(TOUR_SUBMIT_ONLY);
+    else if (location === "/ledger" || location === "/") start(TOUR_LEDGER_ONLY);
+    else if (location === "/qc") start(TOUR_QC_ONLY);
+    else start(TOUR_ALL);
+  };
 
   const isActive = (path: string) =>
     path === "/admin" ? location === "/admin" || location === "/" : location === path;
@@ -97,6 +107,16 @@ export function Layout({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="flex flex-1 items-center justify-end gap-2">
+            {user && (
+              <button
+                onClick={handleStartTour}
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E8EB] text-[13px] font-medium text-[#4E5968] hover:bg-[#F2F4F6] hover:text-[#191F28] transition-colors"
+              >
+                <Play className="h-3.5 w-3.5" />
+                투어 시작
+              </button>
+            )}
+
             {canInstall && (
               <button
                 onClick={install}

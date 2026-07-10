@@ -697,7 +697,7 @@ export default function LedgerPage() {
         {activeTab === "wip" && (
           <>
             {/* 상태별 카드 */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+            <div data-tour="ledger-stats" className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
               {WIP_STATUS_CARDS.map(({ status, icon: Icon, color, bg, border }) => (
                 <button
                   key={status}
@@ -748,7 +748,7 @@ export default function LedgerPage() {
             })()}
 
             {/* 필터 */}
-            <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden mb-5">
+            <div data-tour="ledger-filter" className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden mb-5">
               <div className="p-4 grid gap-3 grid-cols-1 md:grid-cols-4">
                 <div className="space-y-1.5">
                   <p className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">동기화 상태</p>
@@ -823,7 +823,7 @@ export default function LedgerPage() {
             {/* 목록 + 상세 분할 레이아웃 */}
             <div className="md:flex md:gap-5 md:items-start">
               <div className="flex-1 min-w-0">
-                <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+                <div data-tour="ledger-table" className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
                   <div className="px-5 py-3.5 border-b border-[#F2F4F6] flex items-center justify-between">
                     <span className="text-[13px] font-semibold text-[#191F28]">보고서 목록</span>
                     {reportsData?.total !== undefined && (

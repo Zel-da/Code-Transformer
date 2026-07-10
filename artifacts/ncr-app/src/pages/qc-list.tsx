@@ -100,7 +100,7 @@ export default function QcListPage() {
         </div>
 
         {/* 요약 카드 */}
-        <div className="grid grid-cols-3 gap-3">
+        <div data-tour="qc-stats" className="grid grid-cols-3 gap-3">
           <div className="bg-white rounded-2xl border border-[#F2F4F6] px-4 py-3 text-center">
             <p className="text-[22px] font-bold text-[#191F28]">{isLoading ? "…" : allReports.length}</p>
             <p className="text-[11px] text-[#8B95A1] mt-0.5">전체 보고서</p>
@@ -116,7 +116,7 @@ export default function QcListPage() {
         </div>
 
         {/* 필터 */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+        <div data-tour="qc-filter" className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
           {FILTERS.map((f) => {
             const count = allReports.filter((r) => matchesFilter(r, f)).length;
             const isActive = filter === f;
@@ -159,7 +159,7 @@ export default function QcListPage() {
               <p className="text-[12px] text-[#8B95A1]">다른 필터를 선택해 보세요</p>
             </div>
           ) : (
-            <div className="divide-y divide-[#F2F4F6]">
+            <div data-tour="qc-list" className="divide-y divide-[#F2F4F6]">
               {filtered.map((report) => (
                 <button
                   key={report.id}
