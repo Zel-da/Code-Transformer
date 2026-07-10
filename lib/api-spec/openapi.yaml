@@ -1393,7 +1393,7 @@ components:
           type: ["string", "null"]
         syncStatus:
           type: string
-          enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+          enum: [PENDING, PROCESSING, REVIEW, COMPLETED, FAILED]
         registrantName:
           type: ["string", "null"]
         ncrType:
@@ -1638,7 +1638,7 @@ components:
           type: string
         syncStatus:
           type: string
-          enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+          enum: [PENDING, PROCESSING, REVIEW, COMPLETED, FAILED]
         registrantName:
           type: ["string", "null"]
         ncrType:
@@ -1846,7 +1846,7 @@ components:
       properties:
         syncStatus:
           type: string
-          enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+          enum: [PENDING, PROCESSING, REVIEW, COMPLETED, FAILED]
         resetRetry:
           type: boolean
           description: "true이면 syncAttemptCount=0, syncNextRetryAt=null 초기화"

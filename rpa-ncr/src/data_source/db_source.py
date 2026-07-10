@@ -98,6 +98,13 @@ class DbSource(DataSource):
         self._url = _resolve_database_url(cfg)
         # 첫 조회에서 정보스키마 보고 (select_clause, from_clause) 튜플 캐시
         self._query_parts: tuple[str, str] | None = None
+        # PROCESSING 갇힘 자동 회수 임계값 (분). RPA 정상 처리는 초~수분이라
+        # 5시간이면 실 처리와 절대 겹치지 않는 안전 여백.
+        stale_minutes = cfg.get("stale_processing_minutes", 300)
+        try:
+            self._stale_minutes = max(1, int(stale_minutes))
+        except (TypeError, ValueError):
+            self._stale_minutes = 300
         if not self._url:
             logger.warning(
                 "DB URL 미설정 — settings.db.database_url / env DATABASE_URL / "
@@ -171,10 +178,53 @@ class DbSource(DataSource):
     # 조회
     # ------------------------------------------------------------------
 
+    def _recover_stale_processing(self, cur) -> list[int]:
+        """PROCESSING 상태로 임계값 넘긴 보고들을 PENDING 으로 자동 복원.
+
+        RPA 워커 크래시/네트워크 단절로 mark_completed·mark_failed 호출이
+        누락되면 이 보고는 다시 조회되지 않아 담당자가 손 못 대는 유령
+        상태로 갇힌다. 정상 처리 시간은 초~수분이라 5시간 임계값이면
+        실제 작업과 절대 겹치지 않는다.
+        """
+        cur.execute(
+            "UPDATE non_conformity_reports "
+            "SET sync_status = %s, "
+            "    sync_last_error = COALESCE(sync_last_error, '') || %s, "
+            "    sync_attempt_count = COALESCE(sync_attempt_count, 0) + 1, "
+            "    updated_at = now() "
+            f"WHERE sync_status = %s AND updated_at < now() - interval '{self._stale_minutes} minutes' "
+            "RETURNING id",
+            (
+                ReportStatus.PENDING.value,
+                f"\n[auto-recovered] PROCESSING > {self._stale_minutes}분 경과로 PENDING 복원",
+                ReportStatus.PROCESSING.value,
+            ),
+        )
+        rows = cur.fetchall()
+        # RealDictCursor / 일반 cursor 양쪽 안전 처리
+        recovered: list[int] = []
+        for r in rows:
+            if isinstance(r, dict):
+                recovered.append(int(r["id"]))
+            else:
+                recovered.append(int(r[0]))
+        return recovered
+
     def fetch_pending(self) -> list[NcrReport]:
         from psycopg2.extras import RealDictCursor
         with self._connect() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # 1) 조회 전 stale PROCESSING 자동 회수
+                recovered = self._recover_stale_processing(cur)
+                if recovered:
+                    logger.warning(
+                        "stale PROCESSING 자동 복원 %d건 → PENDING (임계값 %d분). ids=%s",
+                        len(recovered), self._stale_minutes,
+                        ",".join(str(i) for i in recovered),
+                    )
+                conn.commit()
+
+                # 2) PENDING 목록 조회 (방금 복원한 것도 포함)
                 select_clause, from_clause = self._get_query_parts(cur)
                 sql = (
                     f"SELECT {select_clause} FROM {from_clause} "
@@ -245,6 +295,31 @@ class DbSource(DataSource):
                 )
             conn.commit()
         logger.info("보고 #%d PENDING 복원 (DB)", report_id)
+
+    def mark_review(self, report_id: int) -> None:
+        """UNIERP 저장 완료 → REVIEW. 사용자 확인 대기 상태.
+
+        이 상태에 있는 보고는 fetch_pending 에서 제외되므로 UNIERP 이중
+        입력이 자동 방지된다.
+        """
+        self._update_status(report_id, ReportStatus.REVIEW)
+        logger.info("보고 #%d REVIEW (DB)", report_id)
+
+    def fetch_review(self) -> list[NcrReport]:
+        """REVIEW 상태 보고 목록. 워커/서버 재시작 후 큐 복원용."""
+        from psycopg2.extras import RealDictCursor
+        with self._connect() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                select_clause, from_clause = self._get_query_parts(cur)
+                sql = (
+                    f"SELECT {select_clause} FROM {from_clause} "
+                    f"WHERE r.sync_status = %s ORDER BY r.updated_at"
+                )
+                cur.execute(sql, (ReportStatus.REVIEW.value,))
+                rows = cur.fetchall()
+        reports = [NcrReport.from_db_row(dict(r)) for r in rows]
+        logger.info("REVIEW 보고 %d건 조회 (DB)", len(reports))
+        return reports
 
     # ------------------------------------------------------------------
     # 헬스체크

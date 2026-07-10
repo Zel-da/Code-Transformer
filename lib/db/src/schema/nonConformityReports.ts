@@ -109,7 +109,11 @@ export const usersTable = pgTable("users", {
 export type User = typeof usersTable.$inferSelect;
 export type PublicUser = Omit<User, "passwordHash">;
 
-export const syncStatusEnum = ["PENDING", "PROCESSING", "COMPLETED", "FAILED"] as const;
+// REVIEW: RPA 가 UNIERP 입력·저장 완료 후 사용자가 배치 검토 UI 에서
+// 최종 확인하기까지 머무는 상태. DB 로 승격돼야 서버·워커 재시작에도
+// 살아남는다(예전 in-memory erp_review_queue 는 재시작 시 소실됐음).
+// 사용자가 [확인] 하면 COMPLETED, [실패] 하면 FAILED, 재시도 원하면 PENDING 복원.
+export const syncStatusEnum = ["PENDING", "PROCESSING", "REVIEW", "COMPLETED", "FAILED"] as const;
 
 export const productTypeEnum = pgEnum("product_type_enum", ["양산", "개발"]);
 

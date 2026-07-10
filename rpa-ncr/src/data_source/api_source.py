@@ -119,6 +119,34 @@ class ApiSource(DataSource):
         self._set_status(report_id, ReportStatus.PENDING, reset_retry=True)
         logger.info("보고 #%d PENDING 복원 (API)", report_id)
 
+    def mark_review(self, report_id: int) -> None:
+        """UNIERP 저장 완료 → REVIEW (사용자 검토 대기). 재시작 대비 DB 승격."""
+        self._set_status(report_id, ReportStatus.REVIEW)
+        logger.info("보고 #%d REVIEW (API)", report_id)
+
+    def fetch_review(self) -> list[NcrReport]:
+        """REVIEW 상태 보고 목록 (서버가 filter 지원 시). 폴백: 전체 조회 후 필터."""
+        try:
+            resp = self._session.get(
+                f"{self._base}/api/reports",
+                params={"syncStatus": "REVIEW", "pageSize": 500},
+                timeout=self._timeout,
+            )
+            resp.raise_for_status()
+            body = resp.json()
+            # /api/reports 는 페이지네이션 응답: {reports, total, ...}
+            rows = body.get("reports") if isinstance(body, dict) else body
+            if not isinstance(rows, list):
+                rows = []
+            reports = [NcrReport.from_api_dict(r) for r in rows]
+            for r in reports:
+                self._enrich(r)
+            logger.info("REVIEW 보고 %d건 조회 (API)", len(reports))
+            return reports
+        except Exception as e:
+            logger.warning("fetch_review 실패, 빈 목록으로 폴백: %s", e)
+            return []
+
     # ------------------------------------------------------------------
     # 헬스체크
     # ------------------------------------------------------------------

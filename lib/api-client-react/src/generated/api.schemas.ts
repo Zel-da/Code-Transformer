@@ -79,6 +79,7 @@ export type ReportSyncStatus =
 export const ReportSyncStatus = {
   PENDING: "PENDING",
   PROCESSING: "PROCESSING",
+  REVIEW: "REVIEW",
   COMPLETED: "COMPLETED",
   FAILED: "FAILED",
 } as const;
@@ -380,6 +381,7 @@ export type UpdateReportBodySyncStatus =
 export const UpdateReportBodySyncStatus = {
   PENDING: "PENDING",
   PROCESSING: "PROCESSING",
+  REVIEW: "REVIEW",
   COMPLETED: "COMPLETED",
   FAILED: "FAILED",
 } as const;
@@ -646,6 +648,7 @@ export type UpdateSyncStatusBodySyncStatus =
 export const UpdateSyncStatusBodySyncStatus = {
   PENDING: "PENDING",
   PROCESSING: "PROCESSING",
+  REVIEW: "REVIEW",
   COMPLETED: "COMPLETED",
   FAILED: "FAILED",
 } as const;

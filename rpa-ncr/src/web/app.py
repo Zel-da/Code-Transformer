@@ -590,6 +590,12 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
                         "steps": connector.build_sequence_info(report),
                         "status": "pending",  # 사용자가 [완료 확인] 누르면 confirmed
                     })
+                    # DB 를 진실 원본으로 삼아 REVIEW 로 승격 — 서버·워커 재시작에
+                    # 살아남고, fetch_pending 에서 자동 제외되어 UNIERP 이중입력 차단.
+                    try:
+                        source.mark_review(report.id)
+                    except Exception as e:
+                        log_cb(f"⚠ #{report.id} REVIEW 표시 실패(계속): {e}")
                     state.erp_queue[i]["status"] = "저장됨"
                     state.erp_queue[i]["progress"] = "검토 대기"
                     state.broadcast_erp_sync(loop, {"type": "queue_update", "index": i,
@@ -649,16 +655,50 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
 
     # ── 배치 검토 모드 엔드포인트 ──
 
+    def _hydrate_review_queue_from_db() -> int:
+        """이전 세션에서 저장 후 확인 못 받은 REVIEW 보고들을 큐로 복원.
+
+        워커가 돌지 않을 때만 실행 — 워커 실행 중엔 워커가 이미 큐를 채우므로
+        레이스 없다. 복원 항목은 report 객체가 None 이라 UI 는 최소 정보만
+        표시하지만, 사용자가 [확인] 눌러 COMPLETED 로 종결하는 데는 문제 없음.
+        """
+        if state.erp_running or state.erp_review_queue:
+            return 0
+        try:
+            source = get_source(settings)
+            leftovers = source.fetch_review()
+        except Exception as e:
+            logger.warning("REVIEW 복원 조회 실패: %s", e)
+            return 0
+        for idx, r in enumerate(leftovers):
+            state.erp_review_queue.append({
+                "queue_index": -1,  # 이번 세션 큐엔 없음(복원본)
+                "report_id": r.id,
+                "report": None,     # 재구성 불가 — 확인만 하면 되므로 미보관
+                "steps": [],        # 상세 없음
+                "status": "pending",
+                "restored": True,
+            })
+        if leftovers:
+            logger.info("이전 세션 REVIEW %d건 복원", len(leftovers))
+        return len(leftovers)
+
     @app.get("/api/erp/review")
     async def erp_review_status():
-        """배치 검토 중인 보고 목록 + 각 status."""
+        """배치 검토 중인 보고 목록 + 각 status.
+
+        큐가 비었어도 DB 에 REVIEW 상태 보고가 있으면 복원해서 사용자에게 표시.
+        서버 재시작 후에도 확인 안 된 보고가 유실되지 않도록 하는 안전망.
+        """
+        _hydrate_review_queue_from_db()
         if not state.erp_review_queue:
             return {"active": False}
         return {
             "active": True,
             "reports": [
                 {"queue_index": r["queue_index"], "report_id": r["report_id"],
-                 "steps": r["steps"], "status": r["status"]}
+                 "steps": r["steps"], "status": r["status"],
+                 "restored": r.get("restored", False)}
                 for r in state.erp_review_queue
             ],
         }

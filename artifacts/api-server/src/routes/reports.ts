@@ -87,7 +87,7 @@ router.get("/reports", async (req, res): Promise<void> => {
     conditions.push(eq(nonConformityReportsTable.defectType, defectType));
   }
   if (syncStatus) {
-    conditions.push(eq(nonConformityReportsTable.syncStatus, syncStatus as "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"));
+    conditions.push(eq(nonConformityReportsTable.syncStatus, syncStatus as "PENDING" | "PROCESSING" | "REVIEW" | "COMPLETED" | "FAILED"));
   }
   if (qcStatus) {
     conditions.push(eq(nonConformityReportsTable.qcStatus, qcStatus));
@@ -267,7 +267,42 @@ router.get("/reports/stats", async (_req, res): Promise<void> => {
   });
 });
 
+// PROCESSING 상태로 갇힌 보고를 임계값(분) 넘겼을 때 자동 PENDING 복원.
+// - 원인: RPA 워커 크래시/네트워크 단절 후 mark_completed / mark_failed 호출 실패
+// - 없으면: 해당 보고는 다시 조회되지 않아 담당자가 손 못 대는 유령 상태로 갇힘
+// - 안전: RPA 정상 처리시간은 초~수분. 5시간이면 실제 처리와 절대 겹치지 않음
+const STALE_PROCESSING_MINUTES = Math.max(
+  1,
+  Number.parseInt(process.env.RPA_STALE_PROCESSING_MINUTES || "300", 10) || 300,
+);
+
 router.get("/reports/pending", async (_req, res): Promise<void> => {
+  // 1) 조회 전 stale PROCESSING 을 PENDING 으로 자동 복원 (인라인 recovery)
+  const recovered = await db
+    .update(nonConformityReportsTable)
+    .set({
+      syncStatus: "PENDING",
+      syncLastError: sql`COALESCE(${nonConformityReportsTable.syncLastError}, '') || ${'\n[auto-recovered] PROCESSING > ' + STALE_PROCESSING_MINUTES + '분 경과로 PENDING 복원 (' + new Date().toISOString() + ')'}`,
+      syncAttemptCount: sql`COALESCE(${nonConformityReportsTable.syncAttemptCount}, 0) + 1`,
+    })
+    .where(
+      and(
+        eq(nonConformityReportsTable.syncStatus, "PROCESSING"),
+        lt(
+          nonConformityReportsTable.updatedAt,
+          sql`now() - interval '${sql.raw(String(STALE_PROCESSING_MINUTES))} minutes'`,
+        ),
+      ),
+    )
+    .returning({ id: nonConformityReportsTable.id });
+
+  if (recovered.length > 0) {
+    console.warn(
+      `[reports/pending] stale PROCESSING 자동 복원: ${recovered.length}건 → PENDING (임계값 ${STALE_PROCESSING_MINUTES}분). ids=${recovered.map(r => r.id).join(",")}`,
+    );
+  }
+
+  // 2) PENDING 목록 반환 (방금 복원한 것도 포함)
   const reports = await db
     .select()
     .from(nonConformityReportsTable)
@@ -345,7 +380,7 @@ router.get("/reports/export.xlsx", requireAuth, async (req, res): Promise<void> 
   const excludeErpSynced  = req.query.excludeErpSynced === "true";
 
   const validExportQcStatuses = ["OPEN", "IN_REVIEW", "PENDING_COLLAB", "RESOLVED", "APPROVED", "ERP_SYNCED"] as const;
-  const validExportSyncStatuses = ["PENDING", "PROCESSING", "COMPLETED", "FAILED"] as const;
+  const validExportSyncStatuses = ["PENDING", "PROCESSING", "REVIEW", "COMPLETED", "FAILED"] as const;
   const qcStatus   = validExportQcStatuses.includes(qcStatusRaw as typeof validExportQcStatuses[number]) ? qcStatusRaw as typeof validExportQcStatuses[number] : null;
   const syncStatus = validExportSyncStatuses.includes(syncStatusRaw as typeof validExportSyncStatuses[number]) ? syncStatusRaw as typeof validExportSyncStatuses[number] : null;
   if (qcStatusRaw && !qcStatus) { res.status(400).json({ error: `Invalid qcStatus: ${qcStatusRaw}` }); return; }
