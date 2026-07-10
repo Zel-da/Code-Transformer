@@ -10,6 +10,7 @@ import ManagePage from "@/pages/manage";
 import LoginPage from "@/pages/login";
 import QcPage from "@/pages/qc";
 import QcListPage from "@/pages/qc-list";
+import GuidePage from "@/pages/guide";
 import { ReactNode } from "react";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,9 @@ function Router() {
       </Route>
       <Route path="/qc/:reportId">
         <RequireAdmin><QcPage /></RequireAdmin>
+      </Route>
+      <Route path="/guide">
+        <RequireAuth><GuidePage /></RequireAuth>
       </Route>
       <Route component={NotFound} />
     </Switch>
