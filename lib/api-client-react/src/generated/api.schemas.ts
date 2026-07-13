@@ -208,6 +208,46 @@ export interface Report {
    */
   qcCorrectiveResult?: string | null;
   /**
+   * 첨부 사진 URL 목록
+   * @nullable
+   */
+  imageUrls?: string[] | null;
+  /**
+   * 판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)
+   * @nullable
+   */
+  judgmentResult?: string | null;
+  /**
+   * 클레임유무 (예/아니오)
+   * @nullable
+   */
+  claimStatus?: string | null;
+  /**
+   * 유관부서여부 (예/아니오)
+   * @nullable
+   */
+  relatedDeptStatus?: string | null;
+  /**
+   * 시정및예방조치여부 (예/아니오)
+   * @nullable
+   */
+  correctiveActionStatus?: string | null;
+  /**
+   * 품질의견
+   * @nullable
+   */
+  qualityOpinion?: string | null;
+  /**
+   * 부품비
+   * @nullable
+   */
+  partsCost?: number | null;
+  /**
+   * 공임비 (QC 입력)
+   * @nullable
+   */
+  laborCost?: number | null;
+  /**
    * QC 분석 최종 제출 일시
    * @nullable
    */
@@ -373,6 +413,11 @@ export interface CreateReportBody {
    * @nullable
    */
   managerNm?: string | null;
+  /**
+   * 첨부 사진 URL 목록
+   * @nullable
+   */
+  imageUrls?: string[] | null;
 }
 
 export type UpdateReportBodySyncStatus =
@@ -454,6 +499,51 @@ export interface UpdateReportBody {
    * @nullable
    */
   managerNm?: string | null;
+  /**
+   * 첨부 사진 URL (대표)
+   * @nullable
+   */
+  imageUrl?: string | null;
+  /**
+   * 첨부 사진 URL 목록
+   * @nullable
+   */
+  imageUrls?: string[] | null;
+  /**
+   * 판정결과
+   * @nullable
+   */
+  judgmentResult?: string | null;
+  /**
+   * 클레임유무 (예/아니오)
+   * @nullable
+   */
+  claimStatus?: string | null;
+  /**
+   * 유관부서여부 (예/아니오)
+   * @nullable
+   */
+  relatedDeptStatus?: string | null;
+  /**
+   * 시정및예방조치여부 (예/아니오)
+   * @nullable
+   */
+  correctiveActionStatus?: string | null;
+  /**
+   * 품질의견
+   * @nullable
+   */
+  qualityOpinion?: string | null;
+  /**
+   * 부품비
+   * @nullable
+   */
+  partsCost?: number | null;
+  /**
+   * 공임비 (QC 입력)
+   * @nullable
+   */
+  laborCost?: number | null;
 }
 
 /**
@@ -612,6 +702,41 @@ export interface QcAnalysisBody {
    * @nullable
    */
   managerNm?: string | null;
+  /**
+   * 판정결과
+   * @nullable
+   */
+  judgmentResult?: string | null;
+  /**
+   * 클레임유무 (예/아니오)
+   * @nullable
+   */
+  claimStatus?: string | null;
+  /**
+   * 유관부서여부 (예/아니오)
+   * @nullable
+   */
+  relatedDeptStatus?: string | null;
+  /**
+   * 시정및예방조치여부 (예/아니오)
+   * @nullable
+   */
+  correctiveActionStatus?: string | null;
+  /**
+   * 품질의견
+   * @nullable
+   */
+  qualityOpinion?: string | null;
+  /**
+   * 부품비
+   * @nullable
+   */
+  partsCost?: number | null;
+  /**
+   * 공임비 (QC 입력)
+   * @nullable
+   */
+  laborCost?: number | null;
 }
 
 export interface CloseMonthBody {

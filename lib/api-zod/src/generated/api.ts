@@ -95,7 +95,6 @@ export const ListReportsResponse = zod.object({
       defectType: zod.string(),
       description: zod.string(),
       imageUrl: zod.string().nullable(),
-      imageUrls: zod.string().array().nullable(),
       syncStatus: zod.enum([
         "PENDING",
         "PROCESSING",
@@ -156,6 +155,26 @@ export const ListReportsResponse = zod.object({
         .string()
         .nullish()
         .describe("QC 조치결과 상세 내용"),
+      imageUrls: zod
+        .array(zod.string())
+        .nullish()
+        .describe("첨부 사진 URL 목록"),
+      judgmentResult: zod
+        .string()
+        .nullish()
+        .describe("판정결과 (폐기\/특채\/수리후특채\/적합품판정\/신품교환)"),
+      claimStatus: zod.string().nullish().describe("클레임유무 (예\/아니오)"),
+      relatedDeptStatus: zod
+        .string()
+        .nullish()
+        .describe("유관부서여부 (예\/아니오)"),
+      correctiveActionStatus: zod
+        .string()
+        .nullish()
+        .describe("시정및예방조치여부 (예\/아니오)"),
+      qualityOpinion: zod.string().nullish().describe("품질의견"),
+      partsCost: zod.number().nullish().describe("부품비"),
+      laborCost: zod.number().nullish().describe("공임비 (QC 입력)"),
       qcSubmittedAt: zod.coerce
         .date()
         .nullish()
@@ -204,7 +223,6 @@ export const CreateReportBody = zod.object({
   defectType: zod.string(),
   description: zod.string(),
   imageUrl: zod.string().nullish(),
-  imageUrls: zod.string().array().nullish(),
   registrantName: zod.string().nullish(),
   ncrType: zod.string().nullish(),
   factory: zod.string().nullish(),
@@ -237,6 +255,7 @@ export const CreateReportBody = zod.object({
   shipmentDateTo: zod.coerce.date().nullish().describe("출하 기간 종료일"),
   managerCd: zod.string().nullish().describe("담당자 코드"),
   managerNm: zod.string().nullish().describe("담당자명"),
+  imageUrls: zod.array(zod.string()).nullish().describe("첨부 사진 URL 목록"),
 });
 
 /**
@@ -280,7 +299,6 @@ export const ListPendingReportsResponseItem = zod.object({
   defectType: zod.string(),
   description: zod.string(),
   imageUrl: zod.string().nullable(),
-  imageUrls: zod.string().array().nullable(),
   syncStatus: zod.enum([
     "PENDING",
     "PROCESSING",
@@ -336,13 +354,23 @@ export const ListPendingReportsResponseItem = zod.object({
       "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
-  judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
-  claimStatus: zod.string().nullish().describe("클레임유무 (예/아니오)"),
-  relatedDeptStatus: zod.string().nullish().describe("유관부서여부 (예/아니오)"),
-  correctiveActionStatus: zod.string().nullish().describe("시정및예방조치여부 (예/아니오)"),
+  imageUrls: zod.array(zod.string()).nullish().describe("첨부 사진 URL 목록"),
+  judgmentResult: zod
+    .string()
+    .nullish()
+    .describe("판정결과 (폐기\/특채\/수리후특채\/적합품판정\/신품교환)"),
+  claimStatus: zod.string().nullish().describe("클레임유무 (예\/아니오)"),
+  relatedDeptStatus: zod
+    .string()
+    .nullish()
+    .describe("유관부서여부 (예\/아니오)"),
+  correctiveActionStatus: zod
+    .string()
+    .nullish()
+    .describe("시정및예방조치여부 (예\/아니오)"),
   qualityOpinion: zod.string().nullish().describe("품질의견"),
   partsCost: zod.number().nullish().describe("부품비"),
-  laborCost: zod.number().nullish().describe("공임비"),
+  laborCost: zod.number().nullish().describe("공임비 (QC 입력)"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -468,6 +496,21 @@ export const UpdateReportBody = zod.object({
   shipmentDateTo: zod.coerce.date().nullish().describe("출하 기간 종료일"),
   managerCd: zod.string().nullish().describe("담당자 코드"),
   managerNm: zod.string().nullish().describe("담당자명"),
+  imageUrl: zod.string().nullish().describe("첨부 사진 URL (대표)"),
+  imageUrls: zod.array(zod.string()).nullish().describe("첨부 사진 URL 목록"),
+  judgmentResult: zod.string().nullish().describe("판정결과"),
+  claimStatus: zod.string().nullish().describe("클레임유무 (예\/아니오)"),
+  relatedDeptStatus: zod
+    .string()
+    .nullish()
+    .describe("유관부서여부 (예\/아니오)"),
+  correctiveActionStatus: zod
+    .string()
+    .nullish()
+    .describe("시정및예방조치여부 (예\/아니오)"),
+  qualityOpinion: zod.string().nullish().describe("품질의견"),
+  partsCost: zod.number().nullish().describe("부품비"),
+  laborCost: zod.number().nullish().describe("공임비 (QC 입력)"),
 });
 
 export const UpdateReportResponse = zod.object({
@@ -480,7 +523,6 @@ export const UpdateReportResponse = zod.object({
   defectType: zod.string(),
   description: zod.string(),
   imageUrl: zod.string().nullable(),
-  imageUrls: zod.string().array().nullable(),
   syncStatus: zod.enum([
     "PENDING",
     "PROCESSING",
@@ -536,13 +578,23 @@ export const UpdateReportResponse = zod.object({
       "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
-  judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
-  claimStatus: zod.string().nullish().describe("클레임유무 (예/아니오)"),
-  relatedDeptStatus: zod.string().nullish().describe("유관부서여부 (예/아니오)"),
-  correctiveActionStatus: zod.string().nullish().describe("시정및예방조치여부 (예/아니오)"),
+  imageUrls: zod.array(zod.string()).nullish().describe("첨부 사진 URL 목록"),
+  judgmentResult: zod
+    .string()
+    .nullish()
+    .describe("판정결과 (폐기\/특채\/수리후특채\/적합품판정\/신품교환)"),
+  claimStatus: zod.string().nullish().describe("클레임유무 (예\/아니오)"),
+  relatedDeptStatus: zod
+    .string()
+    .nullish()
+    .describe("유관부서여부 (예\/아니오)"),
+  correctiveActionStatus: zod
+    .string()
+    .nullish()
+    .describe("시정및예방조치여부 (예\/아니오)"),
   qualityOpinion: zod.string().nullish().describe("품질의견"),
   partsCost: zod.number().nullish().describe("부품비"),
-  laborCost: zod.number().nullish().describe("공임비"),
+  laborCost: zod.number().nullish().describe("공임비 (QC 입력)"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -593,7 +645,6 @@ export const GetReportResponse = zod.object({
   defectType: zod.string(),
   description: zod.string(),
   imageUrl: zod.string().nullable(),
-  imageUrls: zod.string().array().nullable(),
   syncStatus: zod.enum([
     "PENDING",
     "PROCESSING",
@@ -649,13 +700,23 @@ export const GetReportResponse = zod.object({
       "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
-  judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
-  claimStatus: zod.string().nullish().describe("클레임유무 (예/아니오)"),
-  relatedDeptStatus: zod.string().nullish().describe("유관부서여부 (예/아니오)"),
-  correctiveActionStatus: zod.string().nullish().describe("시정및예방조치여부 (예/아니오)"),
+  imageUrls: zod.array(zod.string()).nullish().describe("첨부 사진 URL 목록"),
+  judgmentResult: zod
+    .string()
+    .nullish()
+    .describe("판정결과 (폐기\/특채\/수리후특채\/적합품판정\/신품교환)"),
+  claimStatus: zod.string().nullish().describe("클레임유무 (예\/아니오)"),
+  relatedDeptStatus: zod
+    .string()
+    .nullish()
+    .describe("유관부서여부 (예\/아니오)"),
+  correctiveActionStatus: zod
+    .string()
+    .nullish()
+    .describe("시정및예방조치여부 (예\/아니오)"),
   qualityOpinion: zod.string().nullish().describe("품질의견"),
   partsCost: zod.number().nullish().describe("부품비"),
-  laborCost: zod.number().nullish().describe("공임비"),
+  laborCost: zod.number().nullish().describe("공임비 (QC 입력)"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -714,7 +775,6 @@ export const UpdateReportSyncStatusResponse = zod.object({
   defectType: zod.string(),
   description: zod.string(),
   imageUrl: zod.string().nullable(),
-  imageUrls: zod.string().array().nullable(),
   syncStatus: zod.enum([
     "PENDING",
     "PROCESSING",
@@ -770,13 +830,23 @@ export const UpdateReportSyncStatusResponse = zod.object({
       "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
-  judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
-  claimStatus: zod.string().nullish().describe("클레임유무 (예/아니오)"),
-  relatedDeptStatus: zod.string().nullish().describe("유관부서여부 (예/아니오)"),
-  correctiveActionStatus: zod.string().nullish().describe("시정및예방조치여부 (예/아니오)"),
+  imageUrls: zod.array(zod.string()).nullish().describe("첨부 사진 URL 목록"),
+  judgmentResult: zod
+    .string()
+    .nullish()
+    .describe("판정결과 (폐기\/특채\/수리후특채\/적합품판정\/신품교환)"),
+  claimStatus: zod.string().nullish().describe("클레임유무 (예\/아니오)"),
+  relatedDeptStatus: zod
+    .string()
+    .nullish()
+    .describe("유관부서여부 (예\/아니오)"),
+  correctiveActionStatus: zod
+    .string()
+    .nullish()
+    .describe("시정및예방조치여부 (예\/아니오)"),
   qualityOpinion: zod.string().nullish().describe("품질의견"),
   partsCost: zod.number().nullish().describe("부품비"),
-  laborCost: zod.number().nullish().describe("공임비"),
+  laborCost: zod.number().nullish().describe("공임비 (QC 입력)"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -830,13 +900,6 @@ export const UpdateReportQcBody = zod.object({
   flawTypeCd: zod.string().nullish().describe("불량유형 코드"),
   lostManHours: zod.number().nullish().describe("손실공수 (시간)"),
   qcCorrectiveResult: zod.string().nullish().describe("조치결과 상세 내용"),
-  judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
-  claimStatus: zod.string().nullish().describe("클레임유무 (예/아니오)"),
-  relatedDeptStatus: zod.string().nullish().describe("유관부서여부 (예/아니오)"),
-  correctiveActionStatus: zod.string().nullish().describe("시정및예방조치여부 (예/아니오)"),
-  qualityOpinion: zod.string().nullish().describe("품질의견"),
-  partsCost: zod.number().nullish().describe("부품비"),
-  laborCost: zod.number().nullish().describe("공임비"),
   qcStatus: zod
     .enum([
       "OPEN",
@@ -859,6 +922,19 @@ export const UpdateReportQcBody = zod.object({
   shipmentDateTo: zod.coerce.date().nullish().describe("출하 기간 종료일"),
   managerCd: zod.string().nullish().describe("담당자 코드"),
   managerNm: zod.string().nullish().describe("담당자명"),
+  judgmentResult: zod.string().nullish().describe("판정결과"),
+  claimStatus: zod.string().nullish().describe("클레임유무 (예\/아니오)"),
+  relatedDeptStatus: zod
+    .string()
+    .nullish()
+    .describe("유관부서여부 (예\/아니오)"),
+  correctiveActionStatus: zod
+    .string()
+    .nullish()
+    .describe("시정및예방조치여부 (예\/아니오)"),
+  qualityOpinion: zod.string().nullish().describe("품질의견"),
+  partsCost: zod.number().nullish().describe("부품비"),
+  laborCost: zod.number().nullish().describe("공임비 (QC 입력)"),
 });
 
 export const UpdateReportQcResponse = zod.object({
@@ -871,7 +947,6 @@ export const UpdateReportQcResponse = zod.object({
   defectType: zod.string(),
   description: zod.string(),
   imageUrl: zod.string().nullable(),
-  imageUrls: zod.string().array().nullable(),
   syncStatus: zod.enum([
     "PENDING",
     "PROCESSING",
@@ -927,13 +1002,23 @@ export const UpdateReportQcResponse = zod.object({
       "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
-  judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
-  claimStatus: zod.string().nullish().describe("클레임유무 (예/아니오)"),
-  relatedDeptStatus: zod.string().nullish().describe("유관부서여부 (예/아니오)"),
-  correctiveActionStatus: zod.string().nullish().describe("시정및예방조치여부 (예/아니오)"),
+  imageUrls: zod.array(zod.string()).nullish().describe("첨부 사진 URL 목록"),
+  judgmentResult: zod
+    .string()
+    .nullish()
+    .describe("판정결과 (폐기\/특채\/수리후특채\/적합품판정\/신품교환)"),
+  claimStatus: zod.string().nullish().describe("클레임유무 (예\/아니오)"),
+  relatedDeptStatus: zod
+    .string()
+    .nullish()
+    .describe("유관부서여부 (예\/아니오)"),
+  correctiveActionStatus: zod
+    .string()
+    .nullish()
+    .describe("시정및예방조치여부 (예\/아니오)"),
   qualityOpinion: zod.string().nullish().describe("품질의견"),
   partsCost: zod.number().nullish().describe("부품비"),
-  laborCost: zod.number().nullish().describe("공임비"),
+  laborCost: zod.number().nullish().describe("공임비 (QC 입력)"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -995,7 +1080,6 @@ export const UpdateReportStatusResponse = zod.object({
   defectType: zod.string(),
   description: zod.string(),
   imageUrl: zod.string().nullable(),
-  imageUrls: zod.string().array().nullable(),
   syncStatus: zod.enum([
     "PENDING",
     "PROCESSING",
@@ -1051,13 +1135,23 @@ export const UpdateReportStatusResponse = zod.object({
       "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
-  judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
-  claimStatus: zod.string().nullish().describe("클레임유무 (예/아니오)"),
-  relatedDeptStatus: zod.string().nullish().describe("유관부서여부 (예/아니오)"),
-  correctiveActionStatus: zod.string().nullish().describe("시정및예방조치여부 (예/아니오)"),
+  imageUrls: zod.array(zod.string()).nullish().describe("첨부 사진 URL 목록"),
+  judgmentResult: zod
+    .string()
+    .nullish()
+    .describe("판정결과 (폐기\/특채\/수리후특채\/적합품판정\/신품교환)"),
+  claimStatus: zod.string().nullish().describe("클레임유무 (예\/아니오)"),
+  relatedDeptStatus: zod
+    .string()
+    .nullish()
+    .describe("유관부서여부 (예\/아니오)"),
+  correctiveActionStatus: zod
+    .string()
+    .nullish()
+    .describe("시정및예방조치여부 (예\/아니오)"),
   qualityOpinion: zod.string().nullish().describe("품질의견"),
   partsCost: zod.number().nullish().describe("부품비"),
-  laborCost: zod.number().nullish().describe("공임비"),
+  laborCost: zod.number().nullish().describe("공임비 (QC 입력)"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -1123,7 +1217,6 @@ export const SubmitQcActionResponse = zod.object({
   defectType: zod.string(),
   description: zod.string(),
   imageUrl: zod.string().nullable(),
-  imageUrls: zod.string().array().nullable(),
   syncStatus: zod.enum([
     "PENDING",
     "PROCESSING",
@@ -1179,13 +1272,23 @@ export const SubmitQcActionResponse = zod.object({
       "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
-  judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
-  claimStatus: zod.string().nullish().describe("클레임유무 (예/아니오)"),
-  relatedDeptStatus: zod.string().nullish().describe("유관부서여부 (예/아니오)"),
-  correctiveActionStatus: zod.string().nullish().describe("시정및예방조치여부 (예/아니오)"),
+  imageUrls: zod.array(zod.string()).nullish().describe("첨부 사진 URL 목록"),
+  judgmentResult: zod
+    .string()
+    .nullish()
+    .describe("판정결과 (폐기\/특채\/수리후특채\/적합품판정\/신품교환)"),
+  claimStatus: zod.string().nullish().describe("클레임유무 (예\/아니오)"),
+  relatedDeptStatus: zod
+    .string()
+    .nullish()
+    .describe("유관부서여부 (예\/아니오)"),
+  correctiveActionStatus: zod
+    .string()
+    .nullish()
+    .describe("시정및예방조치여부 (예\/아니오)"),
   qualityOpinion: zod.string().nullish().describe("품질의견"),
   partsCost: zod.number().nullish().describe("부품비"),
-  laborCost: zod.number().nullish().describe("공임비"),
+  laborCost: zod.number().nullish().describe("공임비 (QC 입력)"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -1332,7 +1435,6 @@ export const TriggerRpaResponse = zod.object({
       defectType: zod.string(),
       description: zod.string(),
       imageUrl: zod.string().nullable(),
-      imageUrls: zod.string().array().nullable(),
       syncStatus: zod.enum([
         "PENDING",
         "PROCESSING",
@@ -1393,6 +1495,26 @@ export const TriggerRpaResponse = zod.object({
         .string()
         .nullish()
         .describe("QC 조치결과 상세 내용"),
+      imageUrls: zod
+        .array(zod.string())
+        .nullish()
+        .describe("첨부 사진 URL 목록"),
+      judgmentResult: zod
+        .string()
+        .nullish()
+        .describe("판정결과 (폐기\/특채\/수리후특채\/적합품판정\/신품교환)"),
+      claimStatus: zod.string().nullish().describe("클레임유무 (예\/아니오)"),
+      relatedDeptStatus: zod
+        .string()
+        .nullish()
+        .describe("유관부서여부 (예\/아니오)"),
+      correctiveActionStatus: zod
+        .string()
+        .nullish()
+        .describe("시정및예방조치여부 (예\/아니오)"),
+      qualityOpinion: zod.string().nullish().describe("품질의견"),
+      partsCost: zod.number().nullish().describe("부품비"),
+      laborCost: zod.number().nullish().describe("공임비 (QC 입력)"),
       qcSubmittedAt: zod.coerce
         .date()
         .nullish()

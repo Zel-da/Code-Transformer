@@ -1462,6 +1462,32 @@ components:
         qcCorrectiveResult:
           type: ["string", "null"]
           description: "QC 조치결과 상세 내용"
+        imageUrls:
+          type: ["array", "null"]
+          items:
+            type: string
+          description: "첨부 사진 URL 목록"
+        judgmentResult:
+          type: ["string", "null"]
+          description: "판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"
+        claimStatus:
+          type: ["string", "null"]
+          description: "클레임유무 (예/아니오)"
+        relatedDeptStatus:
+          type: ["string", "null"]
+          description: "유관부서여부 (예/아니오)"
+        correctiveActionStatus:
+          type: ["string", "null"]
+          description: "시정및예방조치여부 (예/아니오)"
+        qualityOpinion:
+          type: ["string", "null"]
+          description: "품질의견"
+        partsCost:
+          type: ["integer", "null"]
+          description: "부품비"
+        laborCost:
+          type: ["integer", "null"]
+          description: "공임비 (QC 입력)"
         qcSubmittedAt:
           type: ["string", "null"]
           format: date-time
@@ -1617,6 +1643,11 @@ components:
         managerNm:
           type: ["string", "null"]
           description: "담당자명"
+        imageUrls:
+          type: ["array", "null"]
+          items:
+            type: string
+          description: "첨부 사진 URL 목록"
       required:
         - itemCode
         - processName
@@ -1690,6 +1721,35 @@ components:
         managerNm:
           type: ["string", "null"]
           description: "담당자명"
+        imageUrl:
+          type: ["string", "null"]
+          description: "첨부 사진 URL (대표)"
+        imageUrls:
+          type: ["array", "null"]
+          items:
+            type: string
+          description: "첨부 사진 URL 목록"
+        judgmentResult:
+          type: ["string", "null"]
+          description: "판정결과"
+        claimStatus:
+          type: ["string", "null"]
+          description: "클레임유무 (예/아니오)"
+        relatedDeptStatus:
+          type: ["string", "null"]
+          description: "유관부서여부 (예/아니오)"
+        correctiveActionStatus:
+          type: ["string", "null"]
+          description: "시정및예방조치여부 (예/아니오)"
+        qualityOpinion:
+          type: ["string", "null"]
+          description: "품질의견"
+        partsCost:
+          type: ["integer", "null"]
+          description: "부품비"
+        laborCost:
+          type: ["integer", "null"]
+          description: "공임비 (QC 입력)"
 
     QcAnalysisBody:
       type: object
@@ -1780,6 +1840,27 @@ components:
         managerNm:
           type: ["string", "null"]
           description: "담당자명"
+        judgmentResult:
+          type: ["string", "null"]
+          description: "판정결과"
+        claimStatus:
+          type: ["string", "null"]
+          description: "클레임유무 (예/아니오)"
+        relatedDeptStatus:
+          type: ["string", "null"]
+          description: "유관부서여부 (예/아니오)"
+        correctiveActionStatus:
+          type: ["string", "null"]
+          description: "시정및예방조치여부 (예/아니오)"
+        qualityOpinion:
+          type: ["string", "null"]
+          description: "품질의견"
+        partsCost:
+          type: ["integer", "null"]
+          description: "부품비"
+        laborCost:
+          type: ["integer", "null"]
+          description: "공임비 (QC 입력)"
 
     CloseMonthBody:
       type: object
