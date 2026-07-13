@@ -108,6 +108,9 @@ const formSchema = z.object({
   managerCd: z.string().nullable().optional(),
   managerNm: z.string().nullable().optional(),
   judgmentResult: z.string().nullable().optional(),
+  claimStatus: z.enum(["예", "아니오"]).nullable().optional(),
+  partsCost: z.coerce.number().int().min(0).optional(),
+  laborCost: z.coerce.number().int().min(0).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -344,6 +347,9 @@ export default function QcPage() {
       managerCd: null,
       managerNm: null,
       judgmentResult: null,
+      claimStatus: null,
+      partsCost: 0,
+      laborCost: 0,
     },
   });
 
@@ -394,6 +400,9 @@ export default function QcPage() {
         managerCd: report.managerCd ?? null,
         managerNm: report.managerNm ?? null,
         judgmentResult: report.judgmentResult ?? null,
+        claimStatus: (report.claimStatus as "예" | "아니오" | null) ?? null,
+        partsCost: report.partsCost ?? 0,
+        laborCost: report.laborCost ?? 0,
       });
     }
   }, [report]);
@@ -489,6 +498,9 @@ export default function QcPage() {
           managerCd: values.managerCd || null,
           managerNm: values.managerNm || null,
           judgmentResult: values.judgmentResult || null,
+          claimStatus: values.claimStatus || null,
+          partsCost: values.partsCost ?? 0,
+          laborCost: values.laborCost ?? 0,
         },
       });
       await Promise.all([
@@ -697,7 +709,7 @@ export default function QcPage() {
                 control={form.control}
                 name="registrantName"
                 render={({ field }) => (
-                  <FieldRow label="등록자" optional>
+                  <FieldRow label="등록자 이름" optional>
                     <FormItem>
                       <FormControl>
                         <input
@@ -718,7 +730,7 @@ export default function QcPage() {
                 control={form.control}
                 name="plantCd"
                 render={({ field }) => (
-                  <FieldRow label="공장" optional>
+                  <FieldRow label="공장 선택" optional>
                     <FormItem>
                       <Select
                         onValueChange={(val) => {
@@ -767,7 +779,7 @@ export default function QcPage() {
               />
 
               {/* ── 부적합 내용 ── */}
-              <GroupDivider title="부적합 내용" />
+              <GroupDivider title="부적합 기본 정보" />
 
               {/* ERP 자동 조회 */}
               <div className="px-5 py-4 border-b border-[#F2F4F6]">
@@ -859,7 +871,7 @@ export default function QcPage() {
                 control={form.control}
                 name="itemCode"
                 render={({ field }) => (
-                  <FieldRow label="부품코드" error={form.formState.errors.itemCode?.message}>
+                  <FieldRow label="제품코드" error={form.formState.errors.itemCode?.message}>
                     <FormItem>
                       <FormControl>
                         <input
@@ -885,7 +897,7 @@ export default function QcPage() {
                 control={form.control}
                 name="modelName"
                 render={({ field }) => (
-                  <FieldRow label="모델명" optional>
+                  <FieldRow label="제품명" optional>
                     <FormItem>
                       <FormControl>
                         <input
@@ -906,7 +918,7 @@ export default function QcPage() {
                 control={form.control}
                 name="processCd"
                 render={({ field }) => (
-                  <FieldRow label="공정" error={form.formState.errors.processName?.message}>
+                  <FieldRow label="등록자 공정" error={form.formState.errors.processName?.message}>
                     <FormItem>
                       {processes.length > 0 ? (
                         <Select
@@ -946,7 +958,7 @@ export default function QcPage() {
                 control={form.control}
                 name="defectQty"
                 render={({ field }) => (
-                  <FieldRow label="불량 수량" optional>
+                  <FieldRow label="부적합 수량" optional>
                     <FormItem>
                       <FormControl>
                         <input
@@ -1249,6 +1261,79 @@ export default function QcPage() {
                   </FieldRow>
                 )}
               />
+
+              {/* 클레임유무 */}
+              <FormField
+                control={form.control}
+                name="claimStatus"
+                render={({ field }) => (
+                  <FieldRow label="클레임유무" optional>
+                    <FormItem>
+                      <div className="flex gap-3">
+                        {(["예", "아니오"] as const).map((val) => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => field.onChange(field.value === val ? null : val)}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 text-[14px] font-semibold transition-all ${
+                              field.value === val ? CHIP_SEL : CHIP_UNSEL
+                            }`}
+                          >
+                            <span className={`h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                              field.value === val ? "border-[#1A1A1A]" : "border-[#BEC5CC]"
+                            }`}>
+                              {field.value === val && <span className="h-2 w-2 rounded-full bg-[#1A1A1A]" />}
+                            </span>
+                            {val}
+                          </button>
+                        ))}
+                      </div>
+                    </FormItem>
+                  </FieldRow>
+                )}
+              />
+
+              {/* 부품비 / 공임비 */}
+              <FieldRow label="비용" optional>
+                <div className="grid grid-cols-2 gap-2">
+                  <FormField
+                    control={form.control}
+                    name="partsCost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[12px] text-[#8B95A1]">부품비</span>
+                          <input
+                            type="number"
+                            min="0"
+                            className="w-full h-11 rounded-xl bg-[#F8F9FA] pl-14 pr-3.5 text-[14px] text-[#191F28] outline-none focus:ring-2 focus:ring-[#1A1A1A]/10 text-right"
+                            value={field.value ?? 0}
+                            onChange={(e) => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
+                          />
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="laborCost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[12px] text-[#8B95A1]">공임비</span>
+                          <input
+                            type="number"
+                            min="0"
+                            className="w-full h-11 rounded-xl bg-[#F8F9FA] pl-14 pr-3.5 text-[14px] text-[#191F28] outline-none focus:ring-2 focus:ring-[#1A1A1A]/10 text-right"
+                            value={field.value ?? 0}
+                            onChange={(e) => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
+                          />
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </FieldRow>
 
               {/* 조치결과 */}
               <FormField

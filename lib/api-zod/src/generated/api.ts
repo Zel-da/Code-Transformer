@@ -337,6 +337,9 @@ export const ListPendingReportsResponseItem = zod.object({
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
+  claimStatus: zod.string().nullish().describe("클레임유무 (예/아니오)"),
+  partsCost: zod.number().nullish().describe("부품비"),
+  laborCost: zod.number().nullish().describe("공임비"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -531,6 +534,9 @@ export const UpdateReportResponse = zod.object({
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
+  claimStatus: zod.string().nullish().describe("클레임유무 (예/아니오)"),
+  partsCost: zod.number().nullish().describe("부품비"),
+  laborCost: zod.number().nullish().describe("공임비"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -638,6 +644,9 @@ export const GetReportResponse = zod.object({
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
+  claimStatus: zod.string().nullish().describe("클레임유무 (예/아니오)"),
+  partsCost: zod.number().nullish().describe("부품비"),
+  laborCost: zod.number().nullish().describe("공임비"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -753,6 +762,9 @@ export const UpdateReportSyncStatusResponse = zod.object({
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
+  claimStatus: zod.string().nullish().describe("클레임유무 (예/아니오)"),
+  partsCost: zod.number().nullish().describe("부품비"),
+  laborCost: zod.number().nullish().describe("공임비"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -807,6 +819,9 @@ export const UpdateReportQcBody = zod.object({
   lostManHours: zod.number().nullish().describe("손실공수 (시간)"),
   qcCorrectiveResult: zod.string().nullish().describe("조치결과 상세 내용"),
   judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
+  claimStatus: zod.string().nullish().describe("클레임유무 (예/아니오)"),
+  partsCost: zod.number().nullish().describe("부품비"),
+  laborCost: zod.number().nullish().describe("공임비"),
   qcStatus: zod
     .enum([
       "OPEN",
@@ -898,6 +913,9 @@ export const UpdateReportQcResponse = zod.object({
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
+  claimStatus: zod.string().nullish().describe("클레임유무 (예/아니오)"),
+  partsCost: zod.number().nullish().describe("부품비"),
+  laborCost: zod.number().nullish().describe("공임비"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -1016,6 +1034,9 @@ export const UpdateReportStatusResponse = zod.object({
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
+  claimStatus: zod.string().nullish().describe("클레임유무 (예/아니오)"),
+  partsCost: zod.number().nullish().describe("부품비"),
+  laborCost: zod.number().nullish().describe("공임비"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -1138,6 +1159,9 @@ export const SubmitQcActionResponse = zod.object({
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
   judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
+  claimStatus: zod.string().nullish().describe("클레임유무 (예/아니오)"),
+  partsCost: zod.number().nullish().describe("부품비"),
+  laborCost: zod.number().nullish().describe("공임비"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
