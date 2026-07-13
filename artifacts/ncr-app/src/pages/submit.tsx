@@ -209,13 +209,7 @@ export default function SubmitReport() {
       if (hogi != null) params.set("hogi", String(hogi));
       const res = await fetch(`${ERP_API_BASE}/api/erp/input-data?${params}`);
       const data: ErpLookup = await res.json();
-      if (data.ok) {
-        // 단건 매칭 → 폼에 즉시 자동 입력
-        fillFromErp(data);
-        toast({ title: "자동 입력됨", description: `${data.itemCode ?? ""} ${data.modelName ?? ""}` });
-      } else {
-        setErpSearchResult(data);
-      }
+      setErpSearchResult(data);
     } catch {
       setErpSearchResult({ ok: false, reason: "네트워크 오류가 발생했습니다." });
     } finally {
@@ -496,7 +490,7 @@ export default function SubmitReport() {
             <div data-tour="submit-item" className="px-5 py-4 border-b border-[#F2F4F6]">
               <div className="mb-3">
                 <p className="text-[13px] font-semibold text-[#191F28] mb-0.5">제품 정보 조회</p>
-                <p className="text-[11px] text-[#8B95A1]">부품코드·제품명·품목그룹·거래처 중 아무거나 + (선택) 호기 — 단건이면 자동 입력</p>
+                <p className="text-[11px] text-[#8B95A1]">부품코드·제품명·품목그룹 중 아무거나 + (선택) 호기 — 조회 후 선택하면 자동 입력</p>
               </div>
               <div className="flex gap-2">
                 <input
