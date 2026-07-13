@@ -677,7 +677,13 @@ export default function QcPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
             {/* ══ 왼쪽 카드: 접수 기본 정보 + 부적합 내용 ══ */}
-            <div className="bg-white rounded-2xl border border-[#F2F4F6] px-4 h-fit">
+            <div className="bg-white rounded-2xl border border-[#E0E8FF] h-fit overflow-hidden">
+              <div className="bg-[#F0F4FF] px-4 py-2.5 flex items-center gap-2 border-b border-[#E0E8FF]">
+                <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+                <span className="text-[12px] font-bold text-blue-700 tracking-wide">접수 내용</span>
+                <span className="text-[11px] text-blue-400">— 보고서 등록 시 작성된 값</span>
+              </div>
+              <div className="px-4">
 
               {/* ── 접수 기본 정보 ── */}
               <GroupDivider title="접수 기본 정보" />
@@ -974,9 +980,6 @@ export default function QcPage() {
                 )}
               />
 
-              {/* 거래처 */}
-              <VendorPicker form={form} />
-
               {/* 부적합 현상 */}
               <FormField
                 control={form.control}
@@ -1038,13 +1041,23 @@ export default function QcPage() {
                 </>
               )}
 
+              </div>{/* ── 접수 내용 inner px-4 끝 ── */}
             </div>{/* ── 왼쪽 카드 끝 ── */}
 
             {/* ══ 오른쪽 카드: QC 분석 내용 ══ */}
-            <div className="bg-white rounded-2xl border border-[#F2F4F6] px-4">
+            <div className="bg-white rounded-2xl border border-[#E6F4ED] overflow-hidden">
+              <div className="bg-[#F0FAF4] px-4 py-2.5 flex items-center gap-2 border-b border-[#E6F4ED]">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                <span className="text-[12px] font-bold text-emerald-700 tracking-wide">QC 입력</span>
+                <span className="text-[11px] text-emerald-400">— QC 담당자 작성 항목</span>
+              </div>
+              <div className="px-4">
 
               {/* ── QC 분석 내용 ── */}
               <GroupDivider title="QC 분석 내용" />
+
+              {/* 거래처 */}
+              <VendorPicker form={form} />
 
               {/* 귀책부서 */}
               <FormField
@@ -1248,6 +1261,7 @@ export default function QcPage() {
                 )}
               />
 
+              </div>{/* ── QC 입력 inner px-4 끝 ── */}
             </div>{/* ── 오른쪽 카드 끝 ── */}
             </div>{/* ── 그리드 끝 ── */}
           </form>
