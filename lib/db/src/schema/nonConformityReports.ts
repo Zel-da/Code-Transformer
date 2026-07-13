@@ -166,6 +166,7 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
   qcCorrectiveResult: text("qc_corrective_result"),
   judgmentResult: text("judgment_result"),
   claimStatus: text("claim_status"),
+  relatedDeptStatus: text("related_dept_status"),
   partsCost: integer("parts_cost").notNull().default(0),
   laborCost: integer("labor_cost").notNull().default(0),
   qcSubmittedAt: timestamp("qc_submitted_at", { withTimezone: true }),
