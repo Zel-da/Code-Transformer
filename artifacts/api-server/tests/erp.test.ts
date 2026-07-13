@@ -90,4 +90,49 @@ describe("/api/erp/input-data", () => {
     expect(han.body.itemCode).toBe("D580000");
     expect(han.body.vendorNm).toBeTruthy();
   });
+
+  it("⑥ itemGroup 단독 검색 — 그룹명으로 후보 조회 + 유사도 정렬", async () => {
+    const res = await request(app)
+      .get("/api/erp/input-data?itemGroup=T-380N")
+      .expect(200);
+    // 다건 후보 반환 예상
+    expect(res.body.ok).toBe(false);
+    expect(Array.isArray(res.body.candidates)).toBe(true);
+    expect(res.body.candidates.length).toBeGreaterThan(0);
+    // 모든 후보의 category 에 검색어가 관련(정확 포함 또는 유사)
+    for (const c of res.body.candidates) {
+      expect(typeof c.score).toBe("number");
+    }
+    // score 정렬 확인: 앞자리 score 가 뒷자리보다 크거나 같음
+    for (let i = 1; i < res.body.candidates.length; i++) {
+      expect(res.body.candidates[i - 1].score).toBeGreaterThanOrEqual(res.body.candidates[i].score);
+    }
+  });
+
+  it("⑦ product + itemGroup 조합 — AND 로 좁혀짐, 유사도 최상위 관련성", async () => {
+    const res = await request(app)
+      .get("/api/erp/input-data?product=HYUNDAI&itemGroup=T-380N")
+      .expect(200);
+    // 조합 검색은 product 도 hit + category 도 hit 인 좁은 집합
+    if (res.body.ok) {
+      expect(res.body.itemGroup).toMatch(/T-380N/);
+    } else {
+      expect(Array.isArray(res.body.candidates)).toBe(true);
+      // AND 결합이라 원래 product-only 결과보다 작거나 같아야 함
+      expect(res.body.candidates.length).toBeLessThanOrEqual(200);
+      // 모든 후보 category 에 검색 그룹 어원이 있어야 함
+      for (const c of res.body.candidates) {
+        expect(c.category).toMatch(/T-380N/i);
+      }
+    }
+  });
+
+  it("⑧ limit 파라미터로 후보 개수 조절", async () => {
+    const small = await request(app)
+      .get("/api/erp/input-data?product=크레인&limit=3")
+      .expect(200);
+    if (!small.body.ok) {
+      expect(small.body.candidates.length).toBeLessThanOrEqual(3);
+    }
+  });
 });

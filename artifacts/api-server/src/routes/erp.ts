@@ -40,19 +40,63 @@ function searchVariants(s: string): string[] {
 // 검색어를 code/name/category 3개 컬럼 + 한자/영문 변형 모두에 대해 ILIKE OR.
 // vendorNames가 주어지면 item.name에서 그 거래처명도 ILIKE 매칭 (vendor 코드/사업자번호로 검색했을 때
 // ITEM_NM에 박힌 거래처명을 통해 제품을 찾기 위함).
-function buildProductMatchCondition(term: string, vendorNames: string[] = []): SQL {
-  const conds: SQL[] = [];
-  for (const v of searchVariants(term)) {
-    const like = `%${v}%`;
-    conds.push(ilike(itemCodesTable.code, like));
-    conds.push(ilike(itemCodesTable.name, like));
-    conds.push(ilike(itemCodesTable.category, like));
+// itemGroup이 주어지면 category ILIKE 로 AND 결합해 좁힌다 (품목명+품목그룹 조합 검색).
+function buildProductMatchCondition(
+  term: string | null,
+  itemGroup: string | null,
+  vendorNames: string[] = [],
+): SQL {
+  const orConds: SQL[] = [];
+  if (term) {
+    for (const v of searchVariants(term)) {
+      const like = `%${v}%`;
+      orConds.push(ilike(itemCodesTable.code, like));
+      orConds.push(ilike(itemCodesTable.name, like));
+      orConds.push(ilike(itemCodesTable.category, like));
+    }
+    for (const nm of vendorNames) {
+      if (!nm || nm.length < 2) continue;
+      orConds.push(ilike(itemCodesTable.name, `%${nm}%`));
+    }
   }
-  for (const nm of vendorNames) {
-    if (!nm || nm.length < 2) continue;
-    conds.push(ilike(itemCodesTable.name, `%${nm}%`));
+
+  const groupConds: SQL[] = [];
+  if (itemGroup) {
+    for (const v of searchVariants(itemGroup)) {
+      groupConds.push(ilike(itemCodesTable.category, `%${v}%`));
+    }
   }
-  return or(...conds)!;
+
+  // 세 가지 조합:
+  //  - term 만: 위 3컬럼 OR
+  //  - itemGroup 만: category OR
+  //  - 둘 다: (term OR) AND (category OR)
+  if (orConds.length > 0 && groupConds.length > 0) {
+    return and(or(...orConds)!, or(...groupConds)!)!;
+  }
+  if (orConds.length > 0) return or(...orConds)!;
+  if (groupConds.length > 0) return or(...groupConds)!;
+  // 아무 검색어도 없으면 매칭 없음 (0=1)
+  return sql`FALSE`;
+}
+
+// 유사도 점수 계산용 SQL 표현식 (pg_trgm similarity 활용).
+// term 은 name/code 대비, itemGroup 은 category 대비. 두 축의 GREATEST.
+function similarityScoreExpr(term: string | null, itemGroup: string | null): SQL {
+  const parts: SQL[] = [];
+  if (term) {
+    parts.push(sql`similarity(${itemCodesTable.name}, ${term})`);
+    parts.push(sql`similarity(${itemCodesTable.code}, ${term})`);
+    parts.push(sql`similarity(${itemCodesTable.category}, ${term})`);
+  }
+  if (itemGroup) {
+    parts.push(sql`similarity(${itemCodesTable.category}, ${itemGroup})`);
+  }
+  if (parts.length === 0) return sql`0::real`;
+  if (parts.length === 1) return parts[0];
+  // GREATEST(a, b, c, ...)
+  const csv = parts.reduce<SQL>((acc, cur, i) => (i === 0 ? cur : sql`${acc}, ${cur}`), sql``);
+  return sql`GREATEST(${csv})`;
 }
 
 // 검색어(거래처명/코드/사업자번호)로 vendors 매칭. valid_flg=true만, limit으로 폭주 방지.
@@ -209,12 +253,17 @@ async function ordersFor(itemCode: string, hogi: number | null) {
 // 제품(품번/품명) + 출하호기 → NCR 자동입력 데이터 (Neon 미러에서 조회)
 router.get("/erp/input-data", async (req, res): Promise<void> => {
   const itemCode = (req.query.itemCode as string | undefined)?.trim();
-  const product = (req.query.product as string | undefined)?.trim();
+  const product = (req.query.product as string | undefined)?.trim() || null;
+  const itemGroup = (req.query.itemGroup as string | undefined)?.trim() || null;
   const hogiRaw = req.query.hogi as string | undefined;
   const hogi = hogiRaw != null && hogiRaw !== "" && !Number.isNaN(Number(hogiRaw)) ? Number(hogiRaw) : null;
+  // 후보 개수 상한 — 기본 100, ?limit=N 으로 조절 (1~500)
+  const limitRaw = req.query.limit as string | undefined;
+  const limitParsed = limitRaw ? Number.parseInt(limitRaw, 10) : NaN;
+  const CAND_LIMIT = Number.isFinite(limitParsed) ? Math.max(1, Math.min(500, limitParsed)) : 100;
 
-  if (!itemCode && !product && hogi == null) {
-    res.status(400).json({ ok: false, reason: "itemCode/product/hogi 중 하나는 필요합니다." });
+  if (!itemCode && !product && !itemGroup && hogi == null) {
+    res.status(400).json({ ok: false, reason: "itemCode/product/itemGroup/hogi 중 하나는 필요합니다." });
     return;
   }
 
@@ -278,9 +327,11 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
 
   // 2) 제품명/품번/품목그룹/거래처 부분일치(한자↔영문 II/Ⅱ, vendors 마스터 통합)
   //    호기가 있으면 그 호기에 제조오더가 있는 품목으로 좁힘.
-  const vendorMatches = await findVendors(product!);
+  //    product 로 vendor 도 함께 조회 (거래처명 검색 케이스 지원). itemGroup 만 있으면 vendor 조회 스킵.
+  const vendorMatches = product ? await findVendors(product) : [];
   const vendorNames = vendorMatches.map((v) => v.vendorNm).filter((s): s is string => !!s);
-  const matchCond = buildProductMatchCondition(product!, vendorNames);
+  const matchCond = buildProductMatchCondition(product, itemGroup, vendorNames);
+  const scoreExpr = similarityScoreExpr(product, itemGroup);
   if (hogi != null) {
     // 생산 진행 호기(production_orders) 매칭
     const fromOrders = await db
@@ -360,35 +411,61 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
     // 호기 매칭 없음 → 이름만 후보 안내로 폴백
   }
 
-  // 1) item_codes 직접 매칭 (검색어 자체 + 한자/영문 변형 + vendor 이름)
+  // 1) item_codes 직접 매칭 (검색어 자체 + 한자/영문 변형 + vendor 이름 + itemGroup 결합)
+  //    pg_trgm similarity 로 유사도 점수 계산 후 정렬. 동점이면 code 사전순.
   const fromItems = await db
-    .select()
+    .select({
+      id: itemCodesTable.id,
+      code: itemCodesTable.code,
+      name: itemCodesTable.name,
+      category: itemCodesTable.category,
+      createdAt: itemCodesTable.createdAt,
+      score: scoreExpr.as("score"),
+    })
     .from(itemCodesTable)
     .where(matchCond)
-    .orderBy(asc(itemCodesTable.code))
-    .limit(25);
+    .orderBy(sql`score DESC`, asc(itemCodesTable.code))
+    .limit(CAND_LIMIT);
+
   // 2) 거래처 검색어 → vendors 매칭 → shipments.bp_cd 로 거꾸로 item 찾기 (출하 이력 우회)
-  let fromVendorShipments: ItemRow[] = [];
+  //    itemGroup 이 함께 지정됐다면 category 필터도 적용.
+  type ScoredItem = ItemRow & { score: number };
+  let fromVendorShipments: ScoredItem[] = [];
   if (vendorMatches.length > 0) {
     const bpCds = vendorMatches.map((v) => v.vendorCd);
+    const vendorShipCond = itemGroup
+      ? and(
+          inArray(shipmentsTable.bpCd, bpCds),
+          or(...searchVariants(itemGroup).map((v) => ilike(itemCodesTable.category, `%${v}%`)))!,
+        )!
+      : inArray(shipmentsTable.bpCd, bpCds);
     fromVendorShipments = await db
       .selectDistinct({
+        id: itemCodesTable.id,
         code: itemCodesTable.code,
         name: itemCodesTable.name,
         category: itemCodesTable.category,
-        id: itemCodesTable.id,
         createdAt: itemCodesTable.createdAt,
+        score: scoreExpr.as("score"),
       })
       .from(itemCodesTable)
       .innerJoin(shipmentsTable, eq(shipmentsTable.itemCode, itemCodesTable.code))
-      .where(inArray(shipmentsTable.bpCd, bpCds))
-      .orderBy(asc(itemCodesTable.code))
-      .limit(25);
+      .where(vendorShipCond)
+      .orderBy(sql`score DESC`, asc(itemCodesTable.code))
+      .limit(CAND_LIMIT) as ScoredItem[];
   }
-  // 합집합 (코드 기준 중복 제거)
-  const allMerged = new Map<string, ItemRow>();
-  for (const r of [...fromItems, ...fromVendorShipments]) allMerged.set(r.code, r);
-  const candidates = Array.from(allMerged.values()).slice(0, 25);
+
+  // 합집합 (코드 기준 중복 제거, score 는 큰 값 유지) + 유사도 재정렬
+  const scoredMap = new Map<string, ScoredItem>();
+  for (const r of [...(fromItems as ScoredItem[]), ...fromVendorShipments]) {
+    const prev = scoredMap.get(r.code);
+    if (!prev || (r.score ?? 0) > (prev.score ?? 0)) {
+      scoredMap.set(r.code, r);
+    }
+  }
+  const candidates = Array.from(scoredMap.values())
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || a.code.localeCompare(b.code))
+    .slice(0, CAND_LIMIT);
 
   if (candidates.length === 1) {
     const item = candidates[0];
@@ -398,7 +475,7 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
   }
   res.json({
     ok: false,
-    reason: candidates.length ? `품목 후보 ${candidates.length}건 — 호기 입력 또는 품번 특정` : "품목을 찾지 못함",
+    reason: candidates.length ? `품목 후보 ${candidates.length}건 — 유사도 순` : "품목을 찾지 못함",
     candidates,
     matchedVendors: vendorMatches,
   });

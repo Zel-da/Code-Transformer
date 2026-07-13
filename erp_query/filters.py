@@ -7,7 +7,12 @@ ERP 동기화 공통 필터 — 완성품만 남기고 브레이커/부품/공�
 기준 (NCR 부적합 보고 대상으로 의미 있는 완성품):
 - ITEM_ACCT='10'  (일반 완성품 회계계정)
 - 또는 ITEM_ACCT='20' AND 카테고리가 SCS/SCK/WHX/WTX (특장차/카체이서 완성품)
-- 제외: 카테고리 SB*/SQ*/SD-*/SU+* (브레이커 시리즈)
+- 제외: 카테고리 SB*/SQ*/SU+* (브레이커 시리즈)
+
+주의: SD-* 그룹(SD-25, SD-530E, SD-530L)은 어스드릴/유압드릴 완성품.
+      브레이커가 아니므로 예전 NOT LIKE 'SD-%' 제외는 오탐이었고 2026-07 삭제함.
+      실 검증: K-System 원본에 SD-25/530E/530L 그룹 완성품(ITEM_ACCT=10) 존재.
+      진짜 브레이커는 SB* 그룹(SB10, SB43, SB50 등)으로 별개.
 - 제외: 카테고리 공통/이관 그룹 (아산시스템 이관, 기타(공용코드), AT공통, DC공통)
 - 제외: ITEM_NM에 'BREAKER' 들어간 것
 
@@ -30,7 +35,6 @@ FINISHED_GOOD_WHERE = """
   )
   AND COALESCE(g.ITEM_GROUP_NM, '') NOT LIKE 'SB%'
   AND COALESCE(g.ITEM_GROUP_NM, '') NOT LIKE 'SQ%'
-  AND COALESCE(g.ITEM_GROUP_NM, '') NOT LIKE 'SD-%'
   AND COALESCE(g.ITEM_GROUP_NM, '') NOT LIKE 'SU+%'
   AND COALESCE(g.ITEM_GROUP_NM, '') NOT IN
       ('아산시스템 이관 품목그룹', '기타(공용코드)', 'AT공통', 'DC공통')

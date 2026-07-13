@@ -49,7 +49,7 @@ function parseHogi(raw?: string): number | null {
   return m ? Number(m[0]) : null;
 }
 
-type ErpCandidate = { code: string; name: string; category: string; id: number; createdAt: string };
+type ErpCandidate = { code: string; name: string; category: string; id: number; createdAt: string; score?: number };
 
 type ErpLookup = {
   ok: boolean;
@@ -146,6 +146,7 @@ export default function SubmitReport() {
   const skipFactoryClearRef = useRef(false);
 
   const [erpSearchProduct, setErpSearchProduct] = useState("");
+  const [erpSearchGroup, setErpSearchGroup] = useState("");
   const [erpSearchHogi, setErpSearchHogi] = useState("");
   const [erpSearchResult, setErpSearchResult] = useState<ErpLookup | null>(null);
   const [erpSearchLoading, setErpSearchLoading] = useState(false);
@@ -217,16 +218,18 @@ export default function SubmitReport() {
   }, [form, saveDraft]);
 
 
-  // 부품코드/제품/품목그룹/거래처/호기 — 아무거나 입력 → 단건이면 자동 입력, 다건이면 후보 표시
+  // 부품코드/제품/품목그룹/거래처/호기 — 아무거나 입력 → 단건이면 자동 입력, 다건이면 후보 표시 (유사도 순)
   const searchErpByProduct = async () => {
     const product = erpSearchProduct.trim();
+    const itemGroup = erpSearchGroup.trim();
     const hogi = parseHogi(erpSearchHogi);
-    if (!product && hogi == null) return;
+    if (!product && !itemGroup && hogi == null) return;
     setErpSearchLoading(true);
     setErpSearchResult(null);
     try {
       const params = new URLSearchParams();
       if (product) params.set("product", product);
+      if (itemGroup) params.set("itemGroup", itemGroup);
       if (hogi != null) params.set("hogi", String(hogi));
       const res = await fetch(`${ERP_API_BASE}/api/erp/input-data?${params}`);
       const data: ErpLookup = await res.json();
@@ -541,7 +544,7 @@ export default function SubmitReport() {
             <div data-tour="submit-item" className="px-5 py-4 border-b border-[#F2F4F6]">
               <div className="mb-3">
                 <p className="text-[13px] font-semibold text-[#191F28] mb-0.5">제품 정보 조회</p>
-                <p className="text-[11px] text-[#8B95A1]">부품코드·제품명·품목그룹 중 아무거나 + (선택) 호기 — 조회 후 선택하면 자동 입력</p>
+                <p className="text-[11px] text-[#8B95A1]">품목명·품번·거래처 + 품목그룹 조합 — 유사도 순 후보, 선택하면 자동 입력</p>
               </div>
               <div className="flex gap-2">
                 <input
@@ -549,7 +552,7 @@ export default function SubmitReport() {
                   value={erpSearchProduct}
                   onChange={e => setErpSearchProduct(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && searchErpByProduct()}
-                  placeholder="부품코드/제품/품목그룹/거래처"
+                  placeholder="품목명/품번/거래처"
                   className="flex-1 h-11 rounded-xl bg-[#F8F9FA] px-3 text-[14px] outline-none text-[#191F28] placeholder-[#BEC5CC] border-2 border-transparent focus:border-[#1A1A1A]"
                 />
                 <input
@@ -563,7 +566,7 @@ export default function SubmitReport() {
                 <button
                   type="button"
                   onClick={searchErpByProduct}
-                  disabled={erpSearchLoading || (!erpSearchProduct.trim() && !erpSearchHogi.trim())}
+                  disabled={erpSearchLoading || (!erpSearchProduct.trim() && !erpSearchGroup.trim() && !erpSearchHogi.trim())}
                   className="h-11 px-4 rounded-xl bg-[#1A1A1A] text-white text-[13px] font-semibold flex items-center gap-1.5 disabled:opacity-40 shrink-0"
                 >
                   {erpSearchLoading
@@ -572,6 +575,16 @@ export default function SubmitReport() {
                   }
                   조회
                 </button>
+              </div>
+              <div className="mt-2">
+                <input
+                  type="text"
+                  value={erpSearchGroup}
+                  onChange={e => setErpSearchGroup(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && searchErpByProduct()}
+                  placeholder="품목그룹명 (예: T-380N, SD-25) — 위 필드와 조합"
+                  className="w-full h-10 rounded-xl bg-[#F8F9FA] px-3 text-[13px] outline-none text-[#191F28] placeholder-[#BEC5CC] border-2 border-transparent focus:border-[#1A1A1A]"
+                />
               </div>
 
               {erpSearchResult && (
@@ -618,7 +631,12 @@ export default function SubmitReport() {
                             onClick={() => fillFromErp(c)}
                             className="w-full px-3 py-3 text-left hover:bg-[#F8F9FA] active:bg-[#F2F4F6] transition-colors"
                           >
-                            <span className="font-semibold text-[13px] text-[#191F28] block">{c.code}</span>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-semibold text-[13px] text-[#191F28] truncate">{c.code}</span>
+                              {typeof c.score === "number" && c.score > 0 && (
+                                <span className="text-[10px] text-[#8B95A1] shrink-0 tabular-nums">{(c.score * 100).toFixed(0)}%</span>
+                              )}
+                            </div>
                             <span className="text-[12px] text-[#8B95A1] block truncate">{c.name}</span>
                             <span className="text-[11px] text-[#BEC5CC]">{c.category}</span>
                           </button>
