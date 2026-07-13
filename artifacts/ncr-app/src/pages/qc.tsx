@@ -4,7 +4,9 @@ import { AuditTimeline } from "@/components/audit-timeline";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useDraft } from "@/hooks/useDraft";
+import { DraftBanner } from "@/components/draft-banner";
 import {
   useGetReport,
   useUpdateReportQc,
@@ -367,6 +369,10 @@ export default function QcPage() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIdx, setLightboxIdx] = useState(0);
 
+  const reportInitializedRef = useRef(false);
+  const [draftBannerData, setDraftBannerData] = useState<{ savedAt: number } | null>(null);
+  const { saveDraft, loadDraft, clearDraft } = useDraft<FormValues>(`ncr-draft-qc-${id}`);
+
   const selectedPlantCd = form.watch("plantCd");
   const { data: processes = [] } = useListProcesses(
     selectedPlantCd ? { plantCd: selectedPlantCd } : {}
@@ -414,8 +420,23 @@ export default function QcPage() {
         partsCost: report.partsCost ?? 0,
         laborCost: report.laborCost ?? 0,
       });
+      if (!reportInitializedRef.current) {
+        reportInitializedRef.current = true;
+        const draft = loadDraft();
+        if (draft) setDraftBannerData({ savedAt: draft.savedAt });
+      }
     }
   }, [report]);
+
+  // 폼 변경 시 자동저장 (보고서 로드 후)
+  useEffect(() => {
+    const sub = form.watch((values) => {
+      if (reportInitializedRef.current) {
+        saveDraft(values as FormValues);
+      }
+    });
+    return () => sub.unsubscribe();
+  }, [form, saveDraft]);
 
   // ERP 결과(또는 후보)로 QC 폼 자동 입력
   const fillFromErp = (result: ErpLookup | ErpCandidate) => {
@@ -520,6 +541,8 @@ export default function QcPage() {
         queryClient.invalidateQueries({ queryKey: getListReportsQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getGetReportQueryKey(id) }),
       ]);
+      clearDraft();
+      setDraftBannerData(null);
       toast({ title: "QC 분석 저장 완료", description: "분석 결과가 저장되었습니다." });
       navigate("/ledger");
     } catch (err: unknown) {
@@ -632,6 +655,22 @@ export default function QcPage() {
             </div>
           </div>
         )}
+        {/* 임시저장 드래프트 배너 */}
+        {draftBannerData && (
+          <DraftBanner
+            savedAt={draftBannerData.savedAt}
+            onRestore={() => {
+              const draft = loadDraft();
+              if (draft) form.reset(draft.values);
+              setDraftBannerData(null);
+            }}
+            onDiscard={() => {
+              clearDraft();
+              setDraftBannerData(null);
+            }}
+          />
+        )}
+
         {/* SLA 경고 배너: 발생일 기준 5~6일 경과 */}
         {report.occurrenceDate && (() => {
           const d = differenceInDays(new Date(), new Date(report.occurrenceDate));

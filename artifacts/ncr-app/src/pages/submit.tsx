@@ -1,5 +1,7 @@
 import { Layout } from "@/components/layout";
 import { useState, useRef, useEffect } from "react";
+import { useDraft } from "@/hooks/useDraft";
+import { DraftBanner } from "@/components/draft-banner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -151,6 +153,9 @@ export default function SubmitReport() {
   const requestUploadUrl = useRequestUploadUrl();
   const createReport = useCreateReport();
 
+  const { saveDraft, loadDraft, clearDraft, hasDraft } = useDraft<FormValues>("ncr-draft-submit");
+  const [draftBannerData, setDraftBannerData] = useState<{ savedAt: number } | null>(null);
+
   const profileDefaults = () => ({
     productType: "양산" as "양산" | "개발",
     registrantName: user?.displayName ?? "",
@@ -194,6 +199,22 @@ export default function SubmitReport() {
       form.setValue("processName", "");
     }
   }, [selectedFactory]);
+
+  // 드래프트 배너 노출
+  useEffect(() => {
+    if (hasDraft) {
+      const draft = loadDraft();
+      if (draft) setDraftBannerData({ savedAt: draft.savedAt });
+    }
+  }, [hasDraft]);
+
+  // 폼 변경 시 자동저장
+  useEffect(() => {
+    const sub = form.watch((values) => {
+      saveDraft(values as FormValues);
+    });
+    return () => sub.unsubscribe();
+  }, [form, saveDraft]);
 
 
   // 부품코드/제품/품목그룹/거래처/호기 — 아무거나 입력 → 단건이면 자동 입력, 다건이면 후보 표시
@@ -330,6 +351,8 @@ export default function SubmitReport() {
       queryClient.invalidateQueries({ queryKey: getListReportsQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetReportStatsQueryKey() });
 
+      clearDraft();
+      setDraftBannerData(null);
       setIsSuccess(true);
       form.reset(profileDefaults());
       setPhotos([]);
@@ -388,6 +411,24 @@ export default function SubmitReport() {
           <h1 className="text-[20px] font-bold text-[#191F28]">부적합 보고서 등록</h1>
           <p className="text-[13px] text-[#8B95A1] mt-0.5">현장 부적합 사항을 모바일로 등록합니다</p>
         </div>
+
+        {draftBannerData && (
+          <div className="px-5 pt-4">
+            <DraftBanner
+              savedAt={draftBannerData.savedAt}
+              onRestore={() => {
+                const draft = loadDraft();
+                if (draft) form.reset(draft.values);
+                setDraftBannerData(null);
+              }}
+              onDiscard={() => {
+                clearDraft();
+                setDraftBannerData(null);
+                form.reset(profileDefaults());
+              }}
+            />
+          </div>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
