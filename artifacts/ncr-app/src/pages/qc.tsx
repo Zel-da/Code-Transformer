@@ -28,7 +28,7 @@ import { Layout } from "@/components/layout";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { differenceInDays, format } from "date-fns";
-import { AlertTriangle, ChevronLeft, RefreshCw, Save, Search, Loader2, Users, X, ZoomIn, X as XIcon } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, RefreshCw, Save, Search, Loader2, Users, X, ZoomIn, X as XIcon } from "lucide-react";
 
 const ERP_API_BASE =
   ((import.meta.env.VITE_ERP_API_BASE as string | undefined) ?? "").replace(/\/+$/, "");
@@ -365,6 +365,7 @@ export default function QcPage() {
   const [erpSearchResult, setErpSearchResult] = useState<ErpLookup | null>(null);
   const [erpSearchLoading, setErpSearchLoading] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIdx, setLightboxIdx] = useState(0);
 
   const selectedPlantCd = form.watch("plantCd");
   const { data: processes = [] } = useListProcesses(
@@ -1010,27 +1011,40 @@ export default function QcPage() {
               />
 
               {/* ── 첨부 사진 ── */}
-              {report.imageUrl && (
-                <>
-                  <GroupDivider title="첨부 사진" />
-                  <div className="py-3">
-                    <button
-                      type="button"
-                      onClick={() => setLightboxOpen(true)}
-                      className="relative w-full overflow-hidden rounded-xl border border-[#E5E8EB] group"
-                    >
-                      <img
-                        src={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/storage/objects/${report.imageUrl}`}
-                        alt="첨부 사진"
-                        className="w-full object-cover max-h-52 group-hover:opacity-90 transition-opacity"
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
-                        <ZoomIn className="h-8 w-8 text-white drop-shadow-lg" />
-                      </div>
-                    </button>
-                  </div>
-                </>
-              )}
+              {(() => {
+                const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+                const allPhotos: string[] =
+                  report.imageUrls && report.imageUrls.length > 0
+                    ? report.imageUrls
+                    : report.imageUrl
+                    ? [report.imageUrl]
+                    : [];
+                if (allPhotos.length === 0) return null;
+                return (
+                  <>
+                    <GroupDivider title={`첨부 사진 (${allPhotos.length}장)`} />
+                    <div className={`py-3 grid gap-2 ${allPhotos.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+                      {allPhotos.map((url, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => { setLightboxIdx(i); setLightboxOpen(true); }}
+                          className="relative overflow-hidden rounded-xl border border-[#E5E8EB] group"
+                        >
+                          <img
+                            src={`${base}${url}`}
+                            alt={`첨부 사진 ${i + 1}`}
+                            className="w-full object-cover max-h-52 group-hover:opacity-90 transition-opacity"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                            <ZoomIn className="h-8 w-8 text-white drop-shadow-lg" />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
 
               </div>{/* ── 접수 내용 inner px-4 끝 ── */}
             </div>{/* ── 왼쪽 카드 끝 ── */}
@@ -1557,26 +1571,57 @@ export default function QcPage() {
       )}
 
       {/* ── 이미지 라이트박스 ── */}
-      {lightboxOpen && report.imageUrl && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-          onClick={() => setLightboxOpen(false)}
-        >
-          <button
-            type="button"
-            className="absolute top-4 right-4 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
+      {lightboxOpen && (() => {
+        const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+        const allPhotos: string[] =
+          report.imageUrls && report.imageUrls.length > 0
+            ? report.imageUrls
+            : report.imageUrl
+            ? [report.imageUrl]
+            : [];
+        if (allPhotos.length === 0) return null;
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
             onClick={() => setLightboxOpen(false)}
           >
-            <XIcon className="h-6 w-6" />
-          </button>
-          <img
-            src={`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/storage/objects/${report.imageUrl}`}
-            alt="첨부 사진 (원본)"
-            className="max-w-[90vw] max-h-[85vh] rounded-2xl shadow-2xl object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
+            <button
+              type="button"
+              className="absolute top-4 right-4 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
+              onClick={() => setLightboxOpen(false)}
+            >
+              <XIcon className="h-6 w-6" />
+            </button>
+            {allPhotos.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  className="absolute left-4 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
+                  onClick={(e) => { e.stopPropagation(); setLightboxIdx((i) => (i - 1 + allPhotos.length) % allPhotos.length); }}
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+                <button
+                  type="button"
+                  className="absolute right-16 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
+                  onClick={(e) => { e.stopPropagation(); setLightboxIdx((i) => (i + 1) % allPhotos.length); }}
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </button>
+                <div className="absolute bottom-4 text-white text-sm font-medium bg-black/40 px-3 py-1 rounded-full">
+                  {lightboxIdx + 1} / {allPhotos.length}
+                </div>
+              </>
+            )}
+            <img
+              src={`${base}${allPhotos[lightboxIdx]}`}
+              alt={`첨부 사진 ${lightboxIdx + 1}`}
+              className="max-w-[90vw] max-h-[85vh] rounded-2xl shadow-2xl object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        );
+      })()}
     </Layout>
   );
 }
