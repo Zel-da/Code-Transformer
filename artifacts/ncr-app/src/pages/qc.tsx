@@ -959,27 +959,6 @@ export default function QcPage() {
                 )}
               />
 
-              {/* 출하 단위 */}
-              <FormField
-                control={form.control}
-                name="shipmentUnit"
-                render={({ field }) => (
-                  <FieldRow label="출하 단위" optional>
-                    <FormItem>
-                      <FormControl>
-                        <input
-                          {...field}
-                          value={field.value ?? ""}
-                          onChange={(e) => field.onChange(e.target.value || null)}
-                          className={INPUT_CLS}
-                          placeholder="출하 단위 (선택)"
-                        />
-                      </FormControl>
-                    </FormItem>
-                  </FieldRow>
-                )}
-              />
-
               {/* 부적합 현상 */}
               <FormField
                 control={form.control}
