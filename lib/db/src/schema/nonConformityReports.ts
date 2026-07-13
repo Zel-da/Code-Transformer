@@ -126,6 +126,7 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
   defectType: text("defect_type").notNull(),
   description: text("description").notNull(),
   imageUrl: text("image_url"),
+  imageUrls: text("image_urls").array(),
   syncStatus: text("sync_status")
     .$type<(typeof syncStatusEnum)[number]>()
     .notNull()

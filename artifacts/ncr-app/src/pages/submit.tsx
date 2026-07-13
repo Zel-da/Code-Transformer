@@ -136,8 +136,8 @@ export default function SubmitReport() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
 
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -239,20 +239,29 @@ export default function SubmitReport() {
     setErpSearchHogi("");
   };
 
+  const MAX_PHOTOS = 10;
+
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const compressed = await compressImage(file, 500);
-      setPhoto(compressed);
-      setPhotoPreview(URL.createObjectURL(compressed));
-    } catch {
-      toast({
-        title: "오류",
-        description: "이미지 처리 중 문제가 발생했습니다.",
-        variant: "destructive",
-      });
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    const remaining = MAX_PHOTOS - photos.length;
+    const toAdd = files.slice(0, remaining);
+    if (files.length > remaining) {
+      toast({ title: `최대 ${MAX_PHOTOS}장까지 첨부 가능합니다`, description: `${remaining}장만 추가됩니다.` });
     }
+    try {
+      const compressed = await Promise.all(toAdd.map((f) => compressImage(f, 500)));
+      setPhotos((prev) => [...prev, ...compressed]);
+      setPhotoPreviews((prev) => [...prev, ...compressed.map((f) => URL.createObjectURL(f))]);
+    } catch {
+      toast({ title: "오류", description: "이미지 처리 중 문제가 발생했습니다.", variant: "destructive" });
+    }
+    e.target.value = "";
+  };
+
+  const removePhoto = (idx: number) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== idx));
+    setPhotoPreviews((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const uploadPhoto = async (file: File): Promise<string | null> => {
@@ -281,8 +290,8 @@ export default function SubmitReport() {
   const onSubmit = async (values: FormValues) => {
     setIsUploading(true);
     try {
-      let objectPath = null;
-      if (photo) objectPath = await uploadPhoto(photo);
+      const uploadedPaths = await Promise.all(photos.map((p) => uploadPhoto(p)));
+      const imageUrls = uploadedPaths.filter(Boolean).map((p) => `/api/storage${p}`);
 
       const selectedProcess = processes.find((p) => p.processNm === values.processName);
 
@@ -294,7 +303,8 @@ export default function SubmitReport() {
           defectType: "",
           description: values.description,
           reportDate: new Date().toISOString(),
-          imageUrl: objectPath ? `/api/storage${objectPath}` : null,
+          imageUrl: imageUrls[0] ?? null,
+          imageUrls: imageUrls.length > 0 ? imageUrls : null,
           registrantName: values.registrantName || null,
           ncrType: "공정",
           ncrGbnCd: "QC",
@@ -322,8 +332,8 @@ export default function SubmitReport() {
 
       setIsSuccess(true);
       form.reset(profileDefaults());
-      setPhoto(null);
-      setPhotoPreview(null);
+      setPhotos([]);
+      setPhotoPreviews([]);
     } catch {
       toast({
         title: "제출 실패",
@@ -698,38 +708,45 @@ export default function SubmitReport() {
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
+              multiple
               className="hidden"
               onChange={handlePhotoSelect}
             />
 
-            <FieldRow label="사진 첨부" optional dataTour="submit-photo">
-              {photoPreview ? (
-                <div className="relative rounded-2xl overflow-hidden">
-                  <img src={photoPreview} alt="첨부 사진" className="w-full max-h-64 object-cover rounded-2xl" />
+            <FieldRow label={`사진 첨부 ${photos.length > 0 ? `(${photos.length}/10)` : ""}`} optional dataTour="submit-photo">
+              <div className="space-y-3">
+                {photoPreviews.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {photoPreviews.map((src, idx) => (
+                      <div key={idx} className="relative aspect-square rounded-xl overflow-hidden">
+                        <img src={src} alt={`사진 ${idx + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(idx)}
+                          className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {photos.length < MAX_PHOTOS && (
                   <button
                     type="button"
-                    onClick={() => { setPhoto(null); setPhotoPreview(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                    className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1.5"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full flex items-center gap-3 bg-[#F2F4F6] rounded-2xl px-4 py-3.5 text-[#8B95A1] active:bg-[#E5E8EB] transition-colors"
                   >
-                    <X className="h-4 w-4" />
+                    <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+                      <Camera className="h-4.5 w-4.5 text-[#4E5968]" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-[14px] font-semibold text-[#191F28]">사진 추가</p>
+                      <p className="text-[12px] text-[#8B95A1]">최대 {MAX_PHOTOS}장 · 카메라 또는 갤러리에서 선택</p>
+                    </div>
                   </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full flex items-center gap-3 bg-[#F2F4F6] rounded-2xl px-4 py-4 text-[#8B95A1] active:bg-[#E5E8EB] transition-colors"
-                >
-                  <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center flex-shrink-0">
-                    <Camera className="h-5 w-5 text-[#4E5968]" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-[14px] font-semibold text-[#191F28]">사진 추가</p>
-                    <p className="text-[12px] text-[#8B95A1]">카메라 또는 갤러리에서 선택</p>
-                  </div>
-                </button>
-              )}
+                )}
+              </div>
             </FieldRow>
 
             {/* 모바일: 고정 버튼 + nav 높이만큼 스페이서 */}

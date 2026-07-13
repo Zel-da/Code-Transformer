@@ -95,6 +95,7 @@ export const ListReportsResponse = zod.object({
       defectType: zod.string(),
       description: zod.string(),
       imageUrl: zod.string().nullable(),
+      imageUrls: zod.string().array().nullable(),
       syncStatus: zod.enum([
         "PENDING",
         "PROCESSING",
@@ -203,6 +204,7 @@ export const CreateReportBody = zod.object({
   defectType: zod.string(),
   description: zod.string(),
   imageUrl: zod.string().nullish(),
+  imageUrls: zod.string().array().nullish(),
   registrantName: zod.string().nullish(),
   ncrType: zod.string().nullish(),
   factory: zod.string().nullish(),
@@ -278,6 +280,7 @@ export const ListPendingReportsResponseItem = zod.object({
   defectType: zod.string(),
   description: zod.string(),
   imageUrl: zod.string().nullable(),
+  imageUrls: zod.string().array().nullable(),
   syncStatus: zod.enum([
     "PENDING",
     "PROCESSING",
@@ -470,6 +473,7 @@ export const UpdateReportResponse = zod.object({
   defectType: zod.string(),
   description: zod.string(),
   imageUrl: zod.string().nullable(),
+  imageUrls: zod.string().array().nullable(),
   syncStatus: zod.enum([
     "PENDING",
     "PROCESSING",
@@ -575,6 +579,7 @@ export const GetReportResponse = zod.object({
   defectType: zod.string(),
   description: zod.string(),
   imageUrl: zod.string().nullable(),
+  imageUrls: zod.string().array().nullable(),
   syncStatus: zod.enum([
     "PENDING",
     "PROCESSING",
@@ -688,6 +693,7 @@ export const UpdateReportSyncStatusResponse = zod.object({
   defectType: zod.string(),
   description: zod.string(),
   imageUrl: zod.string().nullable(),
+  imageUrls: zod.string().array().nullable(),
   syncStatus: zod.enum([
     "PENDING",
     "PROCESSING",
@@ -830,6 +836,7 @@ export const UpdateReportQcResponse = zod.object({
   defectType: zod.string(),
   description: zod.string(),
   imageUrl: zod.string().nullable(),
+  imageUrls: zod.string().array().nullable(),
   syncStatus: zod.enum([
     "PENDING",
     "PROCESSING",
@@ -946,6 +953,7 @@ export const UpdateReportStatusResponse = zod.object({
   defectType: zod.string(),
   description: zod.string(),
   imageUrl: zod.string().nullable(),
+  imageUrls: zod.string().array().nullable(),
   syncStatus: zod.enum([
     "PENDING",
     "PROCESSING",
@@ -1066,6 +1074,7 @@ export const SubmitQcActionResponse = zod.object({
   defectType: zod.string(),
   description: zod.string(),
   imageUrl: zod.string().nullable(),
+  imageUrls: zod.string().array().nullable(),
   syncStatus: zod.enum([
     "PENDING",
     "PROCESSING",
@@ -1267,6 +1276,7 @@ export const TriggerRpaResponse = zod.object({
       defectType: zod.string(),
       description: zod.string(),
       imageUrl: zod.string().nullable(),
+      imageUrls: zod.string().array().nullable(),
       syncStatus: zod.enum([
         "PENDING",
         "PROCESSING",
