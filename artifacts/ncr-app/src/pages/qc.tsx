@@ -111,6 +111,7 @@ const formSchema = z.object({
   claimStatus: z.enum(["예", "아니오"]).nullable().optional(),
   relatedDeptStatus: z.enum(["예", "아니오"]).nullable().optional(),
   correctiveActionStatus: z.enum(["예", "아니오"]).nullable().optional(),
+  qualityOpinion: z.string().nullable().optional(),
   partsCost: z.coerce.number().int().min(0).optional(),
   laborCost: z.coerce.number().int().min(0).optional(),
 });
@@ -352,6 +353,7 @@ export default function QcPage() {
       claimStatus: null,
       relatedDeptStatus: null,
       correctiveActionStatus: null,
+      qualityOpinion: null,
       partsCost: 0,
       laborCost: 0,
     },
@@ -407,6 +409,7 @@ export default function QcPage() {
         claimStatus: (report.claimStatus as "예" | "아니오" | null) ?? null,
         relatedDeptStatus: (report.relatedDeptStatus as "예" | "아니오" | null) ?? null,
         correctiveActionStatus: (report.correctiveActionStatus as "예" | "아니오" | null) ?? null,
+        qualityOpinion: report.qualityOpinion ?? null,
         partsCost: report.partsCost ?? 0,
         laborCost: report.laborCost ?? 0,
       });
@@ -507,6 +510,7 @@ export default function QcPage() {
           claimStatus: values.claimStatus || null,
           relatedDeptStatus: values.relatedDeptStatus || null,
           correctiveActionStatus: values.correctiveActionStatus || null,
+          qualityOpinion: values.qualityOpinion || null,
           partsCost: values.partsCost ?? 0,
           laborCost: values.laborCost ?? 0,
         },
@@ -1417,6 +1421,28 @@ export default function QcPage() {
                           className="w-full rounded-xl bg-[#F8F9FA] px-3.5 py-3 text-[14px] text-[#191F28] outline-none focus:ring-2 focus:ring-[#1A1A1A]/10 resize-none"
                           rows={4}
                           placeholder="조치 내용을 상세하게 입력해주세요"
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value || null)}
+                        />
+                      </FormControl>
+                      <FormMessage className="text-[12px]" />
+                    </FormItem>
+                  </FieldRow>
+                )}
+              />
+
+              {/* 품질의견 */}
+              <FormField
+                control={form.control}
+                name="qualityOpinion"
+                render={({ field }) => (
+                  <FieldRow label="품질의견" optional>
+                    <FormItem>
+                      <FormControl>
+                        <textarea
+                          className="w-full rounded-xl bg-[#F8F9FA] px-3.5 py-3 text-[14px] text-[#191F28] outline-none focus:ring-2 focus:ring-[#1A1A1A]/10 resize-none"
+                          rows={4}
+                          placeholder="품질 의견을 입력해주세요"
                           value={field.value ?? ""}
                           onChange={(e) => field.onChange(e.target.value || null)}
                         />
