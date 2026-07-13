@@ -22,7 +22,9 @@ PY = sys.executable  # venv python
 
 # (이름, argv 추가 인자, 표시명)
 STEPS = [
-    ("sync_items.py",     ["--scope", "produced"],                                       "items"),
+    # 2026-07 정책 변경: --scope produced → all. 제조오더 없는 완성품(옛 모델·
+    # 특수차량·이관 품목)도 사용자가 검색 가능해야 하므로 완성품 마스터 전체 수신.
+    ("sync_items.py",     ["--scope", "all"],                                            "items"),
     ("sync_orders.py",    [],                                                            "orders"),
     ("sync_vendors.py",   ["--table", "B_BIZ_PARTNER",
                            "--cd-col", "BP_CD", "--nm-col", "BP_NM",
