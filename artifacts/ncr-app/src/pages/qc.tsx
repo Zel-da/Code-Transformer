@@ -110,6 +110,7 @@ const formSchema = z.object({
   judgmentResult: z.string().nullable().optional(),
   claimStatus: z.enum(["예", "아니오"]).nullable().optional(),
   relatedDeptStatus: z.enum(["예", "아니오"]).nullable().optional(),
+  correctiveActionStatus: z.enum(["예", "아니오"]).nullable().optional(),
   partsCost: z.coerce.number().int().min(0).optional(),
   laborCost: z.coerce.number().int().min(0).optional(),
 });
@@ -350,6 +351,7 @@ export default function QcPage() {
       judgmentResult: null,
       claimStatus: null,
       relatedDeptStatus: null,
+      correctiveActionStatus: null,
       partsCost: 0,
       laborCost: 0,
     },
@@ -404,6 +406,7 @@ export default function QcPage() {
         judgmentResult: report.judgmentResult ?? null,
         claimStatus: (report.claimStatus as "예" | "아니오" | null) ?? null,
         relatedDeptStatus: (report.relatedDeptStatus as "예" | "아니오" | null) ?? null,
+        correctiveActionStatus: (report.correctiveActionStatus as "예" | "아니오" | null) ?? null,
         partsCost: report.partsCost ?? 0,
         laborCost: report.laborCost ?? 0,
       });
@@ -503,6 +506,7 @@ export default function QcPage() {
           judgmentResult: values.judgmentResult || null,
           claimStatus: values.claimStatus || null,
           relatedDeptStatus: values.relatedDeptStatus || null,
+          correctiveActionStatus: values.correctiveActionStatus || null,
           partsCost: values.partsCost ?? 0,
           laborCost: values.laborCost ?? 0,
         },
@@ -1303,6 +1307,37 @@ export default function QcPage() {
                 name="relatedDeptStatus"
                 render={({ field }) => (
                   <FieldRow label="유관부서여부" optional>
+                    <FormItem>
+                      <div className="flex gap-3">
+                        {(["예", "아니오"] as const).map((val) => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => field.onChange(field.value === val ? null : val)}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 text-[14px] font-semibold transition-all ${
+                              field.value === val ? CHIP_SEL : CHIP_UNSEL
+                            }`}
+                          >
+                            <span className={`h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                              field.value === val ? "border-[#1A1A1A]" : "border-[#BEC5CC]"
+                            }`}>
+                              {field.value === val && <span className="h-2 w-2 rounded-full bg-[#1A1A1A]" />}
+                            </span>
+                            {val}
+                          </button>
+                        ))}
+                      </div>
+                    </FormItem>
+                  </FieldRow>
+                )}
+              />
+
+              {/* 시정및예방조치여부 */}
+              <FormField
+                control={form.control}
+                name="correctiveActionStatus"
+                render={({ field }) => (
+                  <FieldRow label="시정및예방조치여부" optional>
                     <FormItem>
                       <div className="flex gap-3">
                         {(["예", "아니오"] as const).map((val) => (
