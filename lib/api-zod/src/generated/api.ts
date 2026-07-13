@@ -336,6 +336,7 @@ export const ListPendingReportsResponseItem = zod.object({
       "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
+  judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -529,6 +530,7 @@ export const UpdateReportResponse = zod.object({
       "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
+  judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -635,6 +637,7 @@ export const GetReportResponse = zod.object({
       "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
+  judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -749,6 +752,7 @@ export const UpdateReportSyncStatusResponse = zod.object({
       "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
+  judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -802,6 +806,7 @@ export const UpdateReportQcBody = zod.object({
   flawTypeCd: zod.string().nullish().describe("불량유형 코드"),
   lostManHours: zod.number().nullish().describe("손실공수 (시간)"),
   qcCorrectiveResult: zod.string().nullish().describe("조치결과 상세 내용"),
+  judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
   qcStatus: zod
     .enum([
       "OPEN",
@@ -892,6 +897,7 @@ export const UpdateReportQcResponse = zod.object({
       "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
+  judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -1009,6 +1015,7 @@ export const UpdateReportStatusResponse = zod.object({
       "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
+  judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod
@@ -1130,6 +1137,7 @@ export const SubmitQcActionResponse = zod.object({
       "QC 워크플로우 상태 (OPEN\/IN_REVIEW\/PENDING_COLLAB\/RESOLVED\/APPROVED\/ERP_SYNCED)",
     ),
   qcCorrectiveResult: zod.string().nullish().describe("QC 조치결과 상세 내용"),
+  judgmentResult: zod.string().nullish().describe("판정결과 (폐기/특채/수리후특채/적합품판정/신품교환)"),
   qcSubmittedAt: zod.coerce.date().nullish().describe("QC 분석 최종 제출 일시"),
   qcSubmittedBy: zod.number().nullish().describe("QC 분석 제출자 userId"),
   actionDirection: zod

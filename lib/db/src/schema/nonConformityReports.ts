@@ -164,6 +164,7 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
   // QC 분석 전용 컬럼
   qcStatus: text("qc_status").$type<"OPEN" | "IN_REVIEW" | "PENDING_COLLAB" | "RESOLVED" | "APPROVED" | "ERP_SYNCED" | null>().default("OPEN"),
   qcCorrectiveResult: text("qc_corrective_result"),
+  judgmentResult: text("judgment_result"),
   qcSubmittedAt: timestamp("qc_submitted_at", { withTimezone: true }),
   qcSubmittedBy: integer("qc_submitted_by").references(() => usersTable.id, { onDelete: "set null" }),
   // Task #34: NCR 채번 (QC-YYMM-NNNN)

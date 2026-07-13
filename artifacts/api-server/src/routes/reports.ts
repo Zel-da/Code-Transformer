@@ -545,6 +545,7 @@ router.put("/reports/:id/qc", requireRole(["admin", "reviewer", "approver"]), as
   if (body.data.flawTypeCd !== undefined) updates.flawTypeCd = body.data.flawTypeCd;
   if (body.data.lostManHours !== undefined) updates.lostManHours = body.data.lostManHours;
   if (body.data.qcCorrectiveResult !== undefined) updates.qcCorrectiveResult = body.data.qcCorrectiveResult;
+  if (body.data.judgmentResult !== undefined) updates.judgmentResult = body.data.judgmentResult;
   if (body.data.deptCd !== undefined) updates.deptCd = body.data.deptCd;
   if (body.data.issuingTeam !== undefined) updates.issuingTeam = body.data.issuingTeam;
   if (body.data.ncrGbnCd !== undefined) updates.ncrGbnCd = body.data.ncrGbnCd;
