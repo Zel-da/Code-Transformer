@@ -75,8 +75,8 @@ export default function LoginPage() {
           <div className="bg-[#1A1A1A] text-white p-3 rounded-2xl mb-4">
             <ClipboardList className="h-7 w-7" strokeWidth={2} />
           </div>
-          <h1 className="text-[22px] font-bold text-[#191F28] tracking-tight">부적합 보고 시스템</h1>
-          <p className="text-[13px] text-[#8B95A1] mt-1">NCR 관리 시스템에 로그인하세요</p>
+          <h1 className="text-[22px] font-bold text-[#191F28] tracking-tight">공정 부적합 등록</h1>
+          <p className="text-[13px] text-[#8B95A1] mt-1">로그인하세요</p>
         </div>
 
         <div className="flex bg-[#F2F4F6] rounded-2xl p-1 mb-4 gap-1">

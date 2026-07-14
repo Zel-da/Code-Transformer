@@ -391,7 +391,7 @@ export default function SubmitReport() {
               보고서가 접수되었습니다
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-              부적합 보고서가 성공적으로 등록되었습니다.
+              공정 부적합이 성공적으로 등록되었습니다.
               <br />
               관리자 검토 후 ERP에 동기화됩니다.
             </p>
@@ -419,7 +419,7 @@ export default function SubmitReport() {
 
         {/* 페이지 헤더 */}
         <div data-tour="submit-header" className="px-5 pt-5 pb-3 border-b border-[#F2F4F6]">
-          <h1 className="text-[20px] font-bold text-[#191F28]">부적합 보고서 등록</h1>
+          <h1 className="text-[20px] font-bold text-[#191F28]">공정 부적합 등록</h1>
           <p className="text-[13px] text-[#8B95A1] mt-0.5">현장 부적합 사항을 모바일로 등록합니다</p>
         </div>
 
@@ -871,7 +871,7 @@ export default function SubmitReport() {
                     제출 중...
                   </>
                 ) : (
-                  "부적합 보고서 제출"
+                  "공정 부적합 등록 제출"
                 )}
               </button>
             </div>
@@ -889,7 +889,7 @@ export default function SubmitReport() {
                     제출 중...
                   </>
                 ) : (
-                  "부적합 보고서 제출"
+                  "공정 부적합 등록 제출"
                 )}
               </button>
             </div>
