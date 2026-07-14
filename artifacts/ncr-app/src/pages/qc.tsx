@@ -1301,6 +1301,34 @@ export default function QcPage() {
                 </div>
               </FieldRow>
 
+              {/* 판정결과 */}
+              <FormField
+                control={form.control}
+                name="judgmentResult"
+                render={({ field }) => (
+                  <FieldRow label="판정결과" optional>
+                    <FormItem>
+                      <Select
+                        onValueChange={(val) => field.onChange(val === "__none__" ? null : val)}
+                        value={field.value ?? "__none__"}
+                      >
+                        <SelectTrigger className="h-11 rounded-xl bg-[#F8F9FA] border-0 text-[14px] text-[#191F28] focus:ring-0">
+                          <SelectValue placeholder="판정결과 선택" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="__none__">선택 안 함</SelectItem>
+                          <SelectItem value="폐기">폐기</SelectItem>
+                          <SelectItem value="특채">특채</SelectItem>
+                          <SelectItem value="수리후특채">수리후특채</SelectItem>
+                          <SelectItem value="적합품판정(부적합X)">적합품판정(부적합X)</SelectItem>
+                          <SelectItem value="신품교환">신품교환</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  </FieldRow>
+                )}
+              />
+
               {/* 클레임유무 */}
               <FormField
                 control={form.control}
