@@ -1,7 +1,8 @@
 import { Layout } from "@/components/layout";
 import { useState, useRef, useEffect } from "react";
-import { useDraft } from "@/hooks/useDraft";
+import { useDraft, DraftPayload } from "@/hooks/useDraft";
 import { DraftBanner } from "@/components/draft-banner";
+import { DraftPreviewModal, DraftEntry } from "@/components/draft-preview-modal";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -156,6 +157,8 @@ export default function SubmitReport() {
 
   const { saveDraft, loadDraft, clearDraft, hasDraft } = useDraft<FormValues>("ncr-draft-submit");
   const [draftBannerData, setDraftBannerData] = useState<{ savedAt: number } | null>(null);
+  const [draftPreviewOpen, setDraftPreviewOpen] = useState(false);
+  const [draftPreviewPayload, setDraftPreviewPayload] = useState<DraftPayload<FormValues> | null>(null);
 
   const profileDefaults = () => ({
     productType: "양산" as "양산" | "개발",
@@ -421,8 +424,10 @@ export default function SubmitReport() {
               savedAt={draftBannerData.savedAt}
               onRestore={() => {
                 const draft = loadDraft();
-                if (draft) form.reset(draft.values);
-                setDraftBannerData(null);
+                if (draft) {
+                  setDraftPreviewPayload(draft);
+                  setDraftPreviewOpen(true);
+                }
               }}
               onDiscard={() => {
                 clearDraft();
@@ -432,6 +437,43 @@ export default function SubmitReport() {
             />
           </div>
         )}
+        <DraftPreviewModal
+          open={draftPreviewOpen}
+          savedAt={draftPreviewPayload?.savedAt ?? 0}
+          entries={(() => {
+            if (!draftPreviewPayload) return [];
+            const v = draftPreviewPayload.values;
+            const result: DraftEntry[] = [];
+            const add = (label: string, val: unknown) => {
+              if (val != null && val !== "" && val !== 0) result.push({ label, value: String(val) });
+            };
+            add("제품 구분", v.productType);
+            add("등록자", v.registrantName);
+            add("공장", v.factory);
+            add("공정", v.processName);
+            add("부품코드", v.itemCode);
+            add("제품명", v.modelName);
+            add("발생일", v.occurrenceDate);
+            add("부적합 수량", v.defectQty);
+            add("부적합 현상", v.description);
+            return result;
+          })()}
+          onApply={() => {
+            if (draftPreviewPayload) form.reset(draftPreviewPayload.values);
+            clearDraft();
+            setDraftBannerData(null);
+            setDraftPreviewOpen(false);
+            setDraftPreviewPayload(null);
+          }}
+          onDiscard={() => {
+            clearDraft();
+            setDraftBannerData(null);
+            setDraftPreviewOpen(false);
+            setDraftPreviewPayload(null);
+            form.reset(profileDefaults());
+          }}
+          onClose={() => setDraftPreviewOpen(false)}
+        />
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>

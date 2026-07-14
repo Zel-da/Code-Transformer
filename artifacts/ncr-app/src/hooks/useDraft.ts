@@ -24,7 +24,6 @@ export function useDraft<T>(key: string) {
         try {
           const payload: DraftPayload<T> = { values, savedAt: Date.now() };
           localStorage.setItem(key, JSON.stringify(payload));
-          setHasDraft(true);
         } catch {}
       }, 1500);
     },

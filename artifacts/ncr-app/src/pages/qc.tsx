@@ -5,8 +5,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useEffect, useState, useRef } from "react";
-import { useDraft } from "@/hooks/useDraft";
+import { useDraft, DraftPayload } from "@/hooks/useDraft";
 import { DraftBanner } from "@/components/draft-banner";
+import { DraftPreviewModal, DraftEntry } from "@/components/draft-preview-modal";
 import {
   useGetReport,
   useUpdateReportQc,
@@ -372,6 +373,8 @@ export default function QcPage() {
 
   const reportInitializedRef = useRef(false);
   const [draftBannerData, setDraftBannerData] = useState<{ savedAt: number } | null>(null);
+  const [draftPreviewOpen, setDraftPreviewOpen] = useState(false);
+  const [draftPreviewPayload, setDraftPreviewPayload] = useState<DraftPayload<FormValues> | null>(null);
   const { saveDraft, loadDraft, clearDraft } = useDraft<FormValues>(`ncr-draft-qc-${id}`);
 
   const selectedPlantCd = form.watch("plantCd");
@@ -664,8 +667,10 @@ export default function QcPage() {
             savedAt={draftBannerData.savedAt}
             onRestore={() => {
               const draft = loadDraft();
-              if (draft) form.reset(draft.values);
-              setDraftBannerData(null);
+              if (draft) {
+                setDraftPreviewPayload(draft);
+                setDraftPreviewOpen(true);
+              }
             }}
             onDiscard={() => {
               clearDraft();
@@ -673,6 +678,44 @@ export default function QcPage() {
             }}
           />
         )}
+        <DraftPreviewModal
+          open={draftPreviewOpen}
+          savedAt={draftPreviewPayload?.savedAt ?? 0}
+          entries={(() => {
+            if (!draftPreviewPayload) return [];
+            const v = draftPreviewPayload.values;
+            const result: DraftEntry[] = [];
+            const add = (label: string, val: unknown) => {
+              if (val != null && val !== "" && val !== 0) result.push({ label, value: String(val) });
+            };
+            add("부품코드", v.itemCode);
+            add("제품명", v.modelName);
+            add("부적합 현상", v.description);
+            add("조치결과", v.qcCorrectiveResult);
+            add("판정결과", v.judgmentResult);
+            add("클레임유무", v.claimStatus);
+            add("유관부서여부", v.relatedDeptStatus);
+            add("시정예방조치", v.correctiveActionStatus);
+            add("부품비", v.partsCost != null && v.partsCost > 0 ? String(v.partsCost) + "원" : null);
+            add("공임비", v.laborCost != null && v.laborCost > 0 ? String(v.laborCost) + "원" : null);
+            add("품질의견", v.qualityOpinion);
+            return result;
+          })()}
+          onApply={() => {
+            if (draftPreviewPayload) form.reset(draftPreviewPayload.values);
+            clearDraft();
+            setDraftBannerData(null);
+            setDraftPreviewOpen(false);
+            setDraftPreviewPayload(null);
+          }}
+          onDiscard={() => {
+            clearDraft();
+            setDraftBannerData(null);
+            setDraftPreviewOpen(false);
+            setDraftPreviewPayload(null);
+          }}
+          onClose={() => setDraftPreviewOpen(false)}
+        />
 
         {/* SLA 경고 배너: 발생일 기준 5~6일 경과 */}
         {report.occurrenceDate && (() => {
