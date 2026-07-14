@@ -115,6 +115,7 @@ const formSchema = z.object({
   relatedDeptStatus: z.enum(["예", "아니오"]).nullable().optional(),
   correctiveActionStatus: z.enum(["예", "아니오"]).nullable().optional(),
   qualityOpinion: z.string().nullable().optional(),
+  excludeFromErp: z.boolean().optional().default(false),
   partsCost: z.coerce.number().int().min(0).optional(),
   laborCost: z.coerce.number().int().min(0).optional(),
 });
@@ -357,6 +358,7 @@ export default function QcPage() {
       relatedDeptStatus: null,
       correctiveActionStatus: null,
       qualityOpinion: null,
+      excludeFromErp: false,
       partsCost: 0,
       laborCost: 0,
     },
@@ -421,6 +423,7 @@ export default function QcPage() {
         relatedDeptStatus: (report.relatedDeptStatus as "예" | "아니오" | null) ?? null,
         correctiveActionStatus: (report.correctiveActionStatus as "예" | "아니오" | null) ?? null,
         qualityOpinion: report.qualityOpinion ?? null,
+        excludeFromErp: report.excludeFromErp ?? false,
         partsCost: report.partsCost ?? 0,
         laborCost: report.laborCost ?? 0,
       });
@@ -539,6 +542,7 @@ export default function QcPage() {
           relatedDeptStatus: values.relatedDeptStatus || null,
           correctiveActionStatus: values.correctiveActionStatus || null,
           qualityOpinion: values.qualityOpinion || null,
+          excludeFromErp: values.excludeFromErp ?? false,
           partsCost: values.partsCost ?? 0,
           laborCost: values.laborCost ?? 0,
         },
@@ -1474,6 +1478,39 @@ export default function QcPage() {
                       <FormMessage className="text-[12px]" />
                     </FormItem>
                   </FieldRow>
+                )}
+              />
+
+              {/* 부적합 제외 (ERP 미등록) */}
+              <FormField
+                control={form.control}
+                name="excludeFromErp"
+                render={({ field }) => (
+                  <div className="py-3 border-b border-[#F2F4F6] md:flex md:items-center md:gap-4">
+                    <div className="flex items-center gap-1.5 mb-2 md:mb-0 md:w-24 md:shrink-0">
+                      <span className="text-[12px] font-semibold text-[#8B95A1] leading-tight">부적합 제외</span>
+                    </div>
+                    <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                      <div
+                        onClick={() => field.onChange(!field.value)}
+                        className={`relative w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors shrink-0 cursor-pointer hover:border-[#1A1A1A] ${
+                          field.value
+                            ? "bg-[#1A1A1A] border-[#1A1A1A]"
+                            : "bg-white border-[#D1D6DB]"
+                        }`}
+                      >
+                        {field.value && (
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-[14px] text-[#191F28]">ERP에 등록하지 않음</span>
+                      {field.value && (
+                        <span className="text-[11px] font-medium text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full">ERP 제외</span>
+                      )}
+                    </label>
+                  </div>
                 )}
               />
 
