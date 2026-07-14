@@ -87,7 +87,7 @@ export function Layout({ children }: { children: ReactNode }) {
               <ClipboardList className="h-4 w-4" strokeWidth={2} />
             </div>
             <Link href="/ledger" className="flex flex-col cursor-pointer">
-              <span className="font-bold text-[15px] leading-none text-[#191F28] tracking-tight">공정 부적합 등록</span>
+              <span className="font-bold text-[15px] leading-none text-[#191F28] tracking-tight">공정 부적합 등록 및 관리</span>
             </Link>
           </div>
 

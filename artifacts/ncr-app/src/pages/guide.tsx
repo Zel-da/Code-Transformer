@@ -115,7 +115,7 @@ export default function GuidePage() {
             사용 가이드
           </h1>
           <p className="text-[13px] text-[#8B95A1] mt-1">
-            공정 부적합 등록 시스템 전체 기능 안내 및 단계별 사용 방법입니다.
+            공정 부적합 등록 및 관리 시스템 전체 기능 안내 및 단계별 사용 방법입니다.
           </p>
         </div>
 
@@ -148,7 +148,7 @@ export default function GuidePage() {
                 <div className="bg-white border border-[#F2F4F6] rounded-2xl p-5">
                   <h2 className="text-[17px] font-bold text-[#191F28] mb-3">시스템 개요</h2>
                   <p className="text-[14px] text-[#4E5968] leading-relaxed">
-                    <strong className="text-[#191F28]">공정 부적합 등록 시스템</strong>은 수산세보틱스 제조 현장에서 발생하는
+                    <strong className="text-[#191F28]">공정 부적합 등록 및 관리 시스템</strong>은 수산세보틱스 제조 현장에서 발생하는
                     공정·품질 부적합 사항을 온라인으로 접수하고, QC 담당자가 검토·조치·승인까지 관리하는 내부 플랫폼입니다.
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">

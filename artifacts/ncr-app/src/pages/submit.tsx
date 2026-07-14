@@ -419,7 +419,7 @@ export default function SubmitReport() {
 
         {/* 페이지 헤더 */}
         <div data-tour="submit-header" className="px-5 pt-5 pb-3 border-b border-[#F2F4F6]">
-          <h1 className="text-[20px] font-bold text-[#191F28]">공정 부적합 등록</h1>
+          <h1 className="text-[20px] font-bold text-[#191F28]">공정 부적합 등록 및 관리</h1>
           <p className="text-[13px] text-[#8B95A1] mt-0.5">현장 부적합 사항을 모바일로 등록합니다</p>
         </div>
 

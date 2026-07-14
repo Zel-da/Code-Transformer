@@ -75,7 +75,7 @@ export default function LoginPage() {
           <div className="bg-[#1A1A1A] text-white p-3 rounded-2xl mb-4">
             <ClipboardList className="h-7 w-7" strokeWidth={2} />
           </div>
-          <h1 className="text-[22px] font-bold text-[#191F28] tracking-tight">공정 부적합 등록</h1>
+          <h1 className="text-[22px] font-bold text-[#191F28] tracking-tight">공정 부적합 등록 및 관리</h1>
           <p className="text-[13px] text-[#8B95A1] mt-1">로그인하세요</p>
         </div>
 
