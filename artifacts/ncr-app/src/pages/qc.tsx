@@ -1332,37 +1332,6 @@ export default function QcPage() {
                 )}
               />
 
-              {/* 유관부서여부 */}
-              <FormField
-                control={form.control}
-                name="relatedDeptStatus"
-                render={({ field }) => (
-                  <FieldRow label="유관부서여부" optional>
-                    <FormItem>
-                      <div className="flex gap-3">
-                        {(["예", "아니오"] as const).map((val) => (
-                          <button
-                            key={val}
-                            type="button"
-                            onClick={() => field.onChange(field.value === val ? null : val)}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 text-[14px] font-semibold transition-all ${
-                              field.value === val ? CHIP_SEL : CHIP_UNSEL
-                            }`}
-                          >
-                            <span className={`h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                              field.value === val ? "border-[#1A1A1A]" : "border-[#BEC5CC]"
-                            }`}>
-                              {field.value === val && <span className="h-2 w-2 rounded-full bg-[#1A1A1A]" />}
-                            </span>
-                            {val}
-                          </button>
-                        ))}
-                      </div>
-                    </FormItem>
-                  </FieldRow>
-                )}
-              />
-
               {/* 시정및예방조치여부 */}
               <FormField
                 control={form.control}
