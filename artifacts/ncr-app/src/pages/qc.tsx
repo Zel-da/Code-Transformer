@@ -1261,44 +1261,6 @@ export default function QcPage() {
                 )}
               />
 
-              {/* 출하 기간 */}
-              <FieldRow label="출하 기간" optional>
-                <div className="grid grid-cols-2 gap-2">
-                  <FormField
-                    control={form.control}
-                    name="shipmentDateFrom"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <input
-                            type="date"
-                            className={INPUT_CLS}
-                            value={field.value ?? ""}
-                            onChange={(e) => field.onChange(e.target.value || null)}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="shipmentDateTo"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <input
-                            type="date"
-                            className={INPUT_CLS}
-                            value={field.value ?? ""}
-                            onChange={(e) => field.onChange(e.target.value || null)}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </FieldRow>
-
               {/* 담당자 */}
               <FieldRow label="담당자" optional>
                 <div className="grid grid-cols-2 gap-2">
