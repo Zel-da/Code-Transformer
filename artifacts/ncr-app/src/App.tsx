@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,15 +19,17 @@ const queryClient = new QueryClient();
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
+  const [location] = useLocation();
   if (loading) return null;
-  if (!user) return <Redirect to="/login" />;
+  if (!user) return <Redirect to={`/login?redirect=${encodeURIComponent(location)}`} />;
   return <>{children}</>;
 }
 
 function RequireAdmin({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
+  const [location] = useLocation();
   if (loading) return null;
-  if (!user) return <Redirect to="/login" />;
+  if (!user) return <Redirect to={`/login?redirect=${encodeURIComponent(location)}`} />;
   if (user.role !== "admin") return <Redirect to="/submit" />;
   return <>{children}</>;
 }

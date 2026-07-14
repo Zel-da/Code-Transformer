@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { requireAuth, signToken } from "../middleware/requireAuth.js";
 import { z } from "zod";
+import { ImapFlow } from "imapflow";
 
 const router: IRouter = Router();
 
@@ -11,6 +12,34 @@ const LoginBody = z.object({
   username: z.string().min(1),
   password: z.string().min(1),
 });
+
+const EmailLoginBody = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
+async function verifyImapCredentials(email: string, password: string): Promise<boolean> {
+  const host = process.env.IMAP_HOST ?? "spam.soosan.co.kr";
+  const port = parseInt(process.env.IMAP_PORT ?? "465", 10);
+  const secure = port === 993 || port === 465;
+
+  const client = new ImapFlow({
+    host,
+    port,
+    secure,
+    auth: { user: email, pass: password },
+    logger: false,
+    tls: { rejectUnauthorized: false },
+  });
+
+  try {
+    await client.connect();
+    await client.logout();
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 router.post("/auth/login", async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);
@@ -39,6 +68,43 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 
   if (!user.isActive) {
     res.status(401).json({ error: "비활성화된 계정입니다. 관리자에게 문의하세요." });
+    return;
+  }
+
+  const token = signToken({ userId: user.id, username: user.username, role: user.role });
+
+  const { passwordHash: _ph, ...profile } = user;
+
+  res.json({ token, user: profile });
+});
+
+router.post("/auth/email-login", async (req, res): Promise<void> => {
+  const parsed = EmailLoginBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "이메일과 비밀번호를 입력해주세요" });
+    return;
+  }
+
+  const { email, password } = parsed.data;
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email));
+
+  if (!user) {
+    res.status(401).json({ error: "해당 이메일로 등록된 계정이 없습니다. 관리자에게 문의하세요." });
+    return;
+  }
+
+  if (!user.isActive) {
+    res.status(401).json({ error: "비활성화된 계정입니다. 관리자에게 문의하세요." });
+    return;
+  }
+
+  const imapOk = await verifyImapCredentials(email, password);
+  if (!imapOk) {
+    res.status(401).json({ error: "이메일 또는 비밀번호가 올바르지 않습니다" });
     return;
   }
 
