@@ -49,28 +49,28 @@ export function Layout({ children }: { children: ReactNode }) {
   const navItems = user?.role === "admin"
     ? [
         { href: "/ledger", label: "관리대장" },
-        { href: "/submit", label: "부적합 등록" },
+        { href: "/submit", label: "QC 등록" },
         { href: "/qc", label: "QC 분석" },
         { href: "/manage", label: "관리자 패널" },
         { href: "/guide", label: "도움말" },
       ]
     : [
         { href: "/ledger", label: "관리대장" },
-        { href: "/submit", label: "부적합 등록" },
+        { href: "/submit", label: "QC 등록" },
         { href: "/guide", label: "도움말" },
       ];
 
   const mobileNavItems = user?.role === "admin"
     ? [
         { href: "/ledger", label: "관리대장", Icon: BookOpen },
-        { href: "/submit", label: "부적합 등록", Icon: FileWarning },
+        { href: "/submit", label: "QC 등록", Icon: FileWarning },
         { href: "/qc", label: "QC 분석", Icon: FlaskConical },
         { href: "/manage", label: "관리자", Icon: Settings2 },
         { href: "/guide", label: "도움말", Icon: HelpCircle },
       ]
     : [
         { href: "/ledger", label: "관리대장", Icon: BookOpen },
-        { href: "/submit", label: "부적합 등록", Icon: FileWarning },
+        { href: "/submit", label: "QC 등록", Icon: FileWarning },
         { href: "/guide", label: "도움말", Icon: HelpCircle },
       ];
 
