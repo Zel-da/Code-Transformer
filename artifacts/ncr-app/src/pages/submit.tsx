@@ -145,6 +145,7 @@ export default function SubmitReport() {
   const [isSuccess, setIsSuccess] = useState(false);
 
   const skipFactoryClearRef = useRef(false);
+  const factoryEffectMountedRef = useRef(false);
 
   const [erpSearchProduct, setErpSearchProduct] = useState("");
   const [erpSearchGroup, setErpSearchGroup] = useState("");
@@ -198,6 +199,10 @@ export default function SubmitReport() {
   }, [user?.id]);
 
   useEffect(() => {
+    if (!factoryEffectMountedRef.current) {
+      factoryEffectMountedRef.current = true;
+      return;
+    }
     if (skipFactoryClearRef.current) return;
     if (selectedFactory) {
       form.setValue("processName", "");
@@ -336,15 +341,15 @@ export default function SubmitReport() {
           ncrType: "공정",
           ncrGbnCd: "QC",
           factory: values.factory || null,
-          plantCd: selectedPlantCd || null,
-          processCd: selectedProcess?.processCd ?? null,
+          plantCd: selectedPlantCd || user?.plantCd || null,
+          processCd: selectedProcess?.processCd ?? user?.processCd ?? null,
           shipmentUnit: values.shipmentUnit || null,
           defectQty: values.defectQty != null ? Math.round(values.defectQty) : null,
           occurrenceDate: values.occurrenceDate
             ? new Date(values.occurrenceDate).toISOString()
             : null,
           issuingTeam: deriveIssuingTeam(values.processName),
-          deptCd: null,
+          deptCd: user?.deptCd ?? null,
           flawTypeCd: null,
           productType: values.productType,
           itemGroup: values.itemGroup || null,
