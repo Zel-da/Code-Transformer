@@ -67,8 +67,8 @@ function buildToActions(
   const callbackUrl = `${appUrl}/api/webhooks/ncr-action`;
   const viewBtn: MessageAction = {
     id: "view",
-    label: "📋 보고서 보기",
-    value: `${appUrl}/ledger?reportId=${reportId}`,
+    label: "🔗 QC 분석 바로가기",
+    value: `${appUrl}/qc/${reportId}`,
     style: "default",
     type: "url",
   };
@@ -109,7 +109,7 @@ function buildToActions(
 function buildToMessage(report: NonConformityReport, to: QcStatus, appUrl: string): string {
   const label = STATUS_LABELS[to] ?? to;
   const ncr = report.ncrNumber ?? `#${report.id}`;
-  const link = `${appUrl}/ledger?reportId=${report.id}`;
+  const link = `${appUrl}/qc/${report.id}`;
   const lines: string[] = [`[${label}] ${ncr}`];
   lines.push(`품목: ${report.itemCode}`);
   if (report.processName) lines.push(`공정: ${report.processName}`);
@@ -126,7 +126,7 @@ function buildCcMessage(
   appUrl: string,
 ): string {
   const ncr = report.ncrNumber ?? `#${report.id}`;
-  const link = `${appUrl}/ledger?reportId=${report.id}`;
+  const link = `${appUrl}/qc/${report.id}`;
   const fromLabel = from ? (STATUS_LABELS[from] ?? from) : "신규";
   const toLabel = STATUS_LABELS[to] ?? to;
   return `[참조] ${ncr} 상태 변경: ${fromLabel} → ${toLabel}\n품목: ${report.itemCode}\n링크: ${link}`;
@@ -375,7 +375,7 @@ export async function notifySlaLocked(report: NonConformityReport): Promise<void
   const appUrl = process.env.APP_URL ?? "https://your-app.replit.app";
   const log = rootLogger.child({ fn: "notifySlaLocked", reportId: report.id });
   const ncr = report.ncrNumber ?? `#${report.id}`;
-  const link = `${appUrl}/ledger?reportId=${report.id}`;
+  const link = `${appUrl}/qc/${report.id}`;
   const msg = [
     `[⏰ SLA 초과 잠금] ${ncr}`,
     `품목: ${report.itemCode}`,

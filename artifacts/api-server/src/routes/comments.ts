@@ -116,7 +116,7 @@ router.post("/reports/:id/comments", requireAuth, async (req, res): Promise<void
               .filter((u) => u.deptCd === deptCd)
               .map((u) => u.displayName)
               .join(", ");
-            const text = `[협업 의견 알림] ${authorName}님이 보고서 #${reportId} (${report.itemCode})에서 ${names}님을 언급하였습니다.\n의견: ${parsed.data.body.slice(0, 200)}\n링크: ${appUrl}/ledger`;
+            const text = `[협업 의견 알림] ${authorName}님이 보고서 #${reportId} (${report.itemCode})에서 ${names}님을 언급하였습니다.\n의견: ${parsed.data.body.slice(0, 200)}\n링크: ${appUrl}/qc/${reportId}`;
             await sendSushantalkToUrl(dept.webhookUrl, text);
           }
         }
