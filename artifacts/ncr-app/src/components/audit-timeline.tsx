@@ -43,6 +43,7 @@ const FIELD_LABELS: Record<string, string> = {
   deptCd:              "부서",
   issuingTeam:         "발행 팀",
   ncrGbnCd:            "NCR 구분",
+  partCode:            "부품코드",
   vendorCd:            "거래처 코드",
   vendorNm:            "거래처명",
   itemGroup:           "품목 그룹",

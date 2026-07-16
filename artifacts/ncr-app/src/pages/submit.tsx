@@ -355,6 +355,7 @@ export default function SubmitReport() {
           flawTypeCd: null,
           productType: values.productType,
           itemGroup: values.itemGroup || null,
+          partCode: values.partCode || null,
           shipmentDateFrom: null,
           shipmentDateTo: null,
           remarks: null,
