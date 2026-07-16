@@ -169,6 +169,7 @@ export const nonConformityReportsTable = pgTable("non_conformity_reports", {
   relatedDeptStatus: text("related_dept_status"),
   correctiveActionStatus: text("corrective_action_status"),
   qualityOpinion: text("quality_opinion"),
+  partCode: text("part_code"),
   excludeFromErp: boolean("exclude_from_erp").notNull().default(false),
   partsCost: integer("parts_cost").notNull().default(0),
   laborCost: integer("labor_cost").notNull().default(0),

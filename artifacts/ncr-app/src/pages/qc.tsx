@@ -102,6 +102,7 @@ const formSchema = z.object({
   flawTypeCd: z.string().nullable().optional(),
   lostManHours: z.coerce.number().min(0).nullable().optional(),
   qcCorrectiveResult: z.string().nullable().optional(),
+  partCode: z.string().nullable().optional(),
   vendorCd: z.string().nullable().optional(),
   vendorNm: z.string().nullable().optional(),
   itemGroup: z.string().nullable().optional(),
@@ -345,6 +346,7 @@ export default function QcPage() {
       flawTypeCd: null,
       lostManHours: null,
       qcCorrectiveResult: null,
+      partCode: null,
       vendorCd: null,
       vendorNm: null,
       itemGroup: null,
@@ -406,6 +408,7 @@ export default function QcPage() {
         flawTypeCd: report.flawTypeCd ?? null,
         lostManHours: report.lostManHours ?? null,
         qcCorrectiveResult: report.qcCorrectiveResult ?? null,
+        partCode: report.partCode ?? null,
         vendorCd: report.vendorCd ?? null,
         vendorNm: report.vendorNm ?? null,
         itemGroup: report.itemGroup ?? null,
@@ -525,6 +528,7 @@ export default function QcPage() {
           flawTypeCd: values.flawTypeCd || null,
           lostManHours: values.lostManHours ?? null,
           qcCorrectiveResult: values.qcCorrectiveResult || null,
+          partCode: values.partCode || null,
           vendorCd: values.vendorCd || null,
           vendorNm: values.vendorNm || null,
           itemGroup: values.itemGroup || null,
@@ -1164,6 +1168,27 @@ export default function QcPage() {
 
               {/* ── QC 분석 내용 ── */}
               <GroupDivider title="QC 분석 내용" />
+
+              {/* 부품코드 */}
+              <FormField
+                control={form.control}
+                name="partCode"
+                render={({ field }) => (
+                  <FieldRow label="부품코드" optional>
+                    <FormItem>
+                      <FormControl>
+                        <input
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value || null)}
+                          className="w-full h-11 rounded-xl bg-[#F8F9FA] px-3.5 text-[14px] text-[#191F28] outline-none focus:ring-2 focus:ring-[#1A1A1A]/10 placeholder-[#BEC5CC]"
+                          placeholder="부품코드를 입력하세요"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  </FieldRow>
+                )}
+              />
 
               {/* 거래처 */}
               <VendorPicker form={form} />

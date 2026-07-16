@@ -89,6 +89,7 @@ const formSchema = z.object({
   modelName: z.string().optional(),
   shipmentUnit: z.string().optional(),
   itemGroup: z.string().optional(),
+  partCode: z.string().optional(),
   occurrenceDate: z.string().optional(),
   defectQty: z.preprocess(
     (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
@@ -167,6 +168,7 @@ export default function SubmitReport() {
     factory: user?.factory ?? "",
     processName: user?.processName ?? "",
     itemCode: "",
+    partCode: "",
     modelName: "",
     shipmentUnit: "",
     itemGroup: "",
@@ -708,6 +710,22 @@ export default function SubmitReport() {
                   <input
                     type="text"
                     placeholder="제품코드를 입력하세요"
+                    className="w-full text-[15px] text-[#191F28] placeholder-[#BEC5CC] outline-none bg-transparent font-medium"
+                    {...field}
+                  />
+                </FieldRow>
+              )}
+            />
+
+            {/* 부품코드 */}
+            <FormField
+              control={form.control}
+              name="partCode"
+              render={({ field }) => (
+                <FieldRow label="부품코드" optional>
+                  <input
+                    type="text"
+                    placeholder="부품코드를 입력하세요"
                     className="w-full text-[15px] text-[#191F28] placeholder-[#BEC5CC] outline-none bg-transparent font-medium"
                     {...field}
                   />

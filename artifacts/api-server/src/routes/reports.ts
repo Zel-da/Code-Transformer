@@ -164,6 +164,7 @@ router.post("/reports", async (req, res): Promise<void> => {
         flawTypeCd: d.flawTypeCd ?? null,
         deptCd: d.deptCd ?? null,
         ncrGbnCd: d.ncrGbnCd ?? null,
+        partCode: d.partCode ?? null,
         vendorCd: d.vendorCd ?? null,
         vendorNm: d.vendorNm ?? null,
         itemGroup: d.itemGroup ?? null,
@@ -556,6 +557,7 @@ router.put("/reports/:id/qc", requireRole(["admin", "reviewer", "approver"]), as
   if (body.data.deptCd !== undefined) updates.deptCd = body.data.deptCd;
   if (body.data.issuingTeam !== undefined) updates.issuingTeam = body.data.issuingTeam;
   if (body.data.ncrGbnCd !== undefined) updates.ncrGbnCd = body.data.ncrGbnCd;
+  if (body.data.partCode !== undefined) updates.partCode = body.data.partCode;
   if (body.data.vendorCd !== undefined) updates.vendorCd = body.data.vendorCd;
   if (body.data.vendorNm !== undefined) updates.vendorNm = body.data.vendorNm;
   if (body.data.itemGroup !== undefined) updates.itemGroup = body.data.itemGroup;
@@ -702,6 +704,7 @@ router.put("/reports/:id", requireAuth, async (req, res): Promise<void> => {
   if (body.data.flawTypeCd !== undefined) updates.flawTypeCd = body.data.flawTypeCd;
   if (body.data.deptCd !== undefined) updates.deptCd = body.data.deptCd;
   if (body.data.ncrGbnCd !== undefined) updates.ncrGbnCd = body.data.ncrGbnCd;
+  if (body.data.partCode !== undefined) updates.partCode = body.data.partCode;
   if (body.data.vendorCd !== undefined) updates.vendorCd = body.data.vendorCd;
   if (body.data.vendorNm !== undefined) updates.vendorNm = body.data.vendorNm;
   if (body.data.itemGroup !== undefined) updates.itemGroup = body.data.itemGroup;
