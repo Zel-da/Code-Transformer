@@ -1531,6 +1531,12 @@ components:
         updatedAt:
           type: string
           format: date-time
+        partCode:
+          type: ["string", "null"]
+          description: "부품코드"
+        excludeFromErp:
+          type: ["boolean", "null"]
+          description: "ERP 동기화 제외 여부"
       required:
         - id
         - reportDate
@@ -1648,6 +1654,9 @@ components:
           items:
             type: string
           description: "첨부 사진 URL 목록"
+        partCode:
+          type: ["string", "null"]
+          description: "부품코드"
       required:
         - itemCode
         - processName
@@ -1861,6 +1870,12 @@ components:
         laborCost:
           type: ["integer", "null"]
           description: "공임비 (QC 입력)"
+        partCode:
+          type: ["string", "null"]
+          description: "부품코드"
+        excludeFromErp:
+          type: boolean
+          description: "ERP 동기화 제외 여부"
 
     CloseMonthBody:
       type: object
@@ -2212,6 +2227,8 @@ components:
           type: integer
         totalLostManHours:
           type: number
+        longPendingCount:
+          type: integer
         byQcStatus:
           type: array
           items:
@@ -2248,9 +2265,68 @@ components:
               totalLostManHours:
                 type: number
             required: [count, totalLostManHours]
+        byProcess:
+          type: array
+          items:
+            type: object
+            properties:
+              processName:
+                type: ["string", "null"]
+              count:
+                type: integer
+              totalLostManHours:
+                type: number
+            required: [count, totalLostManHours]
+        byDept:
+          type: array
+          items:
+            type: object
+            properties:
+              deptCd:
+                type: ["string", "null"]
+              deptName:
+                type: ["string", "null"]
+              count:
+                type: integer
+            required: [count]
+        byMonth:
+          type: array
+          items:
+            type: object
+            properties:
+              month:
+                type: string
+              count:
+                type: integer
+            required: [month, count]
+        longPendingList:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              ncrNumber:
+                type: ["string", "null"]
+              itemCode:
+                type: string
+              processName:
+                type: string
+              occurrenceDate:
+                type: ["string", "null"]
+              qcStatus:
+                type: ["string", "null"]
+              daysElapsed:
+                type: integer
+            required: [id, itemCode, processName, daysElapsed]
       required:
         - total
         - totalLostManHours
+        - longPendingCount
         - byQcStatus
         - byFlawType
         - byVendor
+        - byProcess
+        - byDept
+        - byMonth
+        - longPendingList

@@ -205,6 +205,8 @@ export const ListReportsResponse = zod.object({
         .describe("다음 재시도 허용 시각"),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
+      partCode: zod.string().nullish().describe("부품코드"),
+      excludeFromErp: zod.boolean().nullish().describe("ERP 동기화 제외 여부"),
     }),
   ),
   total: zod.number(),
@@ -256,6 +258,7 @@ export const CreateReportBody = zod.object({
   managerCd: zod.string().nullish().describe("담당자 코드"),
   managerNm: zod.string().nullish().describe("담당자명"),
   imageUrls: zod.array(zod.string()).nullish().describe("첨부 사진 URL 목록"),
+  partCode: zod.string().nullish().describe("부품코드"),
 });
 
 /**
@@ -395,6 +398,8 @@ export const ListPendingReportsResponseItem = zod.object({
     .describe("다음 재시도 허용 시각"),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
+  partCode: zod.string().nullish().describe("부품코드"),
+  excludeFromErp: zod.boolean().nullish().describe("ERP 동기화 제외 여부"),
 });
 export const ListPendingReportsResponse = zod.array(
   ListPendingReportsResponseItem,
@@ -417,6 +422,7 @@ export const GetReportSummaryQueryParams = zod.object({
 export const GetReportSummaryResponse = zod.object({
   total: zod.number(),
   totalLostManHours: zod.number(),
+  longPendingCount: zod.number(),
   byQcStatus: zod.array(
     zod.object({
       status: zod.string().nullish(),
@@ -436,6 +442,37 @@ export const GetReportSummaryResponse = zod.object({
       vendorNm: zod.string().nullish(),
       count: zod.number(),
       totalLostManHours: zod.number(),
+    }),
+  ),
+  byProcess: zod.array(
+    zod.object({
+      processName: zod.string().nullish(),
+      count: zod.number(),
+      totalLostManHours: zod.number(),
+    }),
+  ),
+  byDept: zod.array(
+    zod.object({
+      deptCd: zod.string().nullish(),
+      deptName: zod.string().nullish(),
+      count: zod.number(),
+    }),
+  ),
+  byMonth: zod.array(
+    zod.object({
+      month: zod.string(),
+      count: zod.number(),
+    }),
+  ),
+  longPendingList: zod.array(
+    zod.object({
+      id: zod.number(),
+      ncrNumber: zod.string().nullish(),
+      itemCode: zod.string(),
+      processName: zod.string(),
+      occurrenceDate: zod.string().nullish(),
+      qcStatus: zod.string().nullish(),
+      daysElapsed: zod.number(),
     }),
   ),
 });
@@ -619,6 +656,8 @@ export const UpdateReportResponse = zod.object({
     .describe("다음 재시도 허용 시각"),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
+  partCode: zod.string().nullish().describe("부품코드"),
+  excludeFromErp: zod.boolean().nullish().describe("ERP 동기화 제외 여부"),
 });
 
 /**
@@ -741,6 +780,8 @@ export const GetReportResponse = zod.object({
     .describe("다음 재시도 허용 시각"),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
+  partCode: zod.string().nullish().describe("부품코드"),
+  excludeFromErp: zod.boolean().nullish().describe("ERP 동기화 제외 여부"),
 });
 
 /**
@@ -871,6 +912,8 @@ export const UpdateReportSyncStatusResponse = zod.object({
     .describe("다음 재시도 허용 시각"),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
+  partCode: zod.string().nullish().describe("부품코드"),
+  excludeFromErp: zod.boolean().nullish().describe("ERP 동기화 제외 여부"),
 });
 
 /**
@@ -935,6 +978,8 @@ export const UpdateReportQcBody = zod.object({
   qualityOpinion: zod.string().nullish().describe("품질의견"),
   partsCost: zod.number().nullish().describe("부품비"),
   laborCost: zod.number().nullish().describe("공임비 (QC 입력)"),
+  partCode: zod.string().nullish().describe("부품코드"),
+  excludeFromErp: zod.boolean().optional().describe("ERP 동기화 제외 여부"),
 });
 
 export const UpdateReportQcResponse = zod.object({
@@ -1043,6 +1088,8 @@ export const UpdateReportQcResponse = zod.object({
     .describe("다음 재시도 허용 시각"),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
+  partCode: zod.string().nullish().describe("부품코드"),
+  excludeFromErp: zod.boolean().nullish().describe("ERP 동기화 제외 여부"),
 });
 
 /**
@@ -1176,6 +1223,8 @@ export const UpdateReportStatusResponse = zod.object({
     .describe("다음 재시도 허용 시각"),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
+  partCode: zod.string().nullish().describe("부품코드"),
+  excludeFromErp: zod.boolean().nullish().describe("ERP 동기화 제외 여부"),
 });
 
 /**
@@ -1313,6 +1362,8 @@ export const SubmitQcActionResponse = zod.object({
     .describe("다음 재시도 허용 시각"),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
+  partCode: zod.string().nullish().describe("부품코드"),
+  excludeFromErp: zod.boolean().nullish().describe("ERP 동기화 제외 여부"),
 });
 
 /**
@@ -1545,6 +1596,8 @@ export const TriggerRpaResponse = zod.object({
         .describe("다음 재시도 허용 시각"),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
+      partCode: zod.string().nullish().describe("부품코드"),
+      excludeFromErp: zod.boolean().nullish().describe("ERP 동기화 제외 여부"),
     }),
   ),
 });

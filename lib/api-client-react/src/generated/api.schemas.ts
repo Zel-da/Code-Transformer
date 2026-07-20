@@ -301,6 +301,16 @@ export interface Report {
   syncNextRetryAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  /**
+   * 부품코드
+   * @nullable
+   */
+  partCode?: string | null;
+  /**
+   * ERP 동기화 제외 여부
+   * @nullable
+   */
+  excludeFromErp?: boolean | null;
 }
 
 export interface ReportListResponse {
@@ -418,6 +428,11 @@ export interface CreateReportBody {
    * @nullable
    */
   imageUrls?: string[] | null;
+  /**
+   * 부품코드
+   * @nullable
+   */
+  partCode?: string | null;
 }
 
 export type UpdateReportBodySyncStatus =
@@ -737,6 +752,13 @@ export interface QcAnalysisBody {
    * @nullable
    */
   laborCost?: number | null;
+  /**
+   * 부품코드
+   * @nullable
+   */
+  partCode?: string | null;
+  /** ERP 동기화 제외 여부 */
+  excludeFromErp?: boolean;
 }
 
 export interface CloseMonthBody {
@@ -1007,12 +1029,50 @@ export type ReportSummaryByVendorItem = {
   totalLostManHours: number;
 };
 
+export type ReportSummaryByProcessItem = {
+  /** @nullable */
+  processName?: string | null;
+  count: number;
+  totalLostManHours: number;
+};
+
+export type ReportSummaryByDeptItem = {
+  /** @nullable */
+  deptCd?: string | null;
+  /** @nullable */
+  deptName?: string | null;
+  count: number;
+};
+
+export type ReportSummaryByMonthItem = {
+  month: string;
+  count: number;
+};
+
+export type ReportSummaryLongPendingListItem = {
+  id: number;
+  /** @nullable */
+  ncrNumber?: string | null;
+  itemCode: string;
+  processName: string;
+  /** @nullable */
+  occurrenceDate?: string | null;
+  /** @nullable */
+  qcStatus?: string | null;
+  daysElapsed: number;
+};
+
 export interface ReportSummary {
   total: number;
   totalLostManHours: number;
+  longPendingCount: number;
   byQcStatus: ReportSummaryByQcStatusItem[];
   byFlawType: ReportSummaryByFlawTypeItem[];
   byVendor: ReportSummaryByVendorItem[];
+  byProcess: ReportSummaryByProcessItem[];
+  byDept: ReportSummaryByDeptItem[];
+  byMonth: ReportSummaryByMonthItem[];
+  longPendingList: ReportSummaryLongPendingListItem[];
 }
 
 export type ListItemsParams = {

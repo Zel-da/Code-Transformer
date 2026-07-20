@@ -334,7 +334,9 @@ router.get("/reports/summary", requireAuth, async (req, res): Promise<void> => {
   if (qcStatus)   conds.push(eq(nonConformityReportsTable.qcStatus, qcStatus));
   const where = conds.length > 0 ? and(...conds) : undefined;
 
-  const [byQcStatus, byFlawType, byVendor, totals] = await Promise.all([
+  const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+
+  const [byQcStatus, byFlawType, byVendor, totals, byProcess, byDept, byMonth, longPendingRows] = await Promise.all([
     db.select({ status: nonConformityReportsTable.qcStatus, cnt: count() })
       .from(nonConformityReportsTable).where(where)
       .groupBy(nonConformityReportsTable.qcStatus),
@@ -360,14 +362,79 @@ router.get("/reports/summary", requireAuth, async (req, res): Promise<void> => {
       totalLostManHours: sql<number>`COALESCE(SUM(${nonConformityReportsTable.lostManHours}), 0)`,
     })
       .from(nonConformityReportsTable).where(where),
+    // 라인별 (processName 기준)
+    db.select({
+      processName: nonConformityReportsTable.processName,
+      cnt: count(),
+      totalLostManHours: sql<number>`COALESCE(SUM(${nonConformityReportsTable.lostManHours}), 0)`,
+    })
+      .from(nonConformityReportsTable).where(where)
+      .groupBy(nonConformityReportsTable.processName)
+      .orderBy(sql`count(*) DESC`)
+      .limit(20),
+    // 귀책부서별
+    db.select({
+      deptCd: nonConformityReportsTable.deptCd,
+      deptName: nonConformityReportsTable.issuingTeam,
+      cnt: count(),
+    })
+      .from(nonConformityReportsTable).where(where)
+      .groupBy(nonConformityReportsTable.deptCd, nonConformityReportsTable.issuingTeam)
+      .orderBy(sql`count(*) DESC`)
+      .limit(20),
+    // 월별 발생 추이 (최근 12개월)
+    db.select({
+      month: sql<string>`to_char(date_trunc('month', ${nonConformityReportsTable.reportDate}), 'YYYY-MM')`,
+      cnt: count(),
+    })
+      .from(nonConformityReportsTable)
+      .where(and(
+        ...(conds.length > 0 ? conds : []),
+        gte(nonConformityReportsTable.reportDate, new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)),
+      ))
+      .groupBy(sql`date_trunc('month', ${nonConformityReportsTable.reportDate})`)
+      .orderBy(sql`date_trunc('month', ${nonConformityReportsTable.reportDate}) ASC`),
+    // 장기미결 (5일 이상, APPROVED·ERP_SYNCED 제외)
+    db.select({
+      id: nonConformityReportsTable.id,
+      ncrNumber: nonConformityReportsTable.ncrNumber,
+      itemCode: nonConformityReportsTable.itemCode,
+      processName: nonConformityReportsTable.processName,
+      occurrenceDate: nonConformityReportsTable.occurrenceDate,
+      qcStatus: nonConformityReportsTable.qcStatus,
+      reportDate: nonConformityReportsTable.reportDate,
+    })
+      .from(nonConformityReportsTable)
+      .where(and(
+        lte(nonConformityReportsTable.reportDate, fiveDaysAgo),
+        sql`${nonConformityReportsTable.qcStatus} NOT IN ('APPROVED', 'ERP_SYNCED')`,
+      ))
+      .orderBy(nonConformityReportsTable.reportDate)
+      .limit(50),
   ]);
+
+  const now = Date.now();
+  const longPendingList = longPendingRows.map((r) => ({
+    id: r.id,
+    ncrNumber: r.ncrNumber,
+    itemCode: r.itemCode,
+    processName: r.processName,
+    occurrenceDate: r.occurrenceDate,
+    qcStatus: r.qcStatus,
+    daysElapsed: Math.floor((now - new Date(r.reportDate).getTime()) / (24 * 60 * 60 * 1000)),
+  }));
 
   res.json({
     total: Number(totals[0]?.total ?? 0),
     totalLostManHours: Number(totals[0]?.totalLostManHours ?? 0),
+    longPendingCount: longPendingList.length,
     byQcStatus: byQcStatus.map((r) => ({ status: r.status, count: Number(r.cnt) })),
     byFlawType: byFlawType.map((r) => ({ flawTypeCd: r.flawTypeCd, count: Number(r.cnt), totalLostManHours: Number(r.totalLostManHours) })),
     byVendor: byVendor.slice(0, 20).map((r) => ({ vendorCd: r.vendorCd, vendorNm: r.vendorNm, count: Number(r.cnt), totalLostManHours: Number(r.totalLostManHours) })),
+    byProcess: byProcess.map((r) => ({ processName: r.processName, count: Number(r.cnt), totalLostManHours: Number(r.totalLostManHours) })),
+    byDept: byDept.map((r) => ({ deptCd: r.deptCd, deptName: r.deptName, count: Number(r.cnt) })),
+    byMonth: byMonth.map((r) => ({ month: r.month, count: Number(r.cnt) })),
+    longPendingList,
   });
 });
 

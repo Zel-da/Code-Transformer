@@ -28,11 +28,11 @@ import { useLocation } from "wouter";
 import {
   Search, RefreshCw, X, XCircle, ChevronLeft, ChevronRight, ImageIcon,
   Lock, ClipboardCheck, AlertTriangle, Zap, Users, Download, TrendingDown,
-  Activity, CheckCircle2, BarChart3,
+  Activity, CheckCircle2, BarChart3, Clock, LayoutDashboard,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell,
+  ResponsiveContainer, Cell, LineChart, Line, Legend,
 } from "recharts";
 
 function SlaBadge({ occurrenceDate }: { occurrenceDate?: string | null }) {
@@ -532,7 +532,7 @@ export default function LedgerPage() {
   const isMobile = useIsMobile();
   const { token } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<"wip" | "settled">("wip");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "wip" | "settled">("dashboard");
 
   const [syncStatus, setSyncStatus] = useState<string>("all");
   const [qcStatusFilter, setQcStatusFilter] = useState<string>("all");
@@ -662,6 +662,16 @@ export default function LedgerPage() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1 bg-[#F2F4F6] rounded-xl p-1">
               <button
+                onClick={() => setActiveTab("dashboard")}
+                className={`px-4 py-2 rounded-lg text-[13px] font-semibold transition-all ${
+                  activeTab === "dashboard"
+                    ? "bg-white text-[#191F28] shadow-sm"
+                    : "text-[#8B95A1] hover:text-[#4E5968]"
+                }`}
+              >
+                대시보드
+              </button>
+              <button
                 onClick={() => setActiveTab("wip")}
                 className={`px-4 py-2 rounded-lg text-[13px] font-semibold transition-all ${
                   activeTab === "wip"
@@ -683,7 +693,7 @@ export default function LedgerPage() {
               </button>
             </div>
             <button
-              onClick={() => handleExportExcel(activeTab)}
+              onClick={() => handleExportExcel(activeTab === "dashboard" ? "wip" : activeTab)}
               disabled={isExporting}
               className="h-9 px-4 rounded-xl text-[13px] font-semibold bg-[#1A1A1A] text-white flex items-center gap-1.5 hover:bg-[#333] transition-colors disabled:opacity-50"
             >
@@ -692,6 +702,236 @@ export default function LedgerPage() {
             </button>
           </div>
         </div>
+
+        {/* ── 대시보드 탭 ── */}
+        {activeTab === "dashboard" && (() => {
+          const ds = wipSummary;
+          const openCount = ds?.byQcStatus.find(r => r.status === "OPEN")?.count ?? 0;
+          const inProgressCount = (ds?.byQcStatus ?? []).filter(r => ["IN_REVIEW","PENDING_COLLAB","RESOLVED"].includes(r.status ?? "")).reduce((s,r)=>s+r.count,0);
+          const doneCount = (ds?.byQcStatus ?? []).filter(r => ["APPROVED","ERP_SYNCED"].includes(r.status ?? "")).reduce((s,r)=>s+r.count,0);
+          const longPending = ds?.longPendingCount ?? 0;
+
+          const processChartData = (ds?.byProcess ?? []).filter(r => r.processName).slice(0,15).map(r=>({ name: r.processName ?? "미분류", count: r.count }));
+          const flawChartData2 = (ds?.byFlawType ?? []).filter(r => r.flawTypeCd).slice(0,10).map(r=>({ name: r.flawTypeCd ?? "미분류", count: r.count }));
+          const deptChartData = (ds?.byDept ?? []).filter(r => r.deptName || r.deptCd).slice(0,15).map(r=>({ name: r.deptName ?? r.deptCd ?? "미분류", count: r.count }));
+          const vendorWorst10 = (ds?.byVendor ?? []).filter(r => r.vendorNm).slice(0,10).map(r=>({ name: r.vendorNm ?? r.vendorCd ?? "미분류", count: r.count }));
+          const monthlyData = (ds?.byMonth ?? []).map(r=>({ name: r.month, count: r.count }));
+          const longPendingList = ds?.longPendingList ?? [];
+
+          const EmptyState = ({ icon: Icon, label }: { icon: React.ElementType; label: string }) => (
+            <div className="h-48 flex flex-col items-center justify-center text-[#BEC5CC] gap-2">
+              <Icon className="h-8 w-8 opacity-40" />
+              <p className="text-[12px]">{label}</p>
+            </div>
+          );
+
+          const ChartCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
+            <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-[#F2F4F6]">
+                <p className="text-[13px] font-semibold text-[#191F28]">{title}</p>
+              </div>
+              <div className="p-4">{children}</div>
+            </div>
+          );
+
+          return (
+            <>
+              {/* KPI 카드 */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+                {[
+                  { label: "전체 건수", value: ds?.total ?? 0, icon: LayoutDashboard, bg: "bg-[#F8F9FA]", border: "border-[#E5E8EB]", color: "text-[#4E5968]" },
+                  { label: "접수", value: openCount, icon: Activity, bg: "bg-blue-50", border: "border-blue-200", color: "text-blue-700" },
+                  { label: "조치 중", value: inProgressCount, icon: RefreshCw, bg: "bg-amber-50", border: "border-amber-200", color: "text-amber-700" },
+                  { label: "판정완료", value: doneCount, icon: CheckCircle2, bg: "bg-green-50", border: "border-green-200", color: "text-green-700" },
+                  { label: "장기미결 (5일↑)", value: longPending, icon: Clock, bg: longPending > 0 ? "bg-red-50" : "bg-[#F8F9FA]", border: longPending > 0 ? "border-red-200" : "border-[#E5E8EB]", color: longPending > 0 ? "text-red-600" : "text-[#4E5968]" },
+                ].map(({ label, value, icon: Icon, bg, border, color }) => (
+                  <div key={label} className={`rounded-2xl border p-4 ${bg} ${border}`}>
+                    <div className={`inline-flex items-center justify-center h-8 w-8 rounded-xl mb-2.5 bg-white border ${border}`}>
+                      <Icon className={`h-4 w-4 ${color}`} />
+                    </div>
+                    <p className="text-[22px] font-bold text-[#191F28] leading-none mb-1">{value}</p>
+                    <p className="text-[11px] text-[#8B95A1]">{label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* 처리상태별 현황 + 라인별 불량 건수 */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+                <ChartCard title="처리상태별 현황">
+                  <div className="flex flex-col gap-2">
+                    {[
+                      { label: "접수", count: openCount, total: ds?.total ?? 1, cls: "bg-blue-500" },
+                      { label: "조치 중", count: inProgressCount, total: ds?.total ?? 1, cls: "bg-amber-500" },
+                      { label: "판정완료", count: doneCount, total: ds?.total ?? 1, cls: "bg-green-500" },
+                    ].map(({ label, count, total, cls }) => (
+                      <div key={label}>
+                        <div className="flex justify-between mb-1.5">
+                          <span className="text-[12px] font-semibold text-[#4E5968]">{label}</span>
+                          <span className="text-[12px] font-bold text-[#191F28]">{count}건</span>
+                        </div>
+                        <div className="h-2 bg-[#F2F4F6] rounded-full overflow-hidden">
+                          <div className={`h-full ${cls} rounded-full transition-all`} style={{ width: `${total > 0 ? Math.round((count/total)*100) : 0}%` }} />
+                        </div>
+                        <p className="text-[11px] text-[#8B95A1] mt-0.5 text-right">{total > 0 ? ((count/total)*100).toFixed(1) : 0}%</p>
+                      </div>
+                    ))}
+                  </div>
+                </ChartCard>
+
+                <ChartCard title="라인별 불량 건수">
+                  {processChartData.length === 0
+                    ? <EmptyState icon={BarChart3} label="데이터가 없습니다" />
+                    : (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={processChartData} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#F2F4F6" horizontal={false} />
+                          <XAxis type="number" tick={{ fontSize: 11, fill: "#8B95A1" }} axisLine={false} tickLine={false} />
+                          <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#8B95A1" }} axisLine={false} tickLine={false} width={80} />
+                          <Tooltip contentStyle={{ borderRadius: "12px", border: "1px solid #F2F4F6", fontSize: "12px" }} cursor={{ fill: "#F8F9FA" }} />
+                          <Bar dataKey="count" name="건수" radius={[0,6,6,0]} maxBarSize={20} fill="#3B82F6" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                </ChartCard>
+              </div>
+
+              {/* 유형별 불량 현황 + 귀책부서별 현황 */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+                <ChartCard title="유형별 불량 현황">
+                  {flawChartData2.length === 0
+                    ? <EmptyState icon={BarChart3} label="데이터가 없습니다" />
+                    : (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={flawChartData2} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#F2F4F6" vertical={false} />
+                          <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#8B95A1" }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fontSize: 11, fill: "#8B95A1" }} axisLine={false} tickLine={false} />
+                          <Tooltip contentStyle={{ borderRadius: "12px", border: "1px solid #F2F4F6", fontSize: "12px" }} cursor={{ fill: "#F8F9FA" }} />
+                          <Bar dataKey="count" name="건수" radius={[6,6,0,0]} maxBarSize={40}>
+                            {flawChartData2.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                </ChartCard>
+
+                <ChartCard title="귀책부서별 현황">
+                  {deptChartData.length === 0
+                    ? <EmptyState icon={Users} label="데이터가 없습니다" />
+                    : (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={deptChartData} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#F2F4F6" horizontal={false} />
+                          <XAxis type="number" tick={{ fontSize: 11, fill: "#8B95A1" }} axisLine={false} tickLine={false} />
+                          <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#8B95A1" }} axisLine={false} tickLine={false} width={90} />
+                          <Tooltip contentStyle={{ borderRadius: "12px", border: "1px solid #F2F4F6", fontSize: "12px" }} cursor={{ fill: "#F8F9FA" }} />
+                          <Bar dataKey="count" name="건수" radius={[0,6,6,0]} maxBarSize={20} fill="#10B981" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                </ChartCard>
+              </div>
+
+              {/* 업체 WORST 10 */}
+              <div className="mb-5">
+                <ChartCard title="업체 WORST 10 (불량 건수 기준)">
+                  {vendorWorst10.length === 0
+                    ? <EmptyState icon={Users} label="거래처 데이터가 없습니다" />
+                    : (
+                      <ResponsiveContainer width="100%" height={240}>
+                        <BarChart data={vendorWorst10} layout="vertical" margin={{ top: 0, right: 30, bottom: 0, left: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#F2F4F6" horizontal={false} />
+                          <XAxis type="number" tick={{ fontSize: 11, fill: "#8B95A1" }} axisLine={false} tickLine={false} />
+                          <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#8B95A1" }} axisLine={false} tickLine={false} width={100} />
+                          <Tooltip contentStyle={{ borderRadius: "12px", border: "1px solid #F2F4F6", fontSize: "12px" }} cursor={{ fill: "#F8F9FA" }} />
+                          <Bar dataKey="count" name="건수" radius={[0,6,6,0]} maxBarSize={22}>
+                            {vendorWorst10.map((_, i) => <Cell key={i} fill={i < 3 ? "#EF4444" : i < 6 ? "#F59E0B" : "#3B82F6"} />)}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                </ChartCard>
+              </div>
+
+              {/* 월별 발생 추이 */}
+              <div className="mb-5">
+                <ChartCard title="월별 발생 추이 (최근 12개월)">
+                  {monthlyData.length === 0
+                    ? <EmptyState icon={TrendingDown} label="데이터가 없습니다" />
+                    : (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={monthlyData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#F2F4F6" vertical={false} />
+                          <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#8B95A1" }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fontSize: 11, fill: "#8B95A1" }} axisLine={false} tickLine={false} />
+                          <Tooltip contentStyle={{ borderRadius: "12px", border: "1px solid #F2F4F6", fontSize: "12px" }} cursor={{ stroke: "#E5E8EB" }} />
+                          <Line type="monotone" dataKey="count" name="불량 건수" stroke="#3B82F6" strokeWidth={2.5} dot={{ fill: "#3B82F6", r: 4 }} activeDot={{ r: 6 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    )}
+                </ChartCard>
+              </div>
+
+              {/* 장기미결현황 (5일 이상) */}
+              <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden mb-5">
+                <div className="px-5 py-3.5 border-b border-[#F2F4F6] flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-red-500" />
+                  <p className="text-[13px] font-semibold text-[#191F28]">장기미결현황 (5일 이상)</p>
+                  {longPendingList.length > 0 && (
+                    <span className="ml-auto bg-red-100 text-red-600 text-[11px] font-bold rounded-full px-2 py-0.5 border border-red-200">
+                      {longPendingList.length}건
+                    </span>
+                  )}
+                </div>
+                {longPendingList.length === 0 ? (
+                  <div className="h-32 flex flex-col items-center justify-center text-[#BEC5CC] gap-2">
+                    <CheckCircle2 className="h-8 w-8 opacity-40" />
+                    <p className="text-[12px]">장기미결 건이 없습니다 🎉</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-[#F8F9FA] hover:bg-[#F8F9FA]">
+                          <TableHead className="h-10 text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">NCR번호</TableHead>
+                          <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">품목코드</TableHead>
+                          <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide">공정명</TableHead>
+                          <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide text-center">처리상태</TableHead>
+                          <TableHead className="text-[11px] font-semibold text-[#8B95A1] uppercase tracking-wide text-right">경과일</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {longPendingList.map((r) => (
+                          <TableRow
+                            key={r.id}
+                            className="cursor-pointer hover:bg-[#F8F9FA] border-[#F2F4F6]"
+                            onClick={() => { setSelectedReportId(r.id); setActiveTab("wip"); }}
+                          >
+                            <TableCell className="font-mono text-[12px] text-[#4E5968]">{r.ncrNumber ?? `#${r.id}`}</TableCell>
+                            <TableCell className="font-semibold text-[13px] text-[#191F28]">{r.itemCode}</TableCell>
+                            <TableCell className="text-[13px] text-[#8B95A1]">{r.processName}</TableCell>
+                            <TableCell className="text-center">
+                              {r.qcStatus && (
+                                <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${QC_STATUS_BADGE[r.qcStatus]?.cls ?? "bg-[#F2F4F6] text-[#8B95A1]"}`}>
+                                  {QC_STATUS_BADGE[r.qcStatus]?.label ?? r.qcStatus}
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <span className={`text-[12px] font-bold ${r.daysElapsed >= 7 ? "text-red-600" : "text-amber-600"}`}>
+                                {r.daysElapsed}일
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            </>
+          );
+        })()}
 
         {/* ── 진행 현황 탭 ── */}
         {activeTab === "wip" && (
