@@ -28,7 +28,7 @@ import { useLocation } from "wouter";
 import {
   Search, RefreshCw, X, XCircle, ChevronLeft, ChevronRight, ImageIcon,
   Lock, ClipboardCheck, AlertTriangle, Zap, Users, Download, TrendingDown,
-  Activity, CheckCircle2, BarChart3, Clock, LayoutDashboard,
+  Activity, CheckCircle2, BarChart3, Clock, LayoutDashboard, Printer,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -734,8 +734,36 @@ export default function LedgerPage() {
             </div>
           );
 
+          const baseUrl = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
           return (
             <>
+              {/* 보고서 출력 버튼 */}
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-[12px] text-[#8B95A1]">기준일: {format(new Date(), "yyyy년 MM월 dd일 HH:mm")} &nbsp;·&nbsp; 전체 기간 누계</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`${baseUrl}/report?type=management`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="h-9 px-4 rounded-xl text-[13px] font-semibold bg-[#1e3a5f] text-white flex items-center gap-1.5 hover:bg-[#2d5282] transition-colors"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    보고서 출력 (보고용)
+                  </a>
+                  <a
+                    href={`${baseUrl}/report?type=analysis`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="h-9 px-4 rounded-xl text-[13px] font-semibold bg-white text-[#1e3a5f] border-2 border-[#1e3a5f] flex items-center gap-1.5 hover:bg-[#f0f4f8] transition-colors"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    보고서 출력 (분석용)
+                  </a>
+                </div>
+              </div>
+
               {/* KPI 카드 */}
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
                 {[
