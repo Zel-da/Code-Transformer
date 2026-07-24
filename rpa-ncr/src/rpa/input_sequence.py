@@ -18,6 +18,9 @@ class InputMethod(Enum):
     DROPDOWN_SELECT = "dropdown_select"
     POPUP_SEARCH_ENTER = "popup_search_enter"
     DISMISS_DIALOG = "dismiss_dialog"
+    # 라디오 (예/아니오 2택). 기본 커서는 "아니오"에 있다고 가정 →
+    # 값이 예/Y/true 면 ← + Space 로 "예"로 이동·선택. 그 외는 아무 것도 안 함.
+    RADIO_YES_NO = "radio_yes_no"
 
 
 @dataclass

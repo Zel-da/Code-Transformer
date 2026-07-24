@@ -472,6 +472,17 @@ class NCRConnector:
             wc.popup_search_and_select(step.value, enter_confirm=True)
         elif step.method == InputMethod.DISMISS_DIALOG:
             wc.dismiss_dialog_if_exists(timeout=float(step.value) if step.value else 2.0)
+        elif step.method == InputMethod.RADIO_YES_NO:
+            # 기본 커서는 "아니오"에 있음. 값이 예/Y/true 면 ← + Space 로 "예" 선택.
+            val = (step.value or "").strip().lower()
+            if val in ("예", "y", "yes", "true", "1", "t"):
+                wc.send_keys("{LEFT}")
+                time.sleep(0.05)
+                wc.send_keys(" ")
+                time.sleep(0.1)
+                logger.info(f"라디오 [{step.field_name}] = 예 (← + Space)")
+            else:
+                logger.info(f"라디오 [{step.field_name}] = 아니오 (기본값 유지)")
         time.sleep(step.delay_after)
 
     def _send_tab(self) -> None:

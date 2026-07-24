@@ -20,6 +20,8 @@ _METHOD_MAP = {
     "dropdown": InputMethod.DROPDOWN_SELECT,
     "skip": InputMethod.SKIP,
     "dismiss": InputMethod.DISMISS_DIALOG,
+    "radio": InputMethod.RADIO_YES_NO,
+    "radio_yes_no": InputMethod.RADIO_YES_NO,
 }
 
 
@@ -74,7 +76,8 @@ class NcrReportFieldMap:
             form_label = spec.get("form_label", "")
 
             # 빈 값은 SKIP으로 (해당 필드는 건드리지 않음 — 기존 값 보존)
-            if value == "":
+            # 예외: 라디오는 빈 값도 유의미 (= "아니오" 유지, Tab만 통과)
+            if value == "" and method != InputMethod.RADIO_YES_NO:
                 sequence.add_step(InputStep(
                     field_name=label, value="", method=InputMethod.SKIP,
                     tab_order=seq, tab_after=tab_after, tabs_before=tabs_before,
