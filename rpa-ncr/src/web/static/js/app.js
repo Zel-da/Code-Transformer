@@ -126,11 +126,14 @@ function renderReviewPage() {
     _reviewState.page = cur;
     const r = reports[cur];
 
-    // 헤더 — 보고 번호 + 상태
+    // 헤더 — 보고 번호 + phase/form_id + 상태
     const statusBadge = r.status === "confirmed"
         ? '<span style="color:#5cb85c;font-weight:bold">✓ 확인됨</span>'
         : '<span style="color:#f0ad4e">대기 중</span>';
-    $("reviewReportLabel").innerHTML = `보고 #${r.report_id} — ${statusBadge}`;
+    const formTag = r.form_id
+        ? ` <span style="background:#2c5aa0;color:white;padding:2px 8px;border-radius:3px;font-size:12px">${escapeHtml(r.form_id)}${r.phase ? ` · Phase ${r.phase}` : ''}</span>`
+        : '';
+    $("reviewReportLabel").innerHTML = `보고 #${r.report_id}${formTag} — ${statusBadge}`;
 
     // 17 필드 테이블
     const tbody = $("reviewSteps");
@@ -161,9 +164,11 @@ function renderReviewPage() {
 
     // pager
     const confirmedCount = reports.filter(x => x.status === "confirmed").length;
+    const uniqueReports = new Set(reports.map(x => x.report_id)).size;
+    const uniqueConfirmed = new Set(reports.filter(x => x.status === "confirmed").map(x => x.report_id)).size;
     const pager = $("reviewPager");
     if (pager) {
-        pager.textContent = `보고 ${cur + 1} / ${total}  (확인됨 ${confirmedCount}/${total})`;
+        pager.textContent = `엔트리 ${cur + 1}/${total}  (보고 ${uniqueConfirmed}/${uniqueReports} 확인)`;
     }
     const btnPrev = $("btnReviewPrev");
     const btnNext = $("btnReviewNext");
@@ -270,8 +275,10 @@ function bind() {
                 ref_y: parseInt(tr.querySelector("input.ref-y").value, 10),
             });
         });
+        const select = $("calibFormSelect");
+        const form_id = select ? select.value : null;
         try {
-            const d = await api("PUT", "/api/field-mapping", { fields });
+            const d = await api("PUT", "/api/field-mapping", { form_id, fields });
             setResult("calibResult", d.message, true);
             logLine(`✓ ${d.message}`);
         } catch (e) {
@@ -336,8 +343,23 @@ async function showCalibPanel() {
 
 async function loadCalib() {
     setResult("calibResult", "불러오는 중...", true);
+    const select = $("calibFormSelect");
+    const formId = select ? select.value : "";
     try {
-        const d = await api("GET", "/api/field-mapping");
+        const qs = formId ? `?form_id=${encodeURIComponent(formId)}` : "";
+        const d = await api("GET", "/api/field-mapping" + qs);
+        // 폼 셀렉트 옵션 채우기 (첫 로드 시)
+        if (select && !select.dataset.populated) {
+            select.innerHTML = "";
+            (d.available_forms || []).forEach(fid => {
+                const opt = document.createElement("option");
+                opt.value = fid; opt.textContent = fid;
+                if (fid === d.form_id) opt.selected = true;
+                select.appendChild(opt);
+            });
+            select.dataset.populated = "1";
+            select.onchange = () => loadCalib();
+        }
         const tbody = $("calibBody");
         tbody.innerHTML = "";
         (d.fields || []).forEach(f => {
@@ -358,7 +380,7 @@ async function loadCalib() {
         });
         const cal = d.calibration || {};
         const ref = cal.ref_resolution ? cal.ref_resolution.join("x") : "1920x1080";
-        setResult("calibResult", `${d.fields.length}개 필드 로드됨 (ref: ${ref})`, true);
+        setResult("calibResult", `[${d.form_id || "?"}] ${d.fields.length}개 필드 로드됨 (ref: ${ref}, file: ${d.path || "?"})`, true);
     } catch (e) {
         setResult("calibResult", e.message, false);
     }

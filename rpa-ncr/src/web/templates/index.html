@@ -58,9 +58,13 @@
         <section id="calibPanel" class="card hidden">
             <h2>필드 좌표 편집 <span class="muted" style="font-size:13px">— 1920×1080 기준, 창 크기에 비례 변환</span></h2>
             <p class="muted" style="margin:0 0 10px">
-                각 필드의 X·Y 좌표(박스 중앙)를 ERP 폼에 맞춰 조정 후 [좌표 저장]. 이 PC의 <code>config/field_mapping.json</code>에 저장됩니다.
+                각 필드의 X·Y 좌표(박스 중앙)를 ERP 폼에 맞춰 조정 후 [좌표 저장]. 이 PC의 <code>config/forms/{폼}.json</code>에 저장됩니다.
             </p>
-            <div class="row">
+            <div class="row" style="align-items:center; gap:10px">
+                <label style="display:flex;align-items:center;gap:6px">
+                    <span class="muted">폼:</span>
+                    <select id="calibFormSelect" style="padding:4px 8px"></select>
+                </label>
                 <button id="btnCalibSave" class="btn btn-primary">좌표 저장</button>
                 <button id="btnCalibReload" class="btn btn-secondary">다시 불러오기</button>
                 <button id="btnCalibClose" class="btn">닫기</button>

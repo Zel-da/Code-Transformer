@@ -39,6 +39,9 @@ class InputStep:
     ref_y: int | None = None
     # § 14: 폼 라벨 텍스트 — 좌표 클릭 실패 시 라벨로 동적 검색하는 폴백용
     form_label: str = ""
+    # Tab 모드 전용: 이 스텝 진입 전 몇 번 Tab 을 눌러 이동할지 (기본 1)
+    # 비활성/자동채움 필드가 사이에 있으면 2 이상으로 설정해 건너뛰기
+    tabs_before: int = 1
 
     def __str__(self) -> str:
         return f"InputStep({self.field_name}={self.value}, method={self.method.value})"

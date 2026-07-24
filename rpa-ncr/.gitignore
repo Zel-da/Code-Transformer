@@ -19,3 +19,9 @@ venv/
 
 # 로컬 오버라이드 (실제 ERP 좌표/계정 등은 커밋하지 않음)
 config/settings.local.json
+
+# 자동 업데이트 상태 (로컬 커밋 SHA 마커)
+.version
+
+# 자동 업데이트 비활성 마커
+.no_auto_update

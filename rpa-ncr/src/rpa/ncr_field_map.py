@@ -41,18 +41,20 @@ class NcrReportFieldMap:
             method_str = (spec.get("method") or "type").lower()
             method = _METHOD_MAP.get(method_str, InputMethod.TYPE_TEXT)
             tab_after = bool(spec.get("tab_after", 1))
+            tabs_before = int(spec.get("tabs_before", 1))
 
             # dismiss/skip 은 값과 무관하게 그대로
             if method == InputMethod.DISMISS_DIALOG:
                 sequence.add_step(InputStep(
                     field_name=label, value=str(spec.get("timeout", 0.5)),
                     method=method, tab_order=seq, tab_after=False, delay_after=0.1,
+                    tabs_before=tabs_before,
                 ))
                 continue
             if method == InputMethod.SKIP:
                 sequence.add_step(InputStep(
                     field_name=label, value="", method=method,
-                    tab_order=seq, tab_after=tab_after,
+                    tab_order=seq, tab_after=tab_after, tabs_before=tabs_before,
                 ))
                 continue
 
@@ -75,7 +77,7 @@ class NcrReportFieldMap:
             if value == "":
                 sequence.add_step(InputStep(
                     field_name=label, value="", method=InputMethod.SKIP,
-                    tab_order=seq, tab_after=tab_after,
+                    tab_order=seq, tab_after=tab_after, tabs_before=tabs_before,
                     ref_x=ref_x, ref_y=ref_y, form_label=form_label,
                 ))
                 continue
@@ -83,6 +85,7 @@ class NcrReportFieldMap:
             sequence.add_step(InputStep(
                 field_name=label, value=value, method=method,
                 tab_order=seq, tab_after=tab_after, delay_after=0.05,
+                tabs_before=tabs_before,
                 erp_field_name=str(spec.get("erp_field", "")) if spec.get("erp_field") != "TODO" else "",
                 ref_x=ref_x, ref_y=ref_y, form_label=form_label,
             ))

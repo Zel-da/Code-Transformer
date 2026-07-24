@@ -12,6 +12,32 @@ from src.data_source.report_model import NcrReport
 from src.rpa.fallback_controller import FallbackController
 from src.rpa.input_sequence import InputMethod, InputStep
 from src.rpa.ncr_field_map import NcrReportFieldMap
+
+
+def _load_default_form_profile(erp_cfg: dict[str, Any]) -> dict[str, Any]:
+    """폼 프로파일 로드. settings.erp.forms[0] 우선, 없으면 옛 field_mapping.json 폴백."""
+    forms = erp_cfg.get("forms") or []
+    if forms:
+        return load_form_profile(forms[0])
+    return ConfigLoader.load(get_config_dir() / "field_mapping.json", use_cache=False)
+
+
+def load_form_profile(form_id: str) -> dict[str, Any]:
+    """폼 프로파일 로드 — 우선순위:
+
+    1. config/forms/{form_id}.json — 사용자 캘리브레이션 (있으면 사용)
+    2. config/forms/_defaults/{form_id}.json — 배포 기본값 (자동 업데이트 대상)
+    3. 옛 config/field_mapping.json — 하위호환 폴백
+    """
+    config_dir = get_config_dir()
+    user_path = config_dir / "forms" / f"{form_id}.json"
+    if user_path.is_file():
+        return ConfigLoader.load(user_path, use_cache=False)
+    default_path = config_dir / "forms" / "_defaults" / f"{form_id}.json"
+    if default_path.is_file():
+        return ConfigLoader.load(default_path, use_cache=False)
+    logger.warning(f"forms/{form_id}.json / _defaults/ 둘 다 없음 — field_mapping.json 폴백")
+    return ConfigLoader.load(config_dir / "field_mapping.json", use_cache=False)
 from src.rpa.window_controller import FocusLostError, WindowController
 from src.utils.config_loader import ConfigLoader
 from src.utils.file_utils import get_config_dir
@@ -45,15 +71,13 @@ class NCRConnector:
         self._retry_count = erp_cfg.get("retry_count", 3)
         self._retry_delay = erp_cfg.get("retry_delay", 1.0)
         self._first_field_tabs = int(erp_cfg.get("first_field_tabs", 2))
-        self._save_shortcut = erp_cfg.get("save_shortcut", "")
         self._mode = mode
 
+        # 폼 프로파일은 초기 로드 (설정 forms[0] 또는 field_mapping.json 하위호환)
+        # 이후 워커가 phase마다 set_form_profile 로 스왑
         if field_mapping is None:
-            field_mapping = ConfigLoader.load(
-                get_config_dir() / "field_mapping.json", use_cache=False
-            )
-        self._field_mapping = field_mapping
-        self._field_map = NcrReportFieldMap(field_mapping)
+            field_mapping = _load_default_form_profile(erp_cfg)
+        self._set_field_mapping(field_mapping)
 
         self._process_name = erp_cfg.get("process_name", "")
         self._window_controller = WindowController(
@@ -72,6 +96,32 @@ class NCRConnector:
         self._watchdog_stop = threading.Event()
         self._watchdog_thread: threading.Thread | None = None
         self._watchdog_interval = float(erp_cfg.get("focus_watchdog_interval_sec", 0.1))
+
+    # ------------------------------------------------------------------
+    # 폼 프로파일 (부적합등록/부적합판정등록 등 여러 폼 지원)
+    # ------------------------------------------------------------------
+
+    def _set_field_mapping(self, mapping: dict[str, Any]) -> None:
+        """내부 상태 갱신 (mapping·field_map·target_menu·save_shortcut·post_save)."""
+        self._field_mapping = mapping
+        self._field_map = NcrReportFieldMap(mapping)
+        # 폼 프로파일에서 우선, 없으면 옛 settings.erp 하위호환
+        self._target_menu = mapping.get("target_menu") or self._settings.get("target_menu", "부적합등록(S)(QD211MA1_CKO063)")
+        self._save_shortcut = mapping.get("save_shortcut") or self._settings.get("save_shortcut", "^s")
+        self._post_save_actions = mapping.get("post_save_actions", [
+            {"keys": "+{INSERT}", "delay": 0.5},
+            {"keys": "{ENTER}", "delay": 1.0},
+        ])
+        self._form_marker_label = mapping.get("form_marker_label", "발행팀")
+
+    def set_form_profile(self, form_id: str) -> None:
+        """폼 프로파일을 로드해 상태 스왑. Phase 시작 시 호출."""
+        profile = load_form_profile(form_id)
+        self._set_field_mapping(profile)
+        self._emit_log(f"📋 폼 프로파일 로드: {form_id} (target_menu={self._target_menu})")
+
+    def current_form_id(self) -> str:
+        return self._field_mapping.get("form_id", "?")
 
     # ------------------------------------------------------------------
     # 콜백 / 상태
@@ -196,7 +246,7 @@ class NCRConnector:
         wc = self._window_controller
         if not wc._main_window:
             return False
-        marker = self._field_mapping.get("_form_open_marker", "발행팀")
+        marker = self._form_marker_label
         try:
             for lbl in wc._main_window.descendants(control_type="Text"):
                 try:
@@ -223,11 +273,11 @@ class NCRConnector:
         if not self._connected:
             raise RuntimeError("ERP에 연결되지 않았습니다.")
 
-        target_menu = self._settings.get("target_menu", "부적합보고서등록")
+        target_menu = self._target_menu  # 현재 활성 폼 프로파일의 target_menu
         wc = self._window_controller
         self._error_events = []
 
-        self._emit_log(f"===== 보고 #{report.id} 입력 시작 =====")
+        self._emit_log(f"===== 보고 #{report.id} [{self.current_form_id()}] 입력 시작 =====")
 
         # (선택) 품목 마스터 검증
         self._validate_item(report)
@@ -255,35 +305,13 @@ class NCRConnector:
         self._start_focus_watchdog()
 
         try:
-            # § 3.2 좌표 기반 — 각 스텝이 자기 좌표로 직접 클릭해 포커스를 잡으므로
-            # 옛 Tab×first_field_tabs 루프와 스텝별 Tab 이동은 불필요.
             sequence = self._field_map.build_sequence(report)
-            total = len(sequence.steps)
-            for i, step in enumerate(sequence.steps):
-                self._wait_if_paused()
-                if self._is_stopped():
-                    self._emit_log("중지 요청 감지 — 입력 중단")
-                    raise StoppedByUserError(f"스텝 {i+1}/{total} 진입 전 중지")
-                self._check_focus_lost()
-
-                if step.method == InputMethod.SKIP:
-                    self._emit_log(f"[{i+1}/{total}] {step.field_name} → 비어있음, 건너뜀")
-                    continue
-
-                if step.method in (InputMethod.POPUP_SEARCH, InputMethod.POPUP_SEARCH_ENTER) and not step.value:
-                    self._emit_log(f"[{i+1}/{total}] {step.field_name} → 빈 값, 팝업 건너뜀")
-                    continue
-
-                coord_str = f"@ ref({step.ref_x},{step.ref_y})" if step.ref_x is not None else ""
-                self._emit_log(f"[{i+1}/{total}] {step.field_name} = '{step.value}' "
-                               f"({step.method.value}) {coord_str}")
-                self._execute_step_tab_based(step)
-
-                # 입력 직후 검색/확인 팝업 감지 — ERP가 모호한 값에 검색창을 띄우면
-                # 다음 좌표 클릭이 엉뚱한 곳에 들어가는 걸 막는다. 팝업이 떠 있으면
-                # 자동 일시정지 → 사용자가 선택/처리 후 [재개] 또는 [재실행]
-                if self._mode == "pywinauto":
-                    self._handle_popup_if_any(step)
+            # 폼 프로파일의 input_mode 로 실행 방식 분기 (기본 coord)
+            input_mode = self._field_mapping.get("input_mode", "coord")
+            if input_mode == "tab":
+                self._execute_sequence_tab_mode(sequence)
+            else:
+                self._execute_sequence_coord_mode(sequence)
 
             # 그리드(다행)는 단일 품목 스키마에서 미사용
             if self._field_mapping.get("grid_columns"):
@@ -342,24 +370,140 @@ class NCRConnector:
     # ------------------------------------------------------------------
 
     def _open_new_form(self) -> None:
-        """UNIERP 부적합등록 폼에서 저장 후 새 빈 폼을 연다.
+        """저장 후 새 빈 폼 열기. 폼 프로파일의 post_save_actions 시퀀스 실행.
 
-        UNIERP는 저장해도 같은 폼에 입력값이 남아있어 신규 입력하려면
-        Shift+Insert (신규) → Enter (확인 다이얼로그) 시퀀스가 필요.
+        기본: Shift+Insert (신규) → Enter (확인). 폼별로 프로파일에서 오버라이드 가능.
         """
         wc = self._window_controller
+        actions = self._post_save_actions or []
+        if not actions:
+            self._emit_log("post_save_actions 없음 — 신규 폼 열기 스킵")
+            return
         try:
-            self._emit_log("새 폼 열기: Shift+Insert → Enter")
-            wc.send_keys("+{INSERT}")  # pywinauto syntax: + = Shift
-            time.sleep(0.5)
-            wc.send_keys("{ENTER}")
-            time.sleep(1.0)
+            keys_str = " → ".join(a.get("keys", "?") for a in actions)
+            self._emit_log(f"새 폼 열기: {keys_str}")
+            for a in actions:
+                keys = a.get("keys", "")
+                delay = float(a.get("delay", 0.3))
+                if keys:
+                    wc.send_keys(keys)
+                    time.sleep(delay)
         except Exception as e:
             self._emit_log(f"⚠ 새 폼 열기 실패: {e}")
 
     # ------------------------------------------------------------------
     # 스텝 실행
     # ------------------------------------------------------------------
+
+    def _execute_sequence_coord_mode(self, sequence) -> None:
+        """§3.2 좌표 기반 — 각 스텝이 자기 ref_x/ref_y 로 직접 클릭."""
+        total = len(sequence.steps)
+        for i, step in enumerate(sequence.steps):
+            self._wait_if_paused()
+            if self._is_stopped():
+                self._emit_log("중지 요청 감지 — 입력 중단")
+                raise StoppedByUserError(f"스텝 {i+1}/{total} 진입 전 중지")
+            self._check_focus_lost()
+
+            if step.method == InputMethod.SKIP:
+                self._emit_log(f"[{i+1}/{total}] {step.field_name} → 비어있음, 건너뜀")
+                continue
+
+            if step.method in (InputMethod.POPUP_SEARCH, InputMethod.POPUP_SEARCH_ENTER) and not step.value:
+                self._emit_log(f"[{i+1}/{total}] {step.field_name} → 빈 값, 팝업 건너뜀")
+                continue
+
+            coord_str = f"@ ref({step.ref_x},{step.ref_y})" if step.ref_x is not None else ""
+            self._emit_log(f"[{i+1}/{total}] {step.field_name} = '{step.value}' "
+                           f"({step.method.value}) {coord_str}")
+            self._execute_step_tab_based(step)
+
+            if self._mode == "pywinauto":
+                self._handle_popup_if_any(step)
+
+    def _execute_sequence_tab_mode(self, sequence) -> None:
+        """Tab 기반 — 첫 필드만 좌표 클릭, 나머지는 Tab 키로 이동.
+
+        각 스텝의 tabs_before 만큼 Tab 을 먼저 눌러 다음 필드로 이동한 뒤 값 입력.
+        SKIP 필드는 Tab만 눌러 건너뜀 (값 입력 X). 좌표 정확도 부담 최소화.
+        """
+        wc = self._window_controller
+        total = len(sequence.steps)
+        first_click_done = False
+
+        for i, step in enumerate(sequence.steps):
+            self._wait_if_paused()
+            if self._is_stopped():
+                self._emit_log("중지 요청 감지 — 입력 중단")
+                raise StoppedByUserError(f"스텝 {i+1}/{total} 진입 전 중지")
+            self._check_focus_lost()
+
+            if not first_click_done:
+                # 진입: 좌표 있으면 클릭, 없으면 tabs_before 만큼 Tab 만으로 진입
+                if step.ref_x is not None and step.ref_y is not None:
+                    self._emit_log(f"[{i+1}/{total}] 진입점 클릭: {step.field_name} @ "
+                                   f"({step.ref_x},{step.ref_y})")
+                    wc.left_click_at(step.ref_x, step.ref_y)
+                    time.sleep(0.25)
+                else:
+                    tabs = max(0, int(getattr(step, 'tabs_before', 0)))
+                    if tabs > 0:
+                        self._emit_log(f"[{i+1}/{total}] 진입: Tab×{tabs} → {step.field_name}")
+                        for _ in range(tabs):
+                            wc.send_keys("{TAB}")
+                            time.sleep(0.05)
+                    else:
+                        self._emit_log(f"[{i+1}/{total}] 진입: 현재 포커스 사용 → {step.field_name}")
+                first_click_done = True
+                if step.method == InputMethod.SKIP:
+                    continue
+                self._type_step_value(step)
+                if self._mode == "pywinauto":
+                    self._handle_popup_if_any(step)
+                continue
+
+            # 진입점 이후: Tab 이동 후 입력
+            tabs = max(1, int(getattr(step, 'tabs_before', 1)))
+            for _ in range(tabs):
+                wc.send_keys("{TAB}")
+                time.sleep(0.05)
+
+            if step.method == InputMethod.SKIP:
+                self._emit_log(f"[{i+1}/{total}] {step.field_name} → SKIP (Tab×{tabs})")
+                continue
+
+            if step.method in (InputMethod.POPUP_SEARCH, InputMethod.POPUP_SEARCH_ENTER) and not step.value:
+                self._emit_log(f"[{i+1}/{total}] {step.field_name} → 빈 값, 팝업 건너뜀 (Tab×{tabs})")
+                continue
+
+            self._emit_log(f"[{i+1}/{total}] {step.field_name} = '{step.value}' "
+                           f"({step.method.value}, Tab×{tabs})")
+            self._type_step_value(step)
+
+            if self._mode == "pywinauto":
+                self._handle_popup_if_any(step)
+
+    def _type_step_value(self, step: InputStep) -> None:
+        """현재 포커스 필드에 값 입력 (클릭 없음, Tab 없음). method 별 분기."""
+        wc = self._window_controller
+        if step.method == InputMethod.TYPE_TEXT:
+            wc.type_into_focused(step.value, step.clear_before)
+        elif step.method == InputMethod.DROPDOWN_SELECT:
+            try:
+                n = int(step.value)
+            except ValueError:
+                logger.warning(f"드롭다운 값 정수 변환 실패: {step.value!r}")
+                return
+            wc.dropdown_select_down(n)
+            time.sleep(0.1)
+            wc.send_keys("{ENTER}")
+        elif step.method == InputMethod.POPUP_SEARCH:
+            wc.popup_search_and_select(step.value, enter_confirm=False)
+        elif step.method == InputMethod.POPUP_SEARCH_ENTER:
+            wc.popup_search_and_select(step.value, enter_confirm=True)
+        elif step.method == InputMethod.DISMISS_DIALOG:
+            wc.dismiss_dialog_if_exists(timeout=float(step.value) if step.value else 2.0)
+        time.sleep(step.delay_after)
 
     def _execute_step_tab_based(self, step: InputStep) -> None:
         """좌표 클릭으로 필드 포커스 → 메서드별 입력. ref 좌표 없으면 현재 포커스 기준."""

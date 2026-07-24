@@ -1,0 +1,259 @@
+{
+    "form_id": "부적합등록",
+    "target_menu": "부적합등록(S)(QD211MA1_CKO063)",
+    "save_shortcut": "^s",
+    "post_save_actions": [
+        {
+            "keys": "+{INSERT}",
+            "delay": 0.5,
+            "_note": "Shift+Insert 신규 폼 열기"
+        },
+        {
+            "keys": "{ENTER}",
+            "delay": 1.0,
+            "_note": "확인 다이얼로그 통과"
+        }
+    ],
+    "form_marker_label": "발행팀",
+    "_calibration": {
+        "ref_resolution": [
+            1920,
+            1080
+        ],
+        "measured_at": "2026-06-26-v2",
+        "measured_window_size": [
+            1920,
+            1080
+        ],
+        "measured_window_left": 1920,
+        "form_name": "부적합등록(S)(QD211MA1_CKO063)",
+        "_note": "직장님 PC 실측: 보조 모니터 left=1920, FHD 1920×1080. 다른 PC에서는 [필드 좌표 편집] UI로 재캘리브레이션."
+    },
+    "_comment": "UNIERP 부적합등록(S)(QD211MA1_CKO063) 매핑. §3.2 좌표는 1920×1080 기준 박스 중앙 ref. window_relative_coords로 자동 비례 변환. label은 §14 라벨 폴백 검색용. UNIERP의 auto_id는 매 폼 오픈마다 새로 생성되는 런타임 GUID라 사용 불가.",
+    "_available_report_fields": [
+        "id",
+        "reportDate",
+        "itemCode",
+        "modelName",
+        "processName",
+        "defectType",
+        "description",
+        "imageUrl",
+        "registrantName",
+        "ncrType",
+        "factory",
+        "shipmentUnit",
+        "lostManHours",
+        "defectQty",
+        "occurrenceDate",
+        "issuingTeam",
+        "plantCd",
+        "processCd",
+        "flawTypeCd",
+        "deptCd",
+        "ncrGbnCd",
+        "productType",
+        "itemGroup",
+        "itemName",
+        "remarks",
+        "shipmentDateFrom",
+        "shipmentDateTo",
+        "managerCd",
+        "managerNm"
+    ],
+    "_method_values": "type | popup_search | popup_search_enter | dropdown | skip | dismiss",
+    "header_fields": [
+        {
+            "label": "발행팀코드",
+            "ref_x": 1352,
+            "ref_y": 305,
+            "form_label": "발행팀",
+            "method": "type",
+            "literal": "SH11610100",
+            "_note": "고정값"
+        },
+        {
+            "label": "부적합구분",
+            "ref_x": 595,
+            "ref_y": 335,
+            "form_label": "부적합구분",
+            "method": "dropdown",
+            "literal": "3",
+            "_note": "ComboBox, 고정 ↓×3"
+        },
+        {
+            "label": "발생일",
+            "ref_x": 1347,
+            "ref_y": 335,
+            "form_label": "발생일",
+            "method": "type",
+            "ncr_key": "occurrenceDate",
+            "format": "YYYYMMDD",
+            "fallback_key": "reportDate"
+        },
+        {
+            "label": "공장",
+            "ref_x": 578,
+            "ref_y": 360,
+            "form_label": "공장",
+            "method": "type",
+            "literal": "SA00",
+            "_note": "고정값 (아산공장)"
+        },
+        {
+            "label": "입력일",
+            "ref_x": 1346,
+            "ref_y": 360,
+            "form_label": "입력일",
+            "method": "type",
+            "ncr_key": "reportDate",
+            "format": "YYYYMMDD"
+        },
+        {
+            "label": "부품코드",
+            "ref_x": 586,
+            "ref_y": 383,
+            "form_label": "부품코드",
+            "method": "type",
+            "ncr_key": "itemCode"
+        },
+        {
+            "label": "공정",
+            "ref_x": 1347,
+            "ref_y": 383,
+            "form_label": "공정",
+            "method": "type",
+            "ncr_key": "processCd",
+            "_note": "process_cd(A01~A07) 입력. processes 마스터 기준"
+        },
+        {
+            "label": "불량수량",
+            "ref_x": 561,
+            "ref_y": 406,
+            "form_label": "불량수량",
+            "method": "type",
+            "ncr_key": "defectQty"
+        },
+        {
+            "label": "품목그룹",
+            "ref_x": 1346,
+            "ref_y": 406,
+            "form_label": "품목그룹",
+            "method": "type",
+            "ncr_key": "itemGroupCd",
+            "_note": "DbSource JOIN으로 item_groups에서 코드(예: CL411) 직접 추출"
+        },
+        {
+            "label": "불량유형",
+            "ref_x": 586,
+            "ref_y": 433,
+            "form_label": "불량유형",
+            "method": "dropdown",
+            "ncr_key": "flawTypeCd",
+            "map_ref": "flawType_map",
+            "_note": "ComboBox"
+        },
+        {
+            "label": "거래처",
+            "ref_x": 1346,
+            "ref_y": 433,
+            "form_label": "거래처",
+            "method": "type",
+            "ncr_key": "vendorCd"
+        },
+        {
+            "label": "손실공수",
+            "ref_x": 566,
+            "ref_y": 450,
+            "form_label": "손실공수",
+            "method": "type",
+            "ncr_key": "lostManHours",
+            "transform": "multiply_60",
+            "_note": "DB는 h, 폼 라벨은 '손실공수(분)' → ×60"
+        },
+        {
+            "label": "제품코드",
+            "ref_x": 1346,
+            "ref_y": 450,
+            "form_label": "제품코드",
+            "method": "type",
+            "ncr_key": "itemCode"
+        },
+        {
+            "label": "출하기간시작",
+            "ref_x": 1339,
+            "ref_y": 499,
+            "form_label": "출하일",
+            "method": "type",
+            "ncr_key": "shipmentDateFrom",
+            "format": "YYYYMMDD"
+        },
+        {
+            "label": "출하기간종료",
+            "ref_x": 1480,
+            "ref_y": 499,
+            "form_label": "출하일",
+            "method": "type",
+            "ncr_key": "shipmentDateTo",
+            "format": "YYYYMMDD"
+        },
+        {
+            "label": "담당자",
+            "ref_x": 1375,
+            "ref_y": 520,
+            "form_label": "등록자",
+            "method": "type",
+            "ncr_key": "managerCd"
+        },
+        {
+            "label": "비고",
+            "ref_x": 561,
+            "ref_y": 475,
+            "form_label": "비고",
+            "method": "type",
+            "ncr_key": "remarks"
+        }
+    ],
+    "grid_columns": "",
+    "flawType_map": {
+        "_comment": "flaw_types.type_cd → ↓ 횟수. sort_index + 1.",
+        "A": 1,
+        "_A": "가공",
+        "B": 2,
+        "_B": "용접/제관",
+        "D": 3,
+        "_D": "유/공압",
+        "E": 4,
+        "_E": "전기",
+        "F": 5,
+        "_F": "공압",
+        "H": 6,
+        "_H": "도장/도금",
+        "I": 7,
+        "_I": "외관",
+        "K": 8,
+        "_K": "동력장치",
+        "M": 9,
+        "_M": "BOM/REV",
+        "N": 10,
+        "_N": "소재",
+        "O": 11,
+        "_O": "조립",
+        "P": 12,
+        "_P": "설계개선",
+        "Q": 13,
+        "_Q": "설계불량",
+        "Y": 14,
+        "_Y": "합격(출하)",
+        "Z": 15,
+        "_Z": "기타"
+    },
+    "actions": {
+        "_comment": "저장은 settings.json erp.save_shortcut (^s) 사용.",
+        "save": {
+            "control_type": "Button",
+            "auto_id": "",
+            "text": "저장"
+        }
+    }
+}

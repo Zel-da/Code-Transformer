@@ -38,6 +38,17 @@ if errorlevel 1 (
 )
 
 REM ===========================================
+REM ===========================================
+REM Step 0.5: 업데이트 확인 (선택 - .no_auto_update 파일 있으면 스킵)
+REM ===========================================
+if not exist ".no_auto_update" (
+    if exist "update.py" (
+        echo.
+        echo 업데이트 확인 중...
+        python update.py
+    )
+)
+
 REM Step 1: 첫 실행이면 자동 설치 (원자성)
 REM   .venv 만 있고 .install_ok 마커가 없으면 이전 pip 실패 잔재 →
 REM   자동 재설치. 마커는 pip 성공 직후에만 생성된다.

@@ -1,0 +1,68 @@
+{
+    "form_id": "부적합판정등록",
+    "target_menu": "부적합판정등록(S)(QD231MA1_CKO063)",
+    "save_shortcut": "^s",
+    "post_save_actions": [
+        {"keys": "+{INSERT}", "delay": 0.5, "_note": "Shift+Insert 신규 폼"},
+        {"keys": "{ENTER}", "delay": 1.0, "_note": "확인 다이얼로그 통과"}
+    ],
+    "form_marker_label": "판정결과",
+
+    "input_mode": "tab",
+    "_input_mode_note": "순수 Tab 모드. F3 메뉴 진입 후 폼 열림 → Tab×10 = 발행팀 도달 → 이후 순서대로 Tab 이동.",
+
+    "_comment": "부적합판정등록 - 사용자 실측 Tab 시퀀스. 좌표 클릭 없음.",
+
+    "_removed_from_form": {
+        "auto_filled_or_skipped": ["발행번호", "AS접수번호", "초기품질여부", "클레임유무", "클레임금액", "유관부서여부", "등록자", "판정결과", "시정및예방조치여부", "첨부파일"],
+        "_note": "위 필드들은 Tab 순서 상 존재하지만 RPA 는 값을 넣지 않음. tabs_before 카운트에 흡수됨."
+    },
+
+    "_calibration": {
+        "ref_resolution": [1920, 1080],
+        "measured_at": "2026-07-24-tab-user-verified",
+        "form_name": "부적합판정등록(S)(QD231MA1_CKO063)",
+        "_note": "실측 Tab 시퀀스 - 좌표 클릭 없이 진입점부터 Tab만 사용"
+    },
+
+    "_method_values": "type | dropdown | skip",
+
+    "header_fields": [
+        { "label": "발행팀",     "method": "type",     "literal": "SH11510500",                                        "tabs_before": 10, "_note": "★ 진입점 - 폼 열자마자 Tab×10 → 발행팀" },
+        { "label": "부적합구분", "method": "dropdown", "literal": "3",                                                 "tabs_before": 1 },
+        { "label": "발생일",     "method": "type",     "ncr_key": "occurrenceDate", "format": "YYYYMMDD", "fallback_key": "reportDate", "tabs_before": 1 },
+        { "label": "입력일",     "method": "type",     "ncr_key": "reportDate",     "format": "YYYYMMDD",              "tabs_before": 2, "_note": "탭 탭 (사이에 disabled 1개 흡수)" },
+        { "label": "공장",       "method": "type",     "literal": "SA00",                                              "tabs_before": 1 },
+        { "label": "공정",       "method": "type",     "ncr_key": "processCd",                                         "tabs_before": 1 },
+        { "label": "부품코드",   "method": "type",     "ncr_key": "itemCode",                                          "tabs_before": 1 },
+        { "label": "품목그룹",   "method": "type",     "ncr_key": "itemGroupCd",                                       "tabs_before": 1 },
+        { "label": "불량수량",   "method": "type",     "ncr_key": "defectQty",                                         "tabs_before": 1 },
+        { "label": "거래처",     "method": "type",     "ncr_key": "vendorCd",                                          "tabs_before": 1 },
+        { "label": "불량유형",   "method": "dropdown", "ncr_key": "flawTypeCd", "map_ref": "flawType_map",             "tabs_before": 1 },
+        { "label": "제품코드",   "method": "type",     "ncr_key": "itemCode",                                          "tabs_before": 1 },
+        { "label": "손실공수",   "method": "type",     "ncr_key": "lostManHours", "transform": "multiply_60",          "tabs_before": 1 },
+        { "label": "출하호기",   "method": "skip",     "ncr_key": "shipmentUnit",                                      "tabs_before": 1, "_note": "매핑 미확정 - Tab만 통과" },
+        { "label": "비고",       "method": "type",     "ncr_key": "remarks",                                           "tabs_before": 1 },
+        { "label": "출하일",     "method": "type",     "ncr_key": "shipmentDateFrom", "format": "YYYYMMDD",            "tabs_before": 1, "_note": "숫자만 (예 20260724)" },
+        { "label": "유관부서",   "method": "skip",     "ncr_key": "deptCd",                                            "tabs_before": 4, "_note": "탭 탭 탭 탭 (사이에 초기품질/클레임유무/유관부서여부 3개 흡수). 드롭박스 map 미확정 - skip" },
+        { "label": "부품비",     "method": "type",     "ncr_key": "partsCost",                                         "tabs_before": 1 },
+        { "label": "공임비",     "method": "type",     "ncr_key": "laborCost",                                         "tabs_before": 1 },
+        { "label": "부적합현상", "method": "skip",                                                                       "tabs_before": 2, "_note": "탭 탭 (사이에 클레임금액 disabled 1개 흡수). Neon 컬럼 대기" },
+        { "label": "조치결과",   "method": "type",     "ncr_key": "qcCorrectiveResult",                                "tabs_before": 1 },
+        { "label": "유관부서의견", "method": "skip",                                                                     "tabs_before": 2, "_note": "탭 탭 (사이에 시정및예방조치여부 1개 흡수). 값 안 넣음" },
+        { "label": "품질의견",   "method": "type",     "ncr_key": "qualityOpinion",                                    "tabs_before": 1 }
+    ],
+
+    "grid_columns": "",
+
+    "flawType_map": {
+        "_comment": "flaw_types.type_cd → ↓ 횟수",
+        "A": 1, "B": 2, "D": 3, "E": 4, "F": 5, "H": 6, "I": 7,
+        "K": 8, "M": 9, "N": 10, "O": 11, "P": 12, "Q": 13,
+        "Y": 14, "Z": 15
+    },
+
+    "actions": {
+        "save": { "control_type": "Button", "auto_id": "", "text": "저장" }
+    }
+}
