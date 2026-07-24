@@ -19,18 +19,11 @@
         "login_id": "",
         "login_pw": "soosan5008!",
         "forms": ["부적합판정등록"],
-        "_forms_note": "config/forms/{form_id}.json 파일들. 각 보고를 이 순서대로 phase별 처리. 정상 운영 시 [\"부적합등록\", \"부적합판정등록\"] — 현재는 판정등록 캘리브레이션·테스트 단독 모드.",
-        "menu_input_rel_x": 132,
-        "menu_input_rel_y": 46,
-        "_menu_input_note": "ERP 상단 메뉴찾기 입력칸의 창 기준 상대좌표. ERP가 보조 모니터 left=1920에 최대화돼 있을 때 절대좌표 (2052, 46) ↔ 창 상대 (132, 46).",
-        "first_field_tabs": 10,
+        "_forms_note": "config/forms/_defaults/{form_id}.json (또는 user override) 순으로 로드. 여러 폼 넣으면 Phase 별로 순차 처리.",
         "input_delay": 0.3,
         "retry_count": 3,
         "retry_delay": 1.0,
-        "mode": "pywinauto",
-        "_deprecated_target_menu": "이제 forms 배열의 각 프로파일이 자체 target_menu 보유",
-        "_deprecated_save_shortcut": "이제 각 폼 프로파일이 자체 save_shortcut 보유",
-        "_deprecated_grid_columns": "이제 각 폼 프로파일이 자체 grid_columns 보유"
+        "mode": "pywinauto"
     },
     "web": {
         "host": "127.0.0.1",

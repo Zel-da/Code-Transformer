@@ -202,26 +202,29 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
                           "category": "required", "status": "error", "message": "미등록",
                           "hint": "ERP 자동 로그인을 위해 비밀번호를 등록하세요.", "action": "tab-erp"})
 
-        # 3. 필드 매핑 캘리브레이션 (필수)
+        # 3. 폼 프로파일 존재 확인
         try:
-            mapping = ConfigLoader.load(config_dir / "field_mapping.json", use_cache=False)
-            todo = [f.get("label", f.get("ncr_key", "?"))
-                    for f in mapping.get("header_fields", [])
-                    if str(f.get("erp_field", "")).upper() == "TODO"]
-            if todo:
-                items.append({"id": "field_mapping", "label": "필드 매핑 캘리브레이션",
+            erp_cfg = settings.get("erp", {})
+            forms = erp_cfg.get("forms") or []
+            forms_dir = config_dir / "forms" / "_defaults"
+            missing = [fid for fid in forms
+                       if not (forms_dir / f"{fid}.json").is_file()
+                       and not (config_dir / "forms" / f"{fid}.json").is_file()]
+            if missing:
+                items.append({"id": "form_profiles", "label": "폼 프로파일",
                               "category": "required", "status": "error",
-                              "message": f"미캘리브레이션 {len(todo)}개: {', '.join(todo[:5])}",
-                              "hint": "field_mapping.json의 erp_field를 실 ERP 폼에 맞춰 채우세요(README 캘리브레이션 체크리스트).",
+                              "message": f"프로파일 없음: {', '.join(missing)}",
+                              "hint": "config/forms/_defaults/{form}.json 을 확인하세요.",
                               "action": ""})
             else:
-                items.append({"id": "field_mapping", "label": "필드 매핑 캘리브레이션",
-                              "category": "required", "status": "ok", "message": "완료",
+                items.append({"id": "form_profiles", "label": "폼 프로파일",
+                              "category": "required", "status": "ok",
+                              "message": f"완료 ({len(forms)}개: {', '.join(forms)})",
                               "hint": "", "action": ""})
         except Exception as e:
-            items.append({"id": "field_mapping", "label": "필드 매핑 캘리브레이션",
-                          "category": "required", "status": "error", "message": f"로드 실패: {e}",
-                          "hint": "config/field_mapping.json 을 확인하세요.", "action": ""})
+            items.append({"id": "form_profiles", "label": "폼 프로파일",
+                          "category": "required", "status": "error",
+                          "message": f"확인 실패: {e}", "hint": "", "action": ""})
 
         # 4. 데이터 소스 도달 (필수)
         try:
@@ -365,152 +368,6 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
             _save_settings()
             return MessageResponse(message="ERP 설정이 저장되었습니다.")
         except Exception as e:
-            return JSONResponse({"error": f"저장 실패: {e}"}, status_code=500)
-
-    # ── 필드 매핑 캘리브레이션 ──
-
-    def _resolve_form_read_path(form_id: str | None):
-        """읽기용 경로 — user override 우선, 없으면 _defaults."""
-        config_dir = get_config_dir()
-        if form_id:
-            user = config_dir / "forms" / f"{form_id}.json"
-            if user.is_file():
-                return user
-            default = config_dir / "forms" / "_defaults" / f"{form_id}.json"
-            if default.is_file():
-                return default
-        # 기본 폼 폴백
-        for fid in ("부적합등록", "부적합판정등록"):
-            for p in (config_dir / "forms" / f"{fid}.json",
-                      config_dir / "forms" / "_defaults" / f"{fid}.json"):
-                if p.is_file():
-                    return p
-        return config_dir / "field_mapping.json"
-
-    def _resolve_form_write_path(form_id: str | None):
-        """쓰기용 경로 — 항상 user 경로 (_defaults 는 자동 업데이트 대상이라 사용자 편집 금지)."""
-        config_dir = get_config_dir()
-        if form_id:
-            return config_dir / "forms" / f"{form_id}.json"
-        return config_dir / "forms" / "부적합등록.json"
-
-    @app.get("/api/field-mapping")
-    async def field_mapping_get(form_id: str | None = None):
-        """폼 프로파일의 필드 좌표 반환. form_id 없으면 기본 폼 (부적합등록)."""
-        try:
-            path = _resolve_form_read_path(form_id)
-            mapping = ConfigLoader.load(path, use_cache=False)
-            cal = mapping.get("_calibration", {})
-            fields = []
-            for i, f in enumerate(mapping.get("header_fields", [])):
-                fields.append({
-                    "index": i + 1,
-                    "label": f.get("label", ""),
-                    "ref_x": f.get("ref_x"),
-                    "ref_y": f.get("ref_y"),
-                    "method": f.get("method", ""),
-                    "ncr_key": f.get("ncr_key", ""),
-                    "literal": f.get("literal", ""),
-                    "form_label": f.get("form_label", ""),
-                })
-            # 사용 가능한 폼 목록 — _defaults 와 user override 합집합
-            available_forms = set()
-            forms_dir = get_config_dir() / "forms"
-            if forms_dir.is_dir():
-                for p in forms_dir.glob("*.json"):
-                    available_forms.add(p.stem)
-                defaults_dir = forms_dir / "_defaults"
-                if defaults_dir.is_dir():
-                    for p in defaults_dir.glob("*.json"):
-                        available_forms.add(p.stem)
-            available_forms = sorted(available_forms)
-            return {
-                "fields": fields,
-                "calibration": cal,
-                "form_id": mapping.get("form_id", ""),
-                "available_forms": available_forms,
-                "path": str(path.name),
-            }
-        except Exception as e:
-            return JSONResponse({"error": f"로드 실패: {e}"}, status_code=500)
-
-    _COORD_MIN, _COORD_MAX = 0, 20000  # 가상 스크린 최대치(4K 듀얼) 여유
-
-    def _validate_coord(value: Any, name: str) -> int:
-        """좌표 값을 int 로 변환하고 범위 검증. 실패 시 ValueError."""
-        if isinstance(value, bool):  # bool 은 int 하위형이지만 좌표로 부적절
-            raise ValueError(f"{name} 는 정수여야 합니다: {value!r}")
-        try:
-            v = int(value)
-        except (TypeError, ValueError):
-            raise ValueError(f"{name} 를 정수로 변환할 수 없습니다: {value!r}")
-        if not (_COORD_MIN <= v <= _COORD_MAX):
-            raise ValueError(f"{name} 범위 초과({_COORD_MIN}~{_COORD_MAX}): {v}")
-        return v
-
-    @app.put("/api/field-mapping")
-    async def field_mapping_put(request: Request):
-        """편집된 좌표 저장. body: {form_id?: str, fields: [{label, ref_x, ref_y}, ...]}
-
-        저장은 항상 user 경로 (config/forms/{form_id}.json). _defaults 는 배포 원본이라
-        건드리지 않음. user 파일 없으면 _defaults 에서 복사해 초기화 후 편집.
-        """
-        body = await request.json()
-        new_fields = body.get("fields", [])
-        form_id = body.get("form_id")
-        if not isinstance(new_fields, list):
-            return JSONResponse({"error": "fields는 배열이어야 합니다."}, status_code=400)
-        path = _resolve_form_write_path(form_id)
-        # user 파일 없으면 _defaults 에서 부트스트랩
-        if not path.is_file():
-            read_src = _resolve_form_read_path(form_id)
-            if read_src.is_file() and read_src != path:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                import shutil as _sh
-                _sh.copy2(read_src, path)
-                logger.info(f"user override 초기화: {read_src.name} → {path}")
-
-        # 저장 전 전량 검증 — 하나라도 실패하면 파일 손대지 않음(원자성).
-        try:
-            validated: list[tuple[str, int | None, int | None]] = []
-            for idx, new in enumerate(new_fields):
-                if not isinstance(new, dict):
-                    return JSONResponse(
-                        {"error": f"fields[{idx}] 는 객체여야 합니다."}, status_code=422,
-                    )
-                lbl = new.get("label")
-                if not lbl or not isinstance(lbl, str):
-                    return JSONResponse(
-                        {"error": f"fields[{idx}].label 이 비었거나 문자열이 아닙니다."},
-                        status_code=422,
-                    )
-                rx = new.get("ref_x")
-                ry = new.get("ref_y")
-                rx_v = _validate_coord(rx, f"fields[{idx}].ref_x") if rx not in (None, "") else None
-                ry_v = _validate_coord(ry, f"fields[{idx}].ref_y") if ry not in (None, "") else None
-                validated.append((lbl, rx_v, ry_v))
-        except ValueError as e:
-            return JSONResponse({"error": str(e)}, status_code=422)
-
-        try:
-            mapping = ConfigLoader.load(path, use_cache=False)
-            existing = mapping.get("header_fields", [])
-            updated = 0
-            for lbl, rx_v, ry_v in validated:
-                for i, ex in enumerate(existing):
-                    if ex.get("label") == lbl:
-                        if rx_v is not None:
-                            existing[i]["ref_x"] = rx_v
-                        if ry_v is not None:
-                            existing[i]["ref_y"] = ry_v
-                        updated += 1
-                        break
-            mapping["header_fields"] = existing
-            ConfigLoader.save(str(path), mapping)
-            logger.info(f"{path.name} 저장: {updated}개 필드 좌표 업데이트")
-            return MessageResponse(message=f"[{path.stem}] {updated}개 필드 좌표 저장 완료")
-        except Exception as e:
-            logger.error(f"field_mapping 저장 실패: {e}", exc_info=True)
             return JSONResponse({"error": f"저장 실패: {e}"}, status_code=500)
 
     @app.post("/api/erp/launch")

@@ -44,7 +44,6 @@
             <div class="row">
                 <button id="btnFetch" class="btn">PENDING 조회</button>
                 <button id="btnErpTest" class="btn btn-secondary">ERP 창 확인</button>
-                <button id="btnCalib" class="btn btn-secondary">필드 좌표 편집</button>
             </div>
             <div class="row">
                 <button id="btnStart" class="btn btn-primary">입력 시작</button>
@@ -52,37 +51,6 @@
                 <button id="btnStop" class="btn btn-danger">중지</button>
             </div>
             <div id="runStatus" class="result"></div>
-        </section>
-
-        <!-- 캘리브레이션 패널: [필드 좌표 편집] 클릭 시 활성화 -->
-        <section id="calibPanel" class="card hidden">
-            <h2>필드 좌표 편집 <span class="muted" style="font-size:13px">— 1920×1080 기준, 창 크기에 비례 변환</span></h2>
-            <p class="muted" style="margin:0 0 10px">
-                각 필드의 X·Y 좌표(박스 중앙)를 ERP 폼에 맞춰 조정 후 [좌표 저장]. 이 PC의 <code>config/forms/{폼}.json</code>에 저장됩니다.
-            </p>
-            <div class="row" style="align-items:center; gap:10px">
-                <label style="display:flex;align-items:center;gap:6px">
-                    <span class="muted">폼:</span>
-                    <select id="calibFormSelect" style="padding:4px 8px"></select>
-                </label>
-                <button id="btnCalibSave" class="btn btn-primary">좌표 저장</button>
-                <button id="btnCalibReload" class="btn btn-secondary">다시 불러오기</button>
-                <button id="btnCalibClose" class="btn">닫기</button>
-            </div>
-            <div id="calibResult" class="result"></div>
-            <table class="queue">
-                <thead>
-                    <tr>
-                        <th style="width:40px">#</th>
-                        <th>필드 라벨</th>
-                        <th style="width:90px">ref_x</th>
-                        <th style="width:90px">ref_y</th>
-                        <th style="width:90px">method</th>
-                        <th>값/키</th>
-                    </tr>
-                </thead>
-                <tbody id="calibBody"></tbody>
-            </table>
         </section>
 
         <!-- 배치 검토 패널: 모든 보고 입력+저장 후 활성화. 1 보고 = 1 페이지 -->

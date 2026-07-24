@@ -262,29 +262,6 @@ function bind() {
             logLine(d.connected ? `✓ ERP 창 발견: ${d.window_title}` : `✗ ${d.error}`, d.connected ? null : "err");
         } catch (e) { logLine(e.message, "err"); }
     };
-    $("btnCalib").onclick = () => showCalibPanel();
-    $("btnCalibClose").onclick = () => $("calibPanel").classList.add("hidden");
-    $("btnCalibReload").onclick = () => loadCalib();
-    $("btnCalibSave").onclick = async () => {
-        const rows = document.querySelectorAll("#calibBody tr");
-        const fields = [];
-        rows.forEach(tr => {
-            fields.push({
-                label: tr.dataset.label,
-                ref_x: parseInt(tr.querySelector("input.ref-x").value, 10),
-                ref_y: parseInt(tr.querySelector("input.ref-y").value, 10),
-            });
-        });
-        const select = $("calibFormSelect");
-        const form_id = select ? select.value : null;
-        try {
-            const d = await api("PUT", "/api/field-mapping", { form_id, fields });
-            setResult("calibResult", d.message, true);
-            logLine(`✓ ${d.message}`);
-        } catch (e) {
-            setResult("calibResult", e.message, false);
-        }
-    };
     $("btnStart").onclick = async () => {
         try { const d = await api("POST", "/api/erp/start", { mode: "pywinauto" }); setResult("runStatus", d.message, true); }
         catch (e) { setResult("runStatus", e.message, false); }
@@ -331,59 +308,6 @@ function bind() {
     const btnNext = $("btnReviewNext");
     if (btnPrev) btnPrev.onclick = () => { _reviewState.page = Math.max(0, _reviewState.page - 1); renderReviewPage(); };
     if (btnNext) btnNext.onclick = () => { _reviewState.page = _reviewState.page + 1; renderReviewPage(); };
-}
-
-// ── 캘리브레이션 패널 ──
-
-async function showCalibPanel() {
-    $("calibPanel").classList.remove("hidden");
-    await loadCalib();
-    $("calibPanel").scrollIntoView({ behavior: "smooth" });
-}
-
-async function loadCalib() {
-    setResult("calibResult", "불러오는 중...", true);
-    const select = $("calibFormSelect");
-    const formId = select ? select.value : "";
-    try {
-        const qs = formId ? `?form_id=${encodeURIComponent(formId)}` : "";
-        const d = await api("GET", "/api/field-mapping" + qs);
-        // 폼 셀렉트 옵션 채우기 (첫 로드 시)
-        if (select && !select.dataset.populated) {
-            select.innerHTML = "";
-            (d.available_forms || []).forEach(fid => {
-                const opt = document.createElement("option");
-                opt.value = fid; opt.textContent = fid;
-                if (fid === d.form_id) opt.selected = true;
-                select.appendChild(opt);
-            });
-            select.dataset.populated = "1";
-            select.onchange = () => loadCalib();
-        }
-        const tbody = $("calibBody");
-        tbody.innerHTML = "";
-        (d.fields || []).forEach(f => {
-            const tr = document.createElement("tr");
-            tr.dataset.label = f.label;
-            const valueDisplay = f.literal ? `literal: "${f.literal}"`
-                                : f.ncr_key ? `key: ${f.ncr_key}`
-                                : "—";
-            tr.innerHTML = `
-                <td>${f.index}</td>
-                <td>${escapeHtml(f.label)}</td>
-                <td><input class="ref-x" type="number" value="${f.ref_x ?? ''}" style="width:80px"></td>
-                <td><input class="ref-y" type="number" value="${f.ref_y ?? ''}" style="width:80px"></td>
-                <td><span class="muted">${escapeHtml(f.method)}</span></td>
-                <td><span class="muted">${escapeHtml(valueDisplay)}</span></td>
-            `;
-            tbody.appendChild(tr);
-        });
-        const cal = d.calibration || {};
-        const ref = cal.ref_resolution ? cal.ref_resolution.join("x") : "1920x1080";
-        setResult("calibResult", `[${d.form_id || "?"}] ${d.fields.length}개 필드 로드됨 (ref: ${ref}, file: ${d.path || "?"})`, true);
-    } catch (e) {
-        setResult("calibResult", e.message, false);
-    }
 }
 
 function escapeHtml(s) {

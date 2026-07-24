@@ -306,12 +306,7 @@ class NCRConnector:
 
         try:
             sequence = self._field_map.build_sequence(report)
-            # 폼 프로파일의 input_mode 로 실행 방식 분기 (기본 coord)
-            input_mode = self._field_mapping.get("input_mode", "coord")
-            if input_mode == "tab":
-                self._execute_sequence_tab_mode(sequence)
-            else:
-                self._execute_sequence_coord_mode(sequence)
+            self._execute_sequence_tab_mode(sequence)
 
             # 그리드(다행)는 단일 품목 스키마에서 미사용
             if self._field_mapping.get("grid_columns"):
@@ -394,32 +389,6 @@ class NCRConnector:
     # ------------------------------------------------------------------
     # 스텝 실행
     # ------------------------------------------------------------------
-
-    def _execute_sequence_coord_mode(self, sequence) -> None:
-        """§3.2 좌표 기반 — 각 스텝이 자기 ref_x/ref_y 로 직접 클릭."""
-        total = len(sequence.steps)
-        for i, step in enumerate(sequence.steps):
-            self._wait_if_paused()
-            if self._is_stopped():
-                self._emit_log("중지 요청 감지 — 입력 중단")
-                raise StoppedByUserError(f"스텝 {i+1}/{total} 진입 전 중지")
-            self._check_focus_lost()
-
-            if step.method == InputMethod.SKIP:
-                self._emit_log(f"[{i+1}/{total}] {step.field_name} → 비어있음, 건너뜀")
-                continue
-
-            if step.method in (InputMethod.POPUP_SEARCH, InputMethod.POPUP_SEARCH_ENTER) and not step.value:
-                self._emit_log(f"[{i+1}/{total}] {step.field_name} → 빈 값, 팝업 건너뜀")
-                continue
-
-            coord_str = f"@ ref({step.ref_x},{step.ref_y})" if step.ref_x is not None else ""
-            self._emit_log(f"[{i+1}/{total}] {step.field_name} = '{step.value}' "
-                           f"({step.method.value}) {coord_str}")
-            self._execute_step_tab_based(step)
-
-            if self._mode == "pywinauto":
-                self._handle_popup_if_any(step)
 
     def _execute_sequence_tab_mode(self, sequence) -> None:
         """Tab 기반 — 첫 필드만 좌표 클릭, 나머지는 Tab 키로 이동.
@@ -504,34 +473,6 @@ class NCRConnector:
         elif step.method == InputMethod.DISMISS_DIALOG:
             wc.dismiss_dialog_if_exists(timeout=float(step.value) if step.value else 2.0)
         time.sleep(step.delay_after)
-
-    def _execute_step_tab_based(self, step: InputStep) -> None:
-        """좌표 클릭으로 필드 포커스 → 메서드별 입력. ref 좌표 없으면 현재 포커스 기준."""
-        wc = self._window_controller
-
-        # § 3.2 좌표 우선 — 필드 박스 중앙 클릭으로 포커스 확정
-        if step.ref_x is not None and step.ref_y is not None and self._mode == "pywinauto":
-            wc.left_click_at(step.ref_x, step.ref_y)
-            time.sleep(0.15)  # 포커스 안정화
-
-        if step.method == InputMethod.TYPE_TEXT:
-            wc.type_into_focused(step.value, step.clear_before)
-            time.sleep(step.delay_after)
-        elif step.method == InputMethod.POPUP_SEARCH:
-            wc.popup_search_and_select(step.value, enter_confirm=False)
-        elif step.method == InputMethod.POPUP_SEARCH_ENTER:
-            wc.popup_search_and_select(step.value, enter_confirm=True)
-        elif step.method == InputMethod.DROPDOWN_SELECT:
-            # UNIERP ComboBox: 클릭으로 열림 → ↓N → Enter로 확정
-            wc.dropdown_select_down(int(step.value))
-            time.sleep(0.1)
-            wc.send_keys("{ENTER}")
-        elif step.method == InputMethod.DISMISS_DIALOG:
-            wc.dismiss_dialog_if_exists(timeout=float(step.value) if step.value else 2.0)
-        elif step.method == InputMethod.CLICK:
-            self._execute_with_retry(step)
-        elif step.method == InputMethod.KEY_PRESS:
-            wc._key_press(step)
 
     def _send_tab(self) -> None:
         if self._mode == "pywinauto":
@@ -701,11 +642,11 @@ class NCRConnector:
         ]
 
     def redo_step(self, report: NcrReport, step_index: int) -> None:
-        """N번 스텝 값을 좌표 기반으로 다시 입력한다.
+        """N번 스텝 값을 현재 포커스 필드에 다시 타이핑한다.
 
-        - ref 좌표 있으면 그 필드로 자동 포커스 + 입력 (사용자 추가 클릭 불필요)
-        - ref 좌표 없으면 현재 포커스 필드에 타이핑
-        - SKIP 스텝은 아무 것도 안 함
+        Tab 모드 전용: 사용자가 UNIERP 폼에서 해당 필드를 직접 클릭한 뒤 호출.
+        Tab 이동은 하지 않음 (포커스는 사용자 관리).
+        SKIP 스텝은 아무 것도 안 함.
         """
         if not self._connected:
             raise RuntimeError("ERP에 연결되지 않았습니다.")
@@ -720,7 +661,7 @@ class NCRConnector:
             self._emit_log(f"[재실행 #{step_index+1}] {step.field_name} → 빈 값")
             return
         self._emit_log(f"[재실행 #{step_index+1}] {step.field_name} = '{step.value}' ({step.method.value})")
-        self._execute_step_tab_based(step)
+        self._type_step_value(step)
         # Tab은 보내지 않음 — 사용자가 포커스를 직접 관리한다
 
     # ------------------------------------------------------------------
