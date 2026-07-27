@@ -55,3 +55,6 @@ APP_URL = "https://code-transformer.replit.app"
 NCR_WEBHOOK_SECRET = "63426c4a968d48b7e23eb1dbe66dc30139b069bae9faf265bd56ecdee61030f1"
 IMAP_HOST = "spam.soosan.co.kr"
 IMAP_PORT = "465"
+
+[userenv.production]
+SEED_TOKEN = "Sq9c79cMeqZ5_rgZabgIO1RWeVCABTQ2"

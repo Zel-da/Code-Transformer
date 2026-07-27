@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { requireAuth, signToken } from "../middleware/requireAuth.js";
 import { z } from "zod";
-import { ImapFlow } from "imapflow";
+import nodemailer from "nodemailer";
 
 const router: IRouter = Router();
 
@@ -18,26 +18,33 @@ const EmailLoginBody = z.object({
   password: z.string().min(1),
 });
 
-async function verifyImapCredentials(email: string, password: string): Promise<boolean> {
-  const host = process.env.IMAP_HOST ?? "spam.soosan.co.kr";
-  const port = parseInt(process.env.IMAP_PORT ?? "465", 10);
-  const secure = port === 993 || port === 465;
+async function verifySmtpCredentials(email: string, password: string): Promise<boolean> {
+  const host = process.env.SMTP_HOST ?? "spam.soosan.co.kr";
+  const port = parseInt(process.env.SMTP_PORT ?? "465", 10);
 
-  const client = new ImapFlow({
+  const transport = nodemailer.createTransport({
     host,
     port,
-    secure,
+    secure: true,
     auth: { user: email, pass: password },
-    logger: false,
     tls: { rejectUnauthorized: false },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
   });
 
   try {
-    await client.connect();
-    await client.logout();
+    await transport.verify();
     return true;
-  } catch {
+  } catch (err: unknown) {
+    // 535 = auth failed (wrong password), anything else = server/network error
+    const msg = err instanceof Error ? err.message : "";
+    if (msg.includes("535") || msg.includes("534") || msg.includes("authenti") || msg.includes("authorization")) {
+      return false; // 명확한 인증 실패
+    }
+    // 연결 오류 등 기타 에러도 false 처리
     return false;
+  } finally {
+    transport.close();
   }
 }
 
@@ -102,7 +109,7 @@ router.post("/auth/email-login", async (req, res): Promise<void> => {
     return;
   }
 
-  const imapOk = await verifyImapCredentials(email, password);
+  const imapOk = await verifySmtpCredentials(email, password);
   if (!imapOk) {
     res.status(401).json({ error: "이메일 또는 비밀번호가 올바르지 않습니다" });
     return;

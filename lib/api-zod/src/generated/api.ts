@@ -548,6 +548,8 @@ export const UpdateReportBody = zod.object({
   qualityOpinion: zod.string().nullish().describe("품질의견"),
   partsCost: zod.number().nullish().describe("부품비"),
   laborCost: zod.number().nullish().describe("공임비 (QC 입력)"),
+  partCode: zod.string().nullish().describe("부품코드"),
+  excludeFromErp: zod.boolean().optional().describe("ERP 동기화 제외 여부"),
 });
 
 export const UpdateReportResponse = zod.object({

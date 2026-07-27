@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { createHmac } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { eq } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 import { db, usersTable, nonConformityReportsTable } from "@workspace/db";
 import { logger as rootLogger } from "../lib/logger.js";
 import { requireAuth } from "../middleware/requireAuth.js";
@@ -100,6 +101,67 @@ router.post("/dev/simulate-ncr-button", requireAuth, async (req, res): Promise<v
       ? `✅ ${from} → ${to} 전이 성공`
       : `⚠️ 전이되지 않았습니다. 현재 상태: ${from} — 권한 또는 매트릭스를 확인하세요.`,
   });
+});
+
+/**
+ * POST /dev/seed-users
+ * 특장사업본부 인원을 DB에 등록한다 (없는 계정만).
+ * Authorization: Bearer <SEED_TOKEN> 으로 보호된다.
+ */
+router.post("/dev/seed-users", async (req, res): Promise<void> => {
+  const token = process.env.SEED_TOKEN;
+  if (!token) {
+    res.status(503).json({ error: "SEED_TOKEN 미설정" });
+    return;
+  }
+  const provided = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+  try {
+    if (!timingSafeEqual(Buffer.from(token), Buffer.from(provided))) throw new Error();
+  } catch {
+    res.status(401).json({ error: "인증 실패" });
+    return;
+  }
+
+  const USERS = [
+    { username: "iloveji0",     email: "iloveji0@soosan.co.kr",     displayName: "문상보", deptCd: "A4CSH21100000", role: "worker" as const },
+    { username: "493086",       email: "493086@soosan.co.kr",       displayName: "최용규", deptCd: "A4CSH21100000", role: "worker" as const },
+    { username: "azecom",       email: "azecom@soosan.co.kr",       displayName: "김영준", deptCd: "A4CSH24103000", role: "worker" as const },
+    { username: "hn.yoon",      email: "hn.yoon@soosan.co.kr",      displayName: "윤홍노", deptCd: "A4CSH24103000", role: "worker" as const },
+    { username: "hr.kim",       email: "hr.kim@soosan.co.kr",       displayName: "김홍래", deptCd: "A4CSH24103000", role: "worker" as const },
+    { username: "lds124k",      email: "lds124k@soosan.co.kr",      displayName: "이대성", deptCd: "A4CSH24103000", role: "worker" as const },
+    { username: "wj.lee",       email: "wj.lee@soosan.co.kr",       displayName: "이원진", deptCd: "A4CSH24103000", role: "worker" as const },
+    { username: "jh.choi3",     email: "jh.choi3@soosan.co.kr",     displayName: "최지혜", deptCd: "A4CSH24103000", role: "worker" as const },
+    { username: "sw.lee",       email: "sw.lee@soosan.co.kr",       displayName: "이세원", deptCd: "A4CSH24104000", role: "worker" as const },
+    { username: "dlqudgns2504", email: "dlqudgns2504@soosan.co.kr", displayName: "이병훈", deptCd: "A4CSH24104000", role: "worker" as const },
+    { username: "yoonsuk",      email: "yoonsuk@soosan.co.kr",      displayName: "이윤석", deptCd: "A4CSH24104000", role: "worker" as const },
+    { username: "hk.lee",       email: "hk.lee@soosan.co.kr",       displayName: "이헌권", deptCd: "A4CSH24104000", role: "worker" as const },
+  ];
+
+  const DEFAULT_PW = "soosan2024!";
+  const passwordHash = await bcrypt.hash(DEFAULT_PW, 10);
+
+  const results: { username: string; status: string }[] = [];
+
+  for (const u of USERS) {
+    const [existing] = await db.select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.email, u.email));
+
+    if (existing) {
+      results.push({ username: u.username, status: "skipped (already exists)" });
+      continue;
+    }
+
+    try {
+      await db.insert(usersTable).values({ ...u, passwordHash, isActive: true, notifyLevel: "to" });
+      results.push({ username: u.username, status: "created" });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      results.push({ username: u.username, status: `error: ${msg}` });
+    }
+  }
+
+  res.json({ ok: true, results });
 });
 
 export default router;

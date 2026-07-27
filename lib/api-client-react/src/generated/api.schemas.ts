@@ -559,6 +559,13 @@ export interface UpdateReportBody {
    * @nullable
    */
   laborCost?: number | null;
+  /**
+   * 부품코드
+   * @nullable
+   */
+  partCode?: string | null;
+  /** ERP 동기화 제외 여부 */
+  excludeFromErp?: boolean;
 }
 
 /**

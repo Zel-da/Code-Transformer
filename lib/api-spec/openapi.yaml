@@ -1759,6 +1759,12 @@ components:
         laborCost:
           type: ["integer", "null"]
           description: "공임비 (QC 입력)"
+        partCode:
+          type: ["string", "null"]
+          description: "부품코드"
+        excludeFromErp:
+          type: boolean
+          description: "ERP 동기화 제외 여부"
 
     QcAnalysisBody:
       type: object
