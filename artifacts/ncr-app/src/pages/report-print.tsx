@@ -464,27 +464,42 @@ export default function ReportPrintPage() {
             <div style={{ textAlign: "center", padding: "24px", background: "#f0fdf4", borderRadius: "8px", border: "1.5px solid #bbf7d0" }}>
               <p style={{ fontSize: "12px", color: "#16a34a", fontWeight: 700 }}>장기미결 건이 없습니다 ✓</p>
             </div>
-          ) : (
-            <>
-              <div style={{ background: "#fff5f5", border: "1.5px solid #fecaca", borderRadius: "8px", padding: "8px 12px", marginBottom: "8px" }}>
-                <span style={{ fontSize: "11px", color: "#dc2626", fontWeight: 700 }}>
-                  ⚠ {longPendingList.length}건의 보고서가 5일 이상 미결 상태입니다. 즉각적인 조치가 필요합니다.
-                </span>
+          ) : (() => {
+            const PAGE_SIZE = 30;
+            const chunks: typeof longPendingList[] = [];
+            for (let i = 0; i < longPendingList.length; i += PAGE_SIZE) {
+              chunks.push(longPendingList.slice(i, i + PAGE_SIZE));
+            }
+            return chunks.map((chunk, ci) => (
+              <div key={ci}>
+                {ci === 0 && (
+                  <div style={{ background: "#fff5f5", border: "1.5px solid #fecaca", borderRadius: "8px", padding: "8px 12px", marginBottom: "8px" }}>
+                    <span style={{ fontSize: "11px", color: "#dc2626", fontWeight: 700 }}>
+                      ⚠ {longPendingList.length}건의 보고서가 5일 이상 미결 상태입니다. 즉각적인 조치가 필요합니다.
+                    </span>
+                  </div>
+                )}
+                {ci > 0 && (
+                  <div style={{ fontSize: "10px", color: "#888", marginBottom: "6px" }}>
+                    ({ci * PAGE_SIZE + 1}–{Math.min((ci + 1) * PAGE_SIZE, longPendingList.length)}번 / 총 {longPendingList.length}건)
+                  </div>
+                )}
+                <DataTable
+                  headers={["No", "NCR 번호", "품목코드", "공정명", "발생일", "처리상태", "경과일"]}
+                  rows={chunk.map((r, i) => [
+                    ci * PAGE_SIZE + i + 1,
+                    r.ncrNumber ?? `#${r.id}`,
+                    r.itemCode,
+                    r.processName,
+                    r.occurrenceDate ? format(new Date(r.occurrenceDate), "yyyy-MM-dd") : "-",
+                    QC_LABELS[r.qcStatus ?? ""] ?? r.qcStatus ?? "-",
+                    `${r.daysElapsed}일`,
+                  ])}
+                />
+                {ci < chunks.length - 1 && <PageBreak />}
               </div>
-              <DataTable
-                headers={["No", "NCR 번호", "품목코드", "공정명", "발생일", "처리상태", "경과일"]}
-                rows={longPendingList.map((r, i) => [
-                  i + 1,
-                  r.ncrNumber ?? `#${r.id}`,
-                  r.itemCode,
-                  r.processName,
-                  r.occurrenceDate ? format(new Date(r.occurrenceDate), "yyyy-MM-dd") : "-",
-                  QC_LABELS[r.qcStatus ?? ""] ?? r.qcStatus ?? "-",
-                  `${r.daysElapsed}일`,
-                ])}
-              />
-            </>
-          )}
+            ));
+          })()}
 
           <div style={{ marginTop: "auto", paddingTop: "20px", borderTop: "1px solid #e5e7eb" }}>
             <p style={{ fontSize: "9px", color: "#aaa", textAlign: "center" }}>

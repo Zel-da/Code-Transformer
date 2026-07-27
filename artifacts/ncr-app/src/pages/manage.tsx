@@ -55,6 +55,9 @@ import {
   Save,
   Send,
   Mail,
+  Printer,
+  FileText,
+  FileBarChart2,
 } from "lucide-react";
 
 function StatCard({
@@ -224,7 +227,7 @@ export default function ManagePage() {
     return () => { _onUnauthorized = null; };
   }, [logout]);
 
-  const [activeTab, setActiveTab] = useState<"reports" | "users" | "settings" | "simulator">("reports");
+  const [activeTab, setActiveTab] = useState<"reports" | "users" | "settings" | "simulator" | "print">("reports");
 
   const [page, setPage] = useState(1);
   const [editingReport, setEditingReport] = useState<Report | null>(null);
@@ -640,6 +643,7 @@ export default function ManagePage() {
     { key: "users" as const, label: "사용자" },
     { key: "settings" as const, label: "설정" },
     { key: "simulator" as const, label: "🧪 시뮬레이터" },
+    { key: "print" as const, label: "보고서 출력" },
   ];
 
   return (
@@ -1315,6 +1319,101 @@ export default function ManagePage() {
             </div>
           </div>
         )}
+
+        {/* ── 보고서 출력 탭 ── */}
+        {activeTab === "print" && (() => {
+          const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+          return (
+            <div className="space-y-5">
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 flex items-start gap-2.5">
+                <Printer className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                <p className="text-[12px] text-blue-700 leading-relaxed">
+                  보고서는 새 탭에서 열립니다. 브라우저 인쇄(Ctrl+P / ⌘P)로 PDF 저장 또는 출력하세요.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* 보고용 */}
+                <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+                  <div className="px-5 py-4 border-b border-[#F2F4F6] flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-[#1e3a5f] flex items-center justify-center shrink-0">
+                      <FileText className="h-4.5 w-4.5 text-white" style={{ width: 18, height: 18 }} />
+                    </div>
+                    <div>
+                      <h2 className="font-semibold text-[14px] text-[#191F28]">경영진 보고용</h2>
+                      <p className="text-[11px] text-[#8B95A1]">Management Report</p>
+                    </div>
+                  </div>
+                  <div className="px-5 py-4 space-y-3">
+                    <ul className="space-y-1.5">
+                      {[
+                        "핵심 KPI 지표 (전체·접수·조치중·판정완료·장기미결)",
+                        "처리상태별 현황 (진행률 바 + 파이차트)",
+                        "라인별 불량 건수 상위 10개",
+                        "업체 WORST 5 (불량 건수 기준)",
+                        "월별 발생 추이 (최근 12개월)",
+                        "종합 의견 및 향후 조치 계획 (수기 서명란)",
+                      ].map((item) => (
+                        <li key={item} className="flex items-start gap-2 text-[12px] text-[#4E5968]">
+                          <span className="text-[#1e3a5f] font-bold shrink-0 mt-0.5">·</span>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="pt-1 text-[11px] text-[#8B95A1]">A4 세로 · 3페이지</div>
+                    <button
+                      onClick={() => window.open(`${base}/report?type=management`, "_blank")}
+                      className="w-full h-10 rounded-xl bg-[#1e3a5f] text-white text-[13px] font-semibold flex items-center justify-center gap-2 hover:bg-[#162c4a] transition-colors"
+                    >
+                      <Printer className="h-4 w-4" />
+                      보고용 출력
+                    </button>
+                  </div>
+                </div>
+
+                {/* 분석용 */}
+                <div className="bg-white rounded-2xl border border-[#F2F4F6] overflow-hidden">
+                  <div className="px-5 py-4 border-b border-[#F2F4F6] flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-[#6d28d9] flex items-center justify-center shrink-0">
+                      <FileBarChart2 className="h-4.5 w-4.5 text-white" style={{ width: 18, height: 18 }} />
+                    </div>
+                    <div>
+                      <h2 className="font-semibold text-[14px] text-[#191F28]">품질팀 분석용</h2>
+                      <p className="text-[11px] text-[#8B95A1]">Analysis Report</p>
+                    </div>
+                  </div>
+                  <div className="px-5 py-4 space-y-3">
+                    <ul className="space-y-1.5">
+                      {[
+                        "핵심 KPI 지표 (전체·접수·조치중·판정완료·장기미결)",
+                        "처리상태별 현황 (진행률 바 + 파이차트)",
+                        "라인별 불량 건수 상위 15개",
+                        "업체 WORST 10 (불량 건수 기준)",
+                        "월별 발생 추이 + 전월 대비 증감 테이블",
+                        "유형별 불량 현황 (바차트 + 비율 표)",
+                        "귀책부서별 현황 (바차트 + 비율 표)",
+                        "장기미결 현황 상세 목록 (5일↑ 전건)",
+                      ].map((item) => (
+                        <li key={item} className="flex items-start gap-2 text-[12px] text-[#4E5968]">
+                          <span className="text-[#6d28d9] font-bold shrink-0 mt-0.5">·</span>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="pt-1 text-[11px] text-[#8B95A1]">A4 세로 · 4페이지</div>
+                    <button
+                      onClick={() => window.open(`${base}/report?type=analysis`, "_blank")}
+                      className="w-full h-10 rounded-xl bg-[#6d28d9] text-white text-[13px] font-semibold flex items-center justify-center gap-2 hover:bg-[#5b21b6] transition-colors"
+                    >
+                      <Printer className="h-4 w-4" />
+                      분석용 출력
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
       </div>
 
