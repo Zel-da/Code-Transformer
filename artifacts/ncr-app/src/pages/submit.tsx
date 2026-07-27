@@ -718,22 +718,6 @@ export default function SubmitReport() {
               )}
             />
 
-            {/* 부품코드 */}
-            <FormField
-              control={form.control}
-              name="partCode"
-              render={({ field }) => (
-                <FieldRow label="부품코드" optional>
-                  <input
-                    type="text"
-                    placeholder="부품코드를 입력하세요"
-                    className="w-full text-[15px] text-[#191F28] placeholder-[#BEC5CC] outline-none bg-transparent font-medium"
-                    {...field}
-                  />
-                </FieldRow>
-              )}
-            />
-
             <FormField
               control={form.control}
               name="modelName"
