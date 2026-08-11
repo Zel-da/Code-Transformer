@@ -123,18 +123,30 @@ router.post("/dev/seed-users", async (req, res): Promise<void> => {
   }
 
   const USERS = [
-    { username: "iloveji0",     email: "iloveji0@soosan.co.kr",     displayName: "문상보", deptCd: "A4CSH21100000", role: "worker" as const },
-    { username: "493086",       email: "493086@soosan.co.kr",       displayName: "최용규", deptCd: "A4CSH21100000", role: "worker" as const },
-    { username: "azecom",       email: "azecom@soosan.co.kr",       displayName: "김영준", deptCd: "A4CSH24103000", role: "worker" as const },
-    { username: "hn.yoon",      email: "hn.yoon@soosan.co.kr",      displayName: "윤홍노", deptCd: "A4CSH24103000", role: "worker" as const },
-    { username: "hr.kim",       email: "hr.kim@soosan.co.kr",       displayName: "김홍래", deptCd: "A4CSH24103000", role: "worker" as const },
-    { username: "lds124k",      email: "lds124k@soosan.co.kr",      displayName: "이대성", deptCd: "A4CSH24103000", role: "worker" as const },
-    { username: "wj.lee",       email: "wj.lee@soosan.co.kr",       displayName: "이원진", deptCd: "A4CSH24103000", role: "worker" as const },
-    { username: "jh.choi3",     email: "jh.choi3@soosan.co.kr",     displayName: "최지혜", deptCd: "A4CSH24103000", role: "worker" as const },
-    { username: "sw.lee",       email: "sw.lee@soosan.co.kr",       displayName: "이세원", deptCd: "A4CSH24104000", role: "worker" as const },
-    { username: "dlqudgns2504", email: "dlqudgns2504@soosan.co.kr", displayName: "이병훈", deptCd: "A4CSH24104000", role: "worker" as const },
-    { username: "yoonsuk",      email: "yoonsuk@soosan.co.kr",      displayName: "이윤석", deptCd: "A4CSH24104000", role: "worker" as const },
-    { username: "hk.lee",       email: "hk.lee@soosan.co.kr",       displayName: "이헌권", deptCd: "A4CSH24104000", role: "worker" as const },
+    { username: "iloveji0",     email: "iloveji0@soosan.co.kr",     displayName: "문상보",  deptCd: "A4CSH21100000", role: "worker" as const },
+    { username: "493086",       email: "493086@soosan.co.kr",       displayName: "최용규",  deptCd: "A4CSH21100000", role: "worker" as const },
+    { username: "azecom",       email: "azecom@soosan.co.kr",       displayName: "김영준",  deptCd: "A4CSH24103000", role: "worker" as const },
+    { username: "hn.yoon",      email: "hn.yoon@soosan.co.kr",      displayName: "윤홍노",  deptCd: "A4CSH24103000", role: "worker" as const },
+    { username: "hr.kim",       email: "hr.kim@soosan.co.kr",       displayName: "김홍래",  deptCd: "A4CSH24103000", role: "worker" as const },
+    { username: "lds124k",      email: "lds124k@soosan.co.kr",      displayName: "이대성",  deptCd: "A4CSH24103000", role: "worker" as const },
+    { username: "wj.lee",       email: "wj.lee@soosan.co.kr",       displayName: "이원진",  deptCd: "A4CSH24103000", role: "worker" as const },
+    { username: "jh.choi3",     email: "jh.choi3@soosan.co.kr",     displayName: "최지혜",  deptCd: "A4CSH24103000", role: "worker" as const },
+    { username: "sw.lee",       email: "sw.lee@soosan.co.kr",       displayName: "이세원",  deptCd: "A4CSH24104000", role: "worker" as const },
+    { username: "dlqudgns2504", email: "dlqudgns2504@soosan.co.kr", displayName: "이병훈",  deptCd: "A4CSH24104000", role: "worker" as const },
+    { username: "yoonsuk",      email: "yoonsuk@soosan.co.kr",      displayName: "이윤석",  deptCd: "A4CSH24104000", role: "worker" as const },
+    { username: "hk.lee",       email: "hk.lee@soosan.co.kr",       displayName: "이헌권",  deptCd: "A4CSH24104000", role: "worker" as const },
+    // 아산공장 특장개발팀 / 품질관리팀
+    { username: "prh78",        email: "prh78@soosan.co.kr",        displayName: "박래현",  deptCd: null, role: "worker" as const },
+    { username: "sh.park",      email: "sh.park@soosan.co.kr",      displayName: "박상현",  deptCd: null, role: "worker" as const },
+    { username: "jh.yun",       email: "jh.yun@soosan.co.kr",       displayName: "윤준혁",  deptCd: null, role: "worker" as const },
+    { username: "ku.lee",       email: "ku.lee@soosan.co.kr",       displayName: "이강욱",  deptCd: null, role: "worker" as const },
+    { username: "jw.lee",       email: "jw.lee@soosan.co.kr",       displayName: "이종원",  deptCd: null, role: "worker" as const },
+    { username: "gca2020",      email: "gca2020@soosan.co.kr",      displayName: "홍경남",  deptCd: null, role: "worker" as const },
+    { username: "khj",          email: "khj@soosan.co.kr",          displayName: "김회중",  deptCd: null, role: "worker" as const },
+    { username: "lyu7786",      email: "lyu7786@soosan.co.kr",      displayName: "류재성",  deptCd: null, role: "worker" as const },
+    { username: "psy0704",      email: "psy0704@soosan.co.kr",      displayName: "박성엽",  deptCd: null, role: "worker" as const },
+    { username: "bak333kr",     email: "bak333kr@soosan.co.kr",     displayName: "백승기",  deptCd: null, role: "worker" as const },
+    { username: "yjhun",        email: "yjhun@soosan.co.kr",        displayName: "이정훈",  deptCd: null, role: "worker" as const },
   ];
 
   const DEFAULT_PW = "soosan2024!";
