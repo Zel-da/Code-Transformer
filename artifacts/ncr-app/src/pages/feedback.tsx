@@ -338,7 +338,7 @@ function FeedbackFormModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg w-full">
+      <DialogContent className="max-w-lg w-full rounded-2xl bg-white text-[#191F28] border border-[#F2F4F6]">
         <DialogHeader>
           <DialogTitle>{existing ? "피드백 수정" : "피드백 / 건의사항 작성"}</DialogTitle>
         </DialogHeader>
@@ -499,7 +499,7 @@ function FeedbackDetailDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="max-w-2xl w-full max-h-[90vh] flex flex-col p-0">
+        <DialogContent className="max-w-2xl w-full max-h-[90vh] flex flex-col p-0 rounded-2xl bg-white text-[#191F28] border border-[#F2F4F6]">
           {isLoading || !detail ? (
             <div className="flex items-center justify-center h-64">
               <RefreshCw className="h-5 w-5 animate-spin text-[#8B95A1]" />
@@ -684,7 +684,7 @@ function FeedbackDetailDialog({
 
       {/* Delete confirm */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl bg-white text-[#191F28] border border-[#F2F4F6]">
           <AlertDialogHeader>
             <AlertDialogTitle>피드백 삭제</AlertDialogTitle>
             <AlertDialogDescription>
