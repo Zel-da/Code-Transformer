@@ -58,6 +58,9 @@ import {
   Printer,
   FileText,
   FileBarChart2,
+  SlidersHorizontal,
+  X,
+  Check,
 } from "lucide-react";
 
 function StatCard({
@@ -254,6 +257,9 @@ export default function ManagePage() {
   const [showResetPw, setShowResetPw] = useState(false);
   const [resetPwSaving, setResetPwSaving] = useState(false);
   const [togglingActiveId, setTogglingActiveId] = useState<number | null>(null);
+  const [inlineEditingId, setInlineEditingId] = useState<number | null>(null);
+  const [inlineEdits, setInlineEdits] = useState<{ role: string; factory: string; deptCd: string; processName: string }>({ role: "", factory: "", deptCd: "", processName: "" });
+  const [inlineSaving, setInlineSaving] = useState(false);
 
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [auditLogsLoading, setAuditLogsLoading] = useState(false);
@@ -449,6 +455,41 @@ export default function ManagePage() {
     });
     setShowPw(false);
     setShowUserDialog(true);
+  };
+
+  const openInlineEdit = (u: UserProfile) => {
+    setInlineEditingId(u.id);
+    setInlineEdits({
+      role: u.role,
+      factory: u.factory ?? "",
+      deptCd: u.deptCd ?? "",
+      processName: u.processName ?? "",
+    });
+  };
+
+  const handleInlineSave = async (userId: number) => {
+    setInlineSaving(true);
+    try {
+      const plantCd = FACTORY_OPTIONS_USER.find(f => f.value === inlineEdits.factory)?.plantCd ?? null;
+      await apiJson(`${API}/users/${userId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          role: inlineEdits.role || undefined,
+          factory: inlineEdits.factory || null,
+          plantCd,
+          deptCd: inlineEdits.deptCd || null,
+          processName: inlineEdits.processName || null,
+        }),
+      });
+      toast({ title: "저장되었습니다" });
+      setInlineEditingId(null);
+      fetchUsers();
+      fetchAuditLogs();
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "저장 실패", variant: "destructive" });
+    } finally {
+      setInlineSaving(false);
+    }
   };
 
   const isMobile = useIsMobile();
@@ -890,83 +931,169 @@ export default function ManagePage() {
                   <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">등록된 계정이 없습니다</div>
                 ) : (
                   <div className="divide-y divide-[#F2F4F6]">
-                    {users.map((u) => (
-                      <div key={u.id} className={`flex items-center gap-3 px-5 py-3 ${!u.isActive ? "opacity-50" : ""}`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0 ${u.isActive ? "bg-[#F2F4F6] text-[#4E5968]" : "bg-gray-100 text-gray-400"}`}>
-                          {u.displayName.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`text-[14px] font-semibold ${u.isActive ? "text-[#191F28]" : "text-[#8B95A1]"}`}>{u.displayName}</span>
-                            <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${u.role === "admin" ? "bg-[#1A1A1A] text-white" : u.role === "reviewer" ? "bg-amber-100 text-amber-700" : u.role === "approver" ? "bg-teal-100 text-teal-700" : u.role === "collaborator" ? "bg-purple-100 text-purple-700" : "bg-[#F2F4F6] text-[#4E5968]"}`}>
-                              {ROLE_LABELS[u.role] ?? u.role}
-                            </span>
-                            {u.notifyLevel === "cc" && (
-                              <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-sky-50 text-sky-600 border border-sky-200">참조</span>
-                            )}
-                            {u.notifyLevel === "none" && (
-                              <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-[#F2F4F6] text-[#BEC5CC] line-through">수신 안 함</span>
-                            )}
-                            {u.email ? (
-                              <span title={u.email} className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center gap-0.5">
-                                <Mail className="h-2.5 w-2.5" />DM
-                              </span>
-                            ) : (
-                              <span title="이메일 미등록 — DM 수신 불가" className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-[#F2F4F6] text-[#BEC5CC] flex items-center gap-0.5">
-                                <Mail className="h-2.5 w-2.5" />미등록
-                              </span>
-                            )}
-                            {!u.isActive && (
-                              <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-red-100 text-red-500">
-                                비활성
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[12px] text-[#8B95A1] mt-0.5">
-                            @{u.username}
-                            {u.factory && <span className="ml-2">{u.factory}</span>}
-                            {u.processName && <span className="ml-1">· {u.processName}</span>}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            onClick={() => openEditUser(u)}
-                            title="계정 수정"
-                            className="p-1.5 rounded-lg hover:bg-[#F2F4F6] text-[#8B95A1] hover:text-[#191F28] transition-colors"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => { setResetPwUser(u); setResetPwValue(""); setShowResetPw(false); }}
-                            title="비밀번호 초기화"
-                            className="p-1.5 rounded-lg hover:bg-amber-50 text-[#8B95A1] hover:text-amber-600 transition-colors"
-                          >
-                            <KeyRound className="h-3.5 w-3.5" />
-                          </button>
-                          {currentUser?.id !== u.id && (
-                            <>
+                    {users.map((u) => {
+                      const isInlineEditing = inlineEditingId === u.id;
+                      return (
+                        <div key={u.id} className={`px-5 py-3 ${!u.isActive ? "opacity-50" : ""}`}>
+                          {/* ── 메인 행 ── */}
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0 ${u.isActive ? "bg-[#F2F4F6] text-[#4E5968]" : "bg-gray-100 text-gray-400"}`}>
+                              {u.displayName.charAt(0)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`text-[14px] font-semibold ${u.isActive ? "text-[#191F28]" : "text-[#8B95A1]"}`}>{u.displayName}</span>
+                                <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${u.role === "admin" ? "bg-[#1A1A1A] text-white" : u.role === "reviewer" ? "bg-amber-100 text-amber-700" : u.role === "approver" ? "bg-teal-100 text-teal-700" : u.role === "collaborator" ? "bg-purple-100 text-purple-700" : "bg-[#F2F4F6] text-[#4E5968]"}`}>
+                                  {ROLE_LABELS[u.role] ?? u.role}
+                                </span>
+                                {u.notifyLevel === "cc" && (
+                                  <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-sky-50 text-sky-600 border border-sky-200">참조</span>
+                                )}
+                                {u.notifyLevel === "none" && (
+                                  <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-[#F2F4F6] text-[#BEC5CC] line-through">수신 안 함</span>
+                                )}
+                                {u.email ? (
+                                  <span title={u.email} className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center gap-0.5">
+                                    <Mail className="h-2.5 w-2.5" />DM
+                                  </span>
+                                ) : (
+                                  <span title="이메일 미등록 — DM 수신 불가" className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-[#F2F4F6] text-[#BEC5CC] flex items-center gap-0.5">
+                                    <Mail className="h-2.5 w-2.5" />미등록
+                                  </span>
+                                )}
+                                {!u.isActive && (
+                                  <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-red-100 text-red-500">비활성</span>
+                                )}
+                              </div>
+                              <div className="text-[12px] text-[#8B95A1] mt-0.5">
+                                @{u.username}
+                                {u.factory && <span className="ml-2">{u.factory}</span>}
+                                {u.deptCd && <span className="ml-1">· {u.deptCd}</span>}
+                                {u.processName && <span className="ml-1">· {u.processName}</span>}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
                               <button
-                                onClick={() => handleToggleActive(u)}
-                                disabled={togglingActiveId === u.id}
-                                title={u.isActive ? "계정 비활성화" : "계정 활성화"}
-                                className={`p-1.5 rounded-lg transition-colors ${u.isActive ? "hover:bg-orange-50 text-[#8B95A1] hover:text-orange-500" : "hover:bg-emerald-50 text-[#8B95A1] hover:text-emerald-600"}`}
+                                onClick={() => isInlineEditing ? setInlineEditingId(null) : openInlineEdit(u)}
+                                title="빠른 수정 (권한·공장·팀코드·공정)"
+                                className={`p-1.5 rounded-lg transition-colors ${isInlineEditing ? "bg-[#1A1A1A] text-white" : "hover:bg-[#F2F4F6] text-[#8B95A1] hover:text-[#191F28]"}`}
                               >
-                                {togglingActiveId === u.id
-                                  ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                                  : <Power className="h-3.5 w-3.5" />}
+                                <SlidersHorizontal className="h-3.5 w-3.5" />
                               </button>
                               <button
-                                onClick={() => setDeletingUserId(u.id)}
-                                title="계정 삭제"
-                                className="p-1.5 rounded-lg hover:bg-red-50 text-[#8B95A1] hover:text-red-500 transition-colors"
+                                onClick={() => openEditUser(u)}
+                                title="전체 수정"
+                                className="p-1.5 rounded-lg hover:bg-[#F2F4F6] text-[#8B95A1] hover:text-[#191F28] transition-colors"
                               >
-                                <Trash2 className="h-3.5 w-3.5" />
+                                <Pencil className="h-3.5 w-3.5" />
                               </button>
-                            </>
+                              <button
+                                onClick={() => { setResetPwUser(u); setResetPwValue(""); setShowResetPw(false); }}
+                                title="비밀번호 초기화"
+                                className="p-1.5 rounded-lg hover:bg-amber-50 text-[#8B95A1] hover:text-amber-600 transition-colors"
+                              >
+                                <KeyRound className="h-3.5 w-3.5" />
+                              </button>
+                              {currentUser?.id !== u.id && (
+                                <>
+                                  <button
+                                    onClick={() => handleToggleActive(u)}
+                                    disabled={togglingActiveId === u.id}
+                                    title={u.isActive ? "계정 비활성화" : "계정 활성화"}
+                                    className={`p-1.5 rounded-lg transition-colors ${u.isActive ? "hover:bg-orange-50 text-[#8B95A1] hover:text-orange-500" : "hover:bg-emerald-50 text-[#8B95A1] hover:text-emerald-600"}`}
+                                  >
+                                    {togglingActiveId === u.id
+                                      ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                      : <Power className="h-3.5 w-3.5" />}
+                                  </button>
+                                  <button
+                                    onClick={() => setDeletingUserId(u.id)}
+                                    title="계정 삭제"
+                                    className="p-1.5 rounded-lg hover:bg-red-50 text-[#8B95A1] hover:text-red-500 transition-colors"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* ── 인라인 편집 패널 ── */}
+                          {isInlineEditing && (
+                            <div className="mt-2.5 pt-2.5 border-t border-[#F2F4F6]">
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                {/* 권한 */}
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-semibold text-[#8B95A1] uppercase tracking-wide">권한</label>
+                                  <select
+                                    value={inlineEdits.role}
+                                    onChange={(e) => setInlineEdits(prev => ({ ...prev, role: e.target.value }))}
+                                    className="w-full h-8 rounded-lg text-[12px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] px-2 outline-none focus:border-[#1A1A1A] transition-colors"
+                                  >
+                                    {Object.entries(ROLE_LABELS).map(([val, label]) => (
+                                      <option key={val} value={val}>{label}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                {/* 공장 */}
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-semibold text-[#8B95A1] uppercase tracking-wide">공장</label>
+                                  <select
+                                    value={inlineEdits.factory}
+                                    onChange={(e) => setInlineEdits(prev => ({ ...prev, factory: e.target.value }))}
+                                    className="w-full h-8 rounded-lg text-[12px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] px-2 outline-none focus:border-[#1A1A1A] transition-colors"
+                                  >
+                                    <option value="">미지정</option>
+                                    {FACTORY_OPTIONS_USER.map((f) => (
+                                      <option key={f.value} value={f.value}>{f.label}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                {/* 팀코드 */}
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-semibold text-[#8B95A1] uppercase tracking-wide">팀코드</label>
+                                  <input
+                                    type="text"
+                                    value={inlineEdits.deptCd}
+                                    onChange={(e) => setInlineEdits(prev => ({ ...prev, deptCd: e.target.value }))}
+                                    placeholder="A4CSH..."
+                                    className="w-full h-8 rounded-lg text-[12px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] px-2 outline-none focus:border-[#1A1A1A] transition-colors placeholder:text-[#BEC5CC] font-mono"
+                                  />
+                                </div>
+                                {/* 공정명 */}
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-semibold text-[#8B95A1] uppercase tracking-wide">공정명</label>
+                                  <input
+                                    type="text"
+                                    value={inlineEdits.processName}
+                                    onChange={(e) => setInlineEdits(prev => ({ ...prev, processName: e.target.value }))}
+                                    placeholder="예: 조립 1라인"
+                                    className="w-full h-8 rounded-lg text-[12px] text-[#191F28] bg-[#F8F9FA] border border-[#E5E8EB] px-2 outline-none focus:border-[#1A1A1A] transition-colors placeholder:text-[#BEC5CC]"
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 mt-2">
+                                <button
+                                  onClick={() => handleInlineSave(u.id)}
+                                  disabled={inlineSaving}
+                                  className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-[#1A1A1A] text-white text-[12px] font-semibold disabled:opacity-50 hover:bg-[#333] transition-colors"
+                                >
+                                  {inlineSaving ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                  저장
+                                </button>
+                                <button
+                                  onClick={() => setInlineEditingId(null)}
+                                  className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-[#F2F4F6] text-[#4E5968] text-[12px] font-semibold hover:bg-[#E5E8EB] transition-colors"
+                                >
+                                  <X className="h-3 w-3" />
+                                  취소
+                                </button>
+                              </div>
+                            </div>
                           )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

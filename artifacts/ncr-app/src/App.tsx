@@ -14,6 +14,7 @@ import QcPage from "@/pages/qc";
 import QcListPage from "@/pages/qc-list";
 import GuidePage from "@/pages/guide";
 import ReportPrintPage from "@/pages/report-print";
+import FeedbackPage from "@/pages/feedback";
 import { ReactNode } from "react";
 
 const queryClient = new QueryClient();
@@ -67,6 +68,9 @@ function Router() {
       </Route>
       <Route path="/report">
         <RequireAuth><ReportPrintPage /></RequireAuth>
+      </Route>
+      <Route path="/feedback">
+        <RequireAuth><FeedbackPage /></RequireAuth>
       </Route>
       <Route component={NotFound} />
     </Switch>

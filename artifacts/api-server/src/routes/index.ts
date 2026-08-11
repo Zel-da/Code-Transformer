@@ -12,6 +12,7 @@ import erpRouter from "./erp";
 import commentsRouter from "./comments";
 import webhooksRouter from "./webhooks";
 import devRouter from "./dev";
+import feedbackRouter from "./feedback";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(erpRouter);
 router.use(commentsRouter);
 router.use(webhooksRouter);
 router.use(devRouter);
+router.use(feedbackRouter);
 
 export default router;

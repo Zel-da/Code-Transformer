@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { FileWarning, ClipboardList, Settings2, Download, Bell, X, LogOut, User, BookOpen, FlaskConical, HelpCircle, Play } from "lucide-react";
+import { FileWarning, ClipboardList, Settings2, Download, Bell, X, LogOut, User, BookOpen, FlaskConical, HelpCircle, Play, MessageSquare } from "lucide-react";
 import { usePWAInstall, useNotifications } from "@/hooks/usePWA";
 import { useAuth } from "@/contexts/auth";
 import { useTour } from "@/contexts/tour";
@@ -52,11 +52,13 @@ export function Layout({ children }: { children: ReactNode }) {
         { href: "/submit", label: "부적합 등록" },
         { href: "/qc", label: "QC 등록" },
         { href: "/manage", label: "관리자 패널" },
+        { href: "/feedback", label: "피드백" },
         { href: "/guide", label: "도움말" },
       ]
     : [
         { href: "/ledger", label: "관리대장" },
         { href: "/submit", label: "부적합 등록" },
+        { href: "/feedback", label: "피드백" },
         { href: "/guide", label: "도움말" },
       ];
 
@@ -66,11 +68,13 @@ export function Layout({ children }: { children: ReactNode }) {
         { href: "/submit", label: "부적합 등록", Icon: FileWarning },
         { href: "/qc", label: "QC 등록", Icon: FlaskConical },
         { href: "/manage", label: "관리자", Icon: Settings2 },
+        { href: "/feedback", label: "피드백", Icon: MessageSquare },
         { href: "/guide", label: "도움말", Icon: HelpCircle },
       ]
     : [
         { href: "/ledger", label: "관리대장", Icon: BookOpen },
         { href: "/submit", label: "부적합 등록", Icon: FileWarning },
+        { href: "/feedback", label: "피드백", Icon: MessageSquare },
         { href: "/guide", label: "도움말", Icon: HelpCircle },
       ];
 
