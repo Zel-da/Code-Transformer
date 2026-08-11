@@ -1,5 +1,4 @@
 import { Router, type IRouter } from "express";
-import bcrypt from "bcryptjs";
 import { eq, desc } from "drizzle-orm";
 import { db, usersTable, auditLogsTable } from "@workspace/db";
 import { requireAdmin, requireAuth } from "../middleware/requireAuth.js";
@@ -14,7 +13,6 @@ const NOTIFY_LEVELS = ["to", "cc", "none"] as const;
 
 const CreateUserBody = z.object({
   username: z.string().min(2, "아이디는 2자 이상"),
-  password: z.string().min(4, "비밀번호는 4자 이상"),
   displayName: z.string().min(1, "이름을 입력해주세요"),
   email: z.string().email("올바른 이메일 형식").optional(),
   role: z.enum(ROLES).default("worker"),
@@ -29,7 +27,6 @@ const CreateUserBody = z.object({
 const UpdateUserBody = z.object({
   displayName: z.string().min(1).optional(),
   email: z.string().email("올바른 이메일 형식").nullable().optional(),
-  password: z.string().min(4).optional(),
   role: z.enum(ROLES).optional(),
   deptCd: z.string().nullable().optional(),
   factory: z.string().nullable().optional(),
@@ -37,10 +34,6 @@ const UpdateUserBody = z.object({
   processName: z.string().nullable().optional(),
   processCd: z.string().nullable().optional(),
   notifyLevel: z.enum(NOTIFY_LEVELS).optional(),
-});
-
-const ResetPasswordBody = z.object({
-  password: z.string().min(4, "비밀번호는 4자 이상"),
 });
 
 
@@ -56,13 +49,10 @@ router.post("/users", requireAdmin, async (req, res): Promise<void> => {
     return;
   }
 
-  const { password, ...rest } = parsed.data;
-  const passwordHash = await bcrypt.hash(password, 10);
-
   try {
     const [user] = await db
       .insert(usersTable)
-      .values({ ...rest, passwordHash })
+      .values({ ...parsed.data })
       .returning();
 
     const { passwordHash: _ph, ...profile } = user;
@@ -102,9 +92,7 @@ router.put("/users/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const { password, ...rest } = parsed.data;
-  const updates: Record<string, unknown> = { ...rest };
-  if (password) updates.passwordHash = await bcrypt.hash(password, 10);
+  const updates: Record<string, unknown> = { ...parsed.data };
 
   if (req.auth!.role !== "admin") {
     delete updates.role;
@@ -126,7 +114,6 @@ router.put("/users/:id", requireAuth, async (req, res): Promise<void> => {
   if ("factory" in updates) changedFields.push(`공장: ${updates.factory ?? "없음"}`);
   if ("deptCd" in updates) changedFields.push(`부서: ${updates.deptCd ?? "없음"}`);
   if ("processName" in updates) changedFields.push(`공정: ${updates.processName ?? "없음"}`);
-  if (updates.passwordHash) changedFields.push("비밀번호 변경");
 
   await writeAuditLog({
     actorId: req.auth!.userId,
@@ -139,37 +126,6 @@ router.put("/users/:id", requireAuth, async (req, res): Promise<void> => {
 
   const { passwordHash: _ph, ...profile } = user;
   res.json(profile);
-});
-
-router.post("/users/:id/reset-password", requireAdmin, async (req, res): Promise<void> => {
-  const id = Number(req.params.id);
-  if (isNaN(id)) { res.status(400).json({ error: "잘못된 ID" }); return; }
-
-  const parsed = ResetPasswordBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "입력값 오류" });
-    return;
-  }
-
-  const passwordHash = await bcrypt.hash(parsed.data.password, 10);
-  const [user] = await db
-    .update(usersTable)
-    .set({ passwordHash })
-    .where(eq(usersTable.id, id))
-    .returning();
-
-  if (!user) { res.status(404).json({ error: "사용자를 찾을 수 없습니다" }); return; }
-
-  await writeAuditLog({
-    actorId: req.auth!.userId,
-    actorName: req.auth!.username,
-    action: "reset_password",
-    targetType: "user",
-    targetId: id,
-    detail: `비밀번호 초기화: @${user.username} (${user.displayName})`,
-  });
-
-  res.json({ ok: true });
 });
 
 router.patch("/users/:id/active", requireAdmin, async (req, res): Promise<void> => {
