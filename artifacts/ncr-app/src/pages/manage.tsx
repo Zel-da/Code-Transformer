@@ -43,6 +43,7 @@ import {
   Users,
   Lock,
   ShieldCheck,
+  KeyRound,
   Power,
   History,
   BarChart3,
@@ -248,6 +249,9 @@ export default function ManagePage() {
   const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [togglingActiveId, setTogglingActiveId] = useState<number | null>(null);
+  const [issuingTempPwUser, setIssuingTempPwUser] = useState<UserProfile | null>(null);
+  const [issuedTempPassword, setIssuedTempPassword] = useState<string | null>(null);
+  const [tempPwSaving, setTempPwSaving] = useState(false);
   const [inlineEditingId, setInlineEditingId] = useState<number | null>(null);
   const [inlineEdits, setInlineEdits] = useState<{ role: string; factory: string; deptCd: string; processName: string }>({ role: "", factory: "", deptCd: "", processName: "" });
   const [inlineSaving, setInlineSaving] = useState(false);
@@ -386,6 +390,35 @@ export default function ManagePage() {
       fetchAuditLogs();
     } catch (err) {
       toast({ title: err instanceof Error ? err.message : "삭제 실패", variant: "destructive" });
+    }
+  };
+
+  const handleIssueTempPassword = async () => {
+    if (!issuingTempPwUser) return;
+    setTempPwSaving(true);
+    try {
+      const data = await apiJson<{ tempPassword: string }>(
+        `${API}/users/${issuingTempPwUser.id}/temp-password`,
+        { method: "POST" }
+      );
+      setIssuedTempPassword(data.tempPassword);
+      fetchUsers();
+      fetchAuditLogs();
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "발급 실패", variant: "destructive" });
+    } finally {
+      setTempPwSaving(false);
+    }
+  };
+
+  const handleRevokeTempPassword = async (u: UserProfile) => {
+    try {
+      await apiJson(`${API}/users/${u.id}/temp-password`, { method: "DELETE" });
+      toast({ title: `${u.displayName} 임시 비밀번호가 해제되었습니다` });
+      fetchUsers();
+      fetchAuditLogs();
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "해제 실패", variant: "destructive" });
     }
   };
 
@@ -880,7 +913,7 @@ export default function ManagePage() {
                 </div>
                 <button
                   data-tour="manage-user-add"
-                  onClick={() => { setEditingUser(null); setNewUserForm(EMPTY_USER_FORM); setShowPw(false); setShowUserDialog(true); }}
+                  onClick={() => { setEditingUser(null); setNewUserForm(EMPTY_USER_FORM); setShowUserDialog(true); }}
                   className={`${BTN_DARK} flex items-center gap-1.5 text-[13px] px-3 py-2`}
                 >
                   <UserPlus className="h-3.5 w-3.5" />
@@ -928,6 +961,11 @@ export default function ManagePage() {
                                 {!u.isActive && (
                                   <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-red-100 text-red-500">비활성</span>
                                 )}
+                                {u.hasTempPassword && (
+                                  <span title="임시 비밀번호 사용 중" className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-amber-100 text-amber-700 border border-amber-200 flex items-center gap-0.5">
+                                    <KeyRound className="h-2.5 w-2.5" />임시비번
+                                  </span>
+                                )}
                               </div>
                               <div className="text-[12px] text-[#8B95A1] mt-0.5">
                                 @{u.username}
@@ -951,6 +989,23 @@ export default function ManagePage() {
                               >
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
+                              {u.hasTempPassword ? (
+                                <button
+                                  onClick={() => handleRevokeTempPassword(u)}
+                                  title="임시 비밀번호 해제"
+                                  className="p-1.5 rounded-lg hover:bg-amber-50 text-amber-500 hover:text-amber-700 transition-colors"
+                                >
+                                  <KeyRound className="h-3.5 w-3.5" />
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => { setIssuingTempPwUser(u); setIssuedTempPassword(null); }}
+                                  title="임시 비밀번호 발급"
+                                  className="p-1.5 rounded-lg hover:bg-amber-50 text-[#8B95A1] hover:text-amber-600 transition-colors"
+                                >
+                                  <KeyRound className="h-3.5 w-3.5" />
+                                </button>
+                              )}
                               {currentUser?.id !== u.id && (
                                 <>
                                   <button
@@ -1884,6 +1939,60 @@ export default function ManagePage() {
             >
               {userSaving ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" />저장 중...</> : (editingUser ? "수정 완료" : "계정 생성")}
             </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Temp Password Dialog */}
+      <Dialog
+        open={issuingTempPwUser !== null}
+        onOpenChange={(open) => { if (!open) { setIssuingTempPwUser(null); setIssuedTempPassword(null); } }}
+      >
+        <DialogContent className="rounded-2xl bg-white border border-[#F2F4F6] max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-[16px] font-bold text-[#191F28] flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-amber-500" />
+              임시 비밀번호 발급
+            </DialogTitle>
+          </DialogHeader>
+          {issuedTempPassword ? (
+            <div className="space-y-4 py-2">
+              <p className="text-[13px] text-[#8B95A1]">
+                <span className="font-semibold text-[#191F28]">{issuingTempPwUser?.displayName}</span> 계정의 임시 비밀번호가 발급되었습니다.
+                <br />이 창을 닫으면 다시 확인할 수 없습니다.
+              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-center">
+                <p className="text-[11px] font-semibold text-amber-600 mb-1">임시 비밀번호</p>
+                <p className="text-[22px] font-bold text-amber-700 tracking-widest font-mono">{issuedTempPassword}</p>
+              </div>
+              <p className="text-[11px] text-[#BEC5CC] leading-relaxed">
+                그룹웨어 비밀번호로 로그인에 성공하면 임시 비밀번호는 자동으로 해제됩니다.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3 py-2">
+              <p className="text-[13px] text-[#8B95A1]">
+                <span className="font-semibold text-[#191F28]">{issuingTempPwUser?.displayName}</span> 계정에 임시 비밀번호를 발급합니다.
+                <br />그룹웨어 로그인이 되지 않을 때 일시적으로 사용합니다.
+              </p>
+            </div>
+          )}
+          <DialogFooter className="gap-2 flex-row pt-2 border-t border-[#F2F4F6]">
+            <button
+              className={`${BTN_GHOST} text-[13px]`}
+              onClick={() => { setIssuingTempPwUser(null); setIssuedTempPassword(null); }}
+            >
+              {issuedTempPassword ? "닫기" : "취소"}
+            </button>
+            {!issuedTempPassword && (
+              <button
+                className={`${BTN_DARK} text-[13px] flex items-center gap-2`}
+                onClick={handleIssueTempPassword}
+                disabled={tempPwSaving}
+              >
+                {tempPwSaving ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" />발급 중...</> : "발급하기"}
+              </button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

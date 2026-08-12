@@ -21,6 +21,7 @@ export interface UserProfile {
   processName: string | null;
   processCd: string | null;
   notifyLevel: NotifyLevel;
+  hasTempPassword?: boolean;
 }
 
 interface AuthState {

@@ -1,10 +1,12 @@
 import { Router, type IRouter } from "express";
+import bcrypt from "bcryptjs";
 import { eq, desc } from "drizzle-orm";
 import { db, usersTable, auditLogsTable } from "@workspace/db";
 import { requireAdmin, requireAuth } from "../middleware/requireAuth.js";
 import { logger } from "../lib/logger.js";
 import { writeAuditLog } from "../lib/audit.js";
 import { z } from "zod";
+import crypto from "node:crypto";
 
 const router: IRouter = Router();
 
@@ -36,10 +38,14 @@ const UpdateUserBody = z.object({
   notifyLevel: z.enum(NOTIFY_LEVELS).optional(),
 });
 
+function toPublicUser(user: typeof usersTable.$inferSelect) {
+  const { passwordHash: _ph, tempPasswordHash: _tph, ...rest } = user;
+  return { ...rest, hasTempPassword: !!user.tempPasswordHash };
+}
 
 router.get("/users", requireAdmin, async (_req, res): Promise<void> => {
   const users = await db.select().from(usersTable).orderBy(usersTable.createdAt);
-  res.json(users.map(({ passwordHash: _ph, ...u }) => u));
+  res.json(users.map(toPublicUser));
 });
 
 router.post("/users", requireAdmin, async (req, res): Promise<void> => {
@@ -49,13 +55,14 @@ router.post("/users", requireAdmin, async (req, res): Promise<void> => {
     return;
   }
 
+  // 그룹웨어 인증 전용이므로 passwordHash는 sentinel 값 사용
+  const sentinelHash = await bcrypt.hash(crypto.randomUUID(), 10);
+
   try {
     const [user] = await db
       .insert(usersTable)
-      .values({ ...parsed.data })
+      .values({ ...parsed.data, passwordHash: sentinelHash })
       .returning();
-
-    const { passwordHash: _ph, ...profile } = user;
 
     await writeAuditLog({
       actorId: req.auth!.userId,
@@ -66,7 +73,7 @@ router.post("/users", requireAdmin, async (req, res): Promise<void> => {
       detail: `계정 생성: ${user.displayName} (@${user.username}), 권한: ${user.role}`,
     });
 
-    res.status(201).json(profile);
+    res.status(201).json(toPublicUser(user));
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "";
     if (message.includes("unique")) {
@@ -106,8 +113,6 @@ router.put("/users/:id", requireAuth, async (req, res): Promise<void> => {
 
   if (!user) { res.status(404).json({ error: "사용자를 찾을 수 없습니다" }); return; }
 
-  // Build changed-fields summary from the actual persisted updates (post-auth strip),
-  // not from the raw request body, so role is never logged for non-admins.
   const changedFields: string[] = [];
   if (updates.displayName) changedFields.push(`이름: ${updates.displayName}`);
   if (updates.role) changedFields.push(`권한: ${updates.role}`);
@@ -124,8 +129,61 @@ router.put("/users/:id", requireAuth, async (req, res): Promise<void> => {
     detail: `계정 수정: @${user.username} — ${changedFields.join(", ") || "변경 없음"}`,
   });
 
-  const { passwordHash: _ph, ...profile } = user;
-  res.json(profile);
+  res.json(toPublicUser(user));
+});
+
+// 임시 비밀번호 발급 (관리자 전용)
+router.post("/users/:id/temp-password", requireAdmin, async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "잘못된 ID" }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  if (!user) { res.status(404).json({ error: "사용자를 찾을 수 없습니다" }); return; }
+
+  // 8자리 임시 비밀번호 생성 (숫자+영문 대소문자)
+  const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const tempPassword = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  const tempPasswordHash = await bcrypt.hash(tempPassword, 10);
+
+  await db.update(usersTable)
+    .set({ tempPasswordHash })
+    .where(eq(usersTable.id, id));
+
+  await writeAuditLog({
+    actorId: req.auth!.userId,
+    actorName: req.auth!.username,
+    action: "issue_temp_password",
+    targetType: "user",
+    targetId: id,
+    detail: `임시 비밀번호 발급: @${user.username} (${user.displayName})`,
+  });
+
+  // 발급된 평문 비밀번호를 이 응답에서만 반환 (이후 조회 불가)
+  res.json({ tempPassword });
+});
+
+// 임시 비밀번호 해제 (관리자 전용)
+router.delete("/users/:id/temp-password", requireAdmin, async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "잘못된 ID" }); return; }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  if (!user) { res.status(404).json({ error: "사용자를 찾을 수 없습니다" }); return; }
+
+  await db.update(usersTable)
+    .set({ tempPasswordHash: null })
+    .where(eq(usersTable.id, id));
+
+  await writeAuditLog({
+    actorId: req.auth!.userId,
+    actorName: req.auth!.username,
+    action: "revoke_temp_password",
+    targetType: "user",
+    targetId: id,
+    detail: `임시 비밀번호 해제: @${user.username} (${user.displayName})`,
+  });
+
+  res.json({ ok: true });
 });
 
 router.patch("/users/:id/active", requireAdmin, async (req, res): Promise<void> => {
@@ -160,8 +218,7 @@ router.patch("/users/:id/active", requireAdmin, async (req, res): Promise<void> 
     detail: `계정 ${isActive ? "활성화" : "비활성화"}: @${user.username} (${user.displayName})`,
   });
 
-  const { passwordHash: _ph, ...profile } = user;
-  res.json(profile);
+  res.json(toPublicUser(user));
 });
 
 router.delete("/users/:id", requireAdmin, async (req, res): Promise<void> => {

@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usedTempPassword, setUsedTempPassword] = useState(false);
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -33,9 +34,14 @@ export default function LoginPage() {
         const err = await res.json().catch(() => ({}));
         throw new Error((err as { error?: string }).error ?? "로그인 실패");
       }
-      const data = (await res.json()) as { token: string; user: unknown };
+      const data = (await res.json()) as { token: string; user: unknown; usedTempPassword?: boolean };
       localStorage.setItem("ncr_auth_token", data.token);
       localStorage.setItem("ncr_auth_user", JSON.stringify(data.user));
+      if (data.usedTempPassword) {
+        setUsedTempPassword(true);
+        setLoading(false);
+        return;
+      }
       window.location.href = `${import.meta.env.BASE_URL.replace(/\/$/, "")}${redirectTo}`;
     } catch (err) {
       setError(err instanceof Error ? err.message : "로그인 실패");
@@ -45,6 +51,40 @@ export default function LoginPage() {
   };
 
   const INP = "w-full h-12 rounded-2xl bg-[#F8F9FA] border border-[#E5E8EB] px-4 text-[15px] text-[#191F28] placeholder:text-[#BEC5CC] outline-none focus:border-[#1A1A1A] transition-colors";
+
+  // 임시 비밀번호로 로그인된 경우 안내 화면
+  if (usedTempPassword) {
+    return (
+      <div
+        className="min-h-[100dvh] flex flex-col items-center justify-center bg-[#F8F9FA] px-5"
+        style={{ fontFamily: "'Pretendard', 'Apple SD Gothic Neo', sans-serif" }}
+      >
+        <div className="w-full max-w-sm">
+          <div className="bg-white rounded-3xl border border-[#F2F4F6] shadow-sm p-6 flex flex-col gap-4 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center">
+                <ClipboardList className="h-6 w-6 text-amber-500" strokeWidth={2} />
+              </div>
+              <h2 className="text-[17px] font-bold text-[#191F28]">임시 비밀번호로 로그인됨</h2>
+            </div>
+            <p className="text-[13px] text-[#4E5968] leading-relaxed">
+              현재 관리자가 발급한 <span className="font-semibold text-amber-600">임시 비밀번호</span>로 로그인되었습니다.
+              <br /><br />
+              그룹웨어 비밀번호로 로그인에 성공하면 임시 비밀번호는 <span className="font-semibold">자동으로 해제</span>됩니다.
+            </p>
+            <button
+              onClick={() => {
+                window.location.href = `${import.meta.env.BASE_URL.replace(/\/$/, "")}${redirectTo}`;
+              }}
+              className="w-full h-12 rounded-2xl bg-[#1A1A1A] text-white font-bold text-[15px] flex items-center justify-center hover:bg-[#333] transition-colors"
+            >
+              계속하기
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

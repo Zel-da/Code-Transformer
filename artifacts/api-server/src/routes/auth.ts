@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { requireAuth, signToken } from "../middleware/requireAuth.js";
@@ -29,17 +30,16 @@ async function verifySmtpCredentials(email: string, password: string): Promise<b
   try {
     await transport.verify();
     return true;
-  } catch (err: unknown) {
-    // 535 = auth failed (wrong password), anything else = server/network error
-    const msg = err instanceof Error ? err.message : "";
-    if (msg.includes("535") || msg.includes("534") || msg.includes("authenti") || msg.includes("authorization")) {
-      return false; // 명확한 인증 실패
-    }
-    // 연결 오류 등 기타 에러도 false 처리
+  } catch {
     return false;
   } finally {
     transport.close();
   }
+}
+
+function toPublicUser(user: typeof usersTable.$inferSelect) {
+  const { passwordHash: _ph, tempPasswordHash: _tph, ...rest } = user;
+  return { ...rest, hasTempPassword: !!user.tempPasswordHash };
 }
 
 router.post("/auth/email-login", async (req, res): Promise<void> => {
@@ -66,17 +66,32 @@ router.post("/auth/email-login", async (req, res): Promise<void> => {
     return;
   }
 
-  const imapOk = await verifySmtpCredentials(email, password);
-  if (!imapOk) {
-    res.status(401).json({ error: "이메일 또는 비밀번호가 올바르지 않습니다" });
+  // 1차: 그룹웨어(SMTP) 인증
+  const smtpOk = await verifySmtpCredentials(email, password);
+
+  if (smtpOk) {
+    // SMTP 성공 시 임시비번이 있으면 자동 삭제
+    if (user.tempPasswordHash) {
+      await db.update(usersTable)
+        .set({ tempPasswordHash: null })
+        .where(eq(usersTable.id, user.id));
+    }
+    const token = signToken({ userId: user.id, username: user.username, role: user.role });
+    res.json({ token, user: toPublicUser(user), usedTempPassword: false });
     return;
   }
 
-  const token = signToken({ userId: user.id, username: user.username, role: user.role });
+  // 2차: 임시 비밀번호 인증 (SMTP 실패 시 폴백)
+  if (user.tempPasswordHash) {
+    const tempOk = await bcrypt.compare(password, user.tempPasswordHash);
+    if (tempOk) {
+      const token = signToken({ userId: user.id, username: user.username, role: user.role });
+      res.json({ token, user: toPublicUser(user), usedTempPassword: true });
+      return;
+    }
+  }
 
-  const { passwordHash: _ph, ...profile } = user;
-
-  res.json({ token, user: profile });
+  res.status(401).json({ error: "이메일 또는 비밀번호가 올바르지 않습니다" });
 });
 
 router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
@@ -90,8 +105,7 @@ router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const { passwordHash: _ph, ...profile } = user;
-  res.json(profile);
+  res.json(toPublicUser(user));
 });
 
 router.post("/auth/logout", (_req, res): void => {
