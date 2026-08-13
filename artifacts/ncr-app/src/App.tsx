@@ -58,10 +58,10 @@ function Router() {
         <RequireAdmin><ManagePage /></RequireAdmin>
       </Route>
       <Route path="/qc">
-        <RequireAdmin><QcListPage /></RequireAdmin>
+        <RequireAuth><QcListPage /></RequireAuth>
       </Route>
       <Route path="/qc/:reportId">
-        <RequireAdmin><QcPage /></RequireAdmin>
+        <RequireAuth><QcPage /></RequireAuth>
       </Route>
       <Route path="/guide">
         <RequireAuth><GuidePage /></RequireAuth>
