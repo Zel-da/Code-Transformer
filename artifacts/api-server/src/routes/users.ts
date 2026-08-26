@@ -39,7 +39,7 @@ const UpdateUserBody = z.object({
 });
 
 function toPublicUser(user: typeof usersTable.$inferSelect) {
-  const { passwordHash: _ph, tempPasswordHash: _tph, ...rest } = user;
+  const { passwordHash: _ph, tempPasswordHash: _tph, tempPasswordVersion: _tpv, ...rest } = user;
   return { ...rest, hasTempPassword: !!user.tempPasswordHash };
 }
 
@@ -146,7 +146,10 @@ router.post("/users/:id/temp-password", requireAdmin, async (req, res): Promise<
   const tempPasswordHash = await bcrypt.hash(tempPassword, 10);
 
   await db.update(usersTable)
-    .set({ tempPasswordHash })
+    .set({
+      tempPasswordHash,
+      tempPasswordVersion: user.tempPasswordVersion + 1,
+    })
     .where(eq(usersTable.id, id));
 
   await writeAuditLog({
@@ -171,7 +174,10 @@ router.delete("/users/:id/temp-password", requireAdmin, async (req, res): Promis
   if (!user) { res.status(404).json({ error: "사용자를 찾을 수 없습니다" }); return; }
 
   await db.update(usersTable)
-    .set({ tempPasswordHash: null })
+    .set({
+      tempPasswordHash: null,
+      tempPasswordVersion: user.tempPasswordVersion + 1,
+    })
     .where(eq(usersTable.id, id));
 
   await writeAuditLog({

@@ -1,9 +1,13 @@
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import jwt, { type SignOptions } from "jsonwebtoken";
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 
-const JWT_SECRET = process.env.JWT_SECRET || "ncr-dev-secret-2026";
+const JWT_SECRET = process.env.JWT_SECRET ?? process.env.SESSION_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET 또는 SESSION_SECRET 환경 변수가 필요합니다.");
+}
 
 export type UserRole = "admin" | "worker" | "reviewer" | "approver" | "collaborator";
 
@@ -11,6 +15,8 @@ export interface AuthPayload {
   userId: number;
   username: string;
   role: UserRole;
+  authMethod: "groupware" | "internal" | "temporary";
+  temporaryPasswordVersion?: number;
 }
 
 declare global {
@@ -21,7 +27,7 @@ declare global {
   }
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction): void {
+function authorize(req: Request, res: Response, next: NextFunction, allowTemporary: boolean): void {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
     res.status(401).json({ error: "인증이 필요합니다" });
@@ -37,7 +43,16 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
     return;
   }
 
-  db.select({ isActive: usersTable.isActive })
+  if (!["groupware", "internal", "temporary"].includes(payload.authMethod)) {
+    res.status(401).json({ error: "로그인 정보가 변경되었습니다. 다시 로그인해주세요." });
+    return;
+  }
+
+  db.select({
+    isActive: usersTable.isActive,
+    tempPasswordHash: usersTable.tempPasswordHash,
+    tempPasswordVersion: usersTable.tempPasswordVersion,
+  })
     .from(usersTable)
     .where(eq(usersTable.id, payload.userId))
     .then(([user]) => {
@@ -49,12 +64,37 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
         res.status(401).json({ error: "비활성화된 계정입니다. 관리자에게 문의하세요." });
         return;
       }
+      if (payload.authMethod === "temporary" && !allowTemporary) {
+        res.status(403).json({ error: "임시 비밀번호 로그인 후 비밀번호 등록을 완료해주세요." });
+        return;
+      }
+      if (
+        payload.authMethod === "temporary" &&
+        (!user.tempPasswordHash || payload.temporaryPasswordVersion !== user.tempPasswordVersion)
+      ) {
+        res.status(401).json({ error: "임시 로그인 정보가 만료되었습니다. 다시 로그인해주세요." });
+        return;
+      }
       req.auth = payload;
       next();
     })
     .catch(() => {
       res.status(500).json({ error: "인증 처리 중 오류가 발생했습니다" });
     });
+}
+
+export function requireAuth(req: Request, res: Response, next: NextFunction): void {
+  authorize(req, res, next, false);
+}
+
+export function requireTemporaryPasswordSetup(req: Request, res: Response, next: NextFunction): void {
+  authorize(req, res, () => {
+    if (req.auth?.authMethod !== "temporary") {
+      res.status(403).json({ error: "임시 비밀번호 로그인 후에만 비밀번호를 등록할 수 있습니다." });
+      return;
+    }
+    next();
+  }, true);
 }
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
@@ -79,6 +119,6 @@ export function requireRole(roles: UserRole[]) {
   };
 }
 
-export function signToken(payload: AuthPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "30d" });
+export function signToken(payload: AuthPayload, expiresIn: SignOptions["expiresIn"] = "30d"): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn });
 }

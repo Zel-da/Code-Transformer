@@ -104,11 +104,12 @@ export const usersTable = pgTable("users", {
   processCd: text("process_cd"),
   notifyLevel: text("notify_level").$type<"to" | "cc" | "none">().notNull().default("to"),
   tempPasswordHash: text("temp_password_hash"),
+  tempPasswordVersion: integer("temp_password_version").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type User = typeof usersTable.$inferSelect;
-export type PublicUser = Omit<User, "passwordHash" | "tempPasswordHash"> & { hasTempPassword: boolean };
+export type PublicUser = Omit<User, "passwordHash" | "tempPasswordHash" | "tempPasswordVersion"> & { hasTempPassword: boolean };
 
 // REVIEW: RPA 가 UNIERP 입력·저장 완료 후 사용자가 배치 검토 UI 에서
 // 최종 확인하기까지 머무는 상태. DB 로 승격돼야 서버·워커 재시작에도

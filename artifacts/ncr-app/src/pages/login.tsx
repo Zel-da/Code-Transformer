@@ -1,14 +1,12 @@
 import { useState, FormEvent } from "react";
-import { useLocation, useSearch } from "wouter";
+import { useSearch } from "wouter";
 import { ClipboardList, Loader2, Eye, EyeOff } from "lucide-react";
-import { useAuth } from "@/contexts/auth";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const API = `${BASE}/api`;
+const TEMP_TOKEN_KEY = "ncr_temp_auth_token";
 
 export default function LoginPage() {
-  const { login: _login } = useAuth();
-  const [, setLocation] = useLocation();
   const search = useSearch();
   const params = new URLSearchParams(search);
   const redirectTo = params.get("redirect") ?? "/submit";
@@ -19,6 +17,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [usedTempPassword, setUsedTempPassword] = useState(false);
+  const [fallbackPassword, setFallbackPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [setupError, setSetupError] = useState<string | null>(null);
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -34,14 +35,18 @@ export default function LoginPage() {
         const err = await res.json().catch(() => ({}));
         throw new Error((err as { error?: string }).error ?? "로그인 실패");
       }
-      const data = (await res.json()) as { token: string; user: unknown; usedTempPassword?: boolean };
-      localStorage.setItem("ncr_auth_token", data.token);
-      localStorage.setItem("ncr_auth_user", JSON.stringify(data.user));
-      if (data.usedTempPassword) {
+      const data = (await res.json()) as {
+        token: string;
+        user: unknown;
+        requiresPasswordSetup?: boolean;
+      };
+      if (data.requiresPasswordSetup) {
+        sessionStorage.setItem(TEMP_TOKEN_KEY, data.token);
         setUsedTempPassword(true);
-        setLoading(false);
         return;
       }
+      localStorage.setItem("ncr_auth_token", data.token);
+      localStorage.setItem("ncr_auth_user", JSON.stringify(data.user));
       window.location.href = `${import.meta.env.BASE_URL.replace(/\/$/, "")}${redirectTo}`;
     } catch (err) {
       setError(err instanceof Error ? err.message : "로그인 실패");
@@ -50,9 +55,64 @@ export default function LoginPage() {
     }
   };
 
+  const handleTemporaryPasswordSetup = async (e: FormEvent) => {
+    e.preventDefault();
+    setSetupError(null);
+
+    if (!fallbackPassword) {
+      setSetupError("그룹웨어에서 사용하는 비밀번호를 입력해주세요.");
+      return;
+    }
+    if (fallbackPassword !== passwordConfirmation) {
+      setSetupError("비밀번호 확인이 일치하지 않습니다.");
+      return;
+    }
+
+    const temporaryToken = sessionStorage.getItem(TEMP_TOKEN_KEY);
+    if (!temporaryToken) {
+      setSetupError("임시 로그인 정보가 만료되었습니다. 다시 로그인해주세요.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/auth/complete-temp-login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${temporaryToken}`,
+        },
+        body: JSON.stringify({ password: fallbackPassword }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? "비밀번호 등록에 실패했습니다.");
+      }
+
+      const data = (await res.json()) as { token: string; user: unknown };
+      sessionStorage.removeItem(TEMP_TOKEN_KEY);
+      localStorage.setItem("ncr_auth_token", data.token);
+      localStorage.setItem("ncr_auth_user", JSON.stringify(data.user));
+      window.location.href = `${import.meta.env.BASE_URL.replace(/\/$/, "")}${redirectTo}`;
+    } catch (err) {
+      setSetupError(err instanceof Error ? err.message : "비밀번호 등록에 실패했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cancelTemporaryLogin = () => {
+    sessionStorage.removeItem(TEMP_TOKEN_KEY);
+    setUsedTempPassword(false);
+    setFallbackPassword("");
+    setPasswordConfirmation("");
+    setSetupError(null);
+    setPassword("");
+  };
+
   const INP = "w-full h-12 rounded-2xl bg-[#F8F9FA] border border-[#E5E8EB] px-4 text-[15px] text-[#191F28] placeholder:text-[#BEC5CC] outline-none focus:border-[#1A1A1A] transition-colors";
 
-  // 임시 비밀번호로 로그인된 경우 안내 화면
+  // 임시 비밀번호 로그인은 내부 폴백 비밀번호를 등록해야만 완료된다.
   if (usedTempPassword) {
     return (
       <div
@@ -60,27 +120,61 @@ export default function LoginPage() {
         style={{ fontFamily: "'Pretendard', 'Apple SD Gothic Neo', sans-serif" }}
       >
         <div className="w-full max-w-sm">
-          <div className="bg-white rounded-3xl border border-[#F2F4F6] shadow-sm p-6 flex flex-col gap-4 text-center">
+          <form onSubmit={handleTemporaryPasswordSetup} className="bg-white rounded-3xl border border-[#F2F4F6] shadow-sm p-6 flex flex-col gap-4">
             <div className="flex flex-col items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center">
                 <ClipboardList className="h-6 w-6 text-amber-500" strokeWidth={2} />
               </div>
-              <h2 className="text-[17px] font-bold text-[#191F28]">임시 비밀번호로 로그인됨</h2>
+              <h2 className="text-[17px] font-bold text-[#191F28]">그룹웨어 비밀번호 등록</h2>
             </div>
             <p className="text-[13px] text-[#4E5968] leading-relaxed">
               현재 관리자가 발급한 <span className="font-semibold text-amber-600">임시 비밀번호</span>로 로그인되었습니다.
               <br /><br />
-              그룹웨어 비밀번호로 로그인에 성공하면 임시 비밀번호는 <span className="font-semibold">자동으로 해제</span>됩니다.
+              앞으로 사용할 <span className="font-semibold">그룹웨어 비밀번호</span>를 등록해주세요. 이후 로그인할 때마다 그룹웨어 인증을 먼저 시도하고, 연결에 실패한 경우에만 이 비밀번호로 로그인합니다.
             </p>
+            <div className="text-left space-y-3">
+              <div>
+                <label className="text-[13px] font-semibold text-[#191F28] mb-2 block">그룹웨어 비밀번호</label>
+                <input
+                  className={INP}
+                  type="password"
+                  value={fallbackPassword}
+                  onChange={e => setFallbackPassword(e.target.value)}
+                  autoComplete="new-password"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="text-[13px] font-semibold text-[#191F28] mb-2 block">비밀번호 확인</label>
+                <input
+                  className={INP}
+                  type="password"
+                  value={passwordConfirmation}
+                  onChange={e => setPasswordConfirmation(e.target.value)}
+                  autoComplete="new-password"
+                />
+              </div>
+            </div>
+            {setupError && (
+              <p className="text-[13px] text-red-500 font-medium text-center bg-red-50 rounded-xl py-2.5 px-3">
+                {setupError}
+              </p>
+            )}
             <button
-              onClick={() => {
-                window.location.href = `${import.meta.env.BASE_URL.replace(/\/$/, "")}${redirectTo}`;
-              }}
+              type="submit"
+              disabled={loading || !fallbackPassword || !passwordConfirmation}
               className="w-full h-12 rounded-2xl bg-[#1A1A1A] text-white font-bold text-[15px] flex items-center justify-center hover:bg-[#333] transition-colors"
             >
-              계속하기
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "등록하고 계속하기"}
             </button>
-          </div>
+            <button
+              type="button"
+              onClick={cancelTemporaryLogin}
+              className="text-[13px] text-[#8B95A1] hover:text-[#4E5968] transition-colors"
+            >
+              다시 로그인
+            </button>
+          </form>
         </div>
       </div>
     );
