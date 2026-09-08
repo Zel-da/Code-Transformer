@@ -198,14 +198,14 @@ export default function LoginPage() {
         {/* Form */}
         <form onSubmit={handleLogin} className="bg-white rounded-3xl border border-[#F2F4F6] shadow-sm p-6 flex flex-col gap-4">
           <div>
-            <label className="text-[13px] font-semibold text-[#191F28] mb-2 block">사내 이메일</label>
+            <label className="text-[13px] font-semibold text-[#191F28] mb-2 block">사내 이메일 또는 관리자 아이디</label>
             <input
               className={INP}
-              type="email"
-              placeholder="example@soosan.co.kr"
+              type="text"
+              placeholder="example@soosan.co.kr 또는 admin"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              autoComplete="email"
+              autoComplete="username"
               autoFocus
             />
           </div>

@@ -10,7 +10,7 @@ import { writeAuditLog } from "../lib/audit.js";
 const router: IRouter = Router();
 
 const EmailLoginBody = z.object({
-  email: z.string().email(),
+  email: z.string().trim().min(1),
   password: z.string().min(1),
 });
 
@@ -54,15 +54,18 @@ router.post("/auth/email-login", async (req, res): Promise<void> => {
     return;
   }
 
-  const { email, password } = parsed.data;
+  const { email: identifier, password } = parsed.data;
+  const isEmailLogin = identifier.includes("@");
 
   const [user] = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.email, email));
+    .where(isEmailLogin
+      ? eq(usersTable.email, identifier)
+      : eq(usersTable.username, identifier));
 
   if (!user) {
-    res.status(401).json({ error: "해당 이메일로 등록된 계정이 없습니다. 관리자에게 문의하세요." });
+    res.status(401).json({ error: "등록된 계정을 찾을 수 없습니다. 관리자에게 문의하세요." });
     return;
   }
 
@@ -72,7 +75,9 @@ router.post("/auth/email-login", async (req, res): Promise<void> => {
   }
 
   // 1차: 그룹웨어(SMTP) 인증
-  const smtpOk = await verifySmtpCredentials(email, password);
+  const smtpOk = isEmailLogin && user.email
+    ? await verifySmtpCredentials(user.email, password)
+    : false;
 
   if (smtpOk) {
     // 그룹웨어 인증이 복구되면 임시 비밀번호는 더 이상 필요하지 않다.
