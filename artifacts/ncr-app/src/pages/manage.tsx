@@ -28,6 +28,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth, type UserProfile } from "@/contexts/auth";
+import { parseOutlookAddressBook, type AddressBookPreview } from "@/lib/outlook-address-book";
 import {
   Trash2,
   Pencil,
@@ -53,6 +54,7 @@ import {
   Save,
   Send,
   Mail,
+  Upload,
   Printer,
   FileText,
   FileBarChart2,
@@ -260,6 +262,8 @@ export default function ManagePage() {
   const [inlineSaving, setInlineSaving] = useState(false);
   const [userAccountFilter, setUserAccountFilter] = useState<UserAccountFilter>("all");
   const [userPage, setUserPage] = useState(1);
+  const [bulkImportPreview, setBulkImportPreview] = useState<AddressBookPreview | null>(null);
+  const [bulkImportSaving, setBulkImportSaving] = useState(false);
 
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [auditLogsLoading, setAuditLogsLoading] = useState(false);
@@ -382,6 +386,49 @@ export default function ManagePage() {
       toast({ title: err instanceof Error ? err.message : "저장 실패", variant: "destructive" });
     } finally {
       setUserSaving(false);
+    }
+  };
+
+  const handleAddressBookFile = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      setBulkImportPreview(await parseOutlookAddressBook(file));
+    } catch (err) {
+      toast({
+        title: "주소록 파일을 읽을 수 없습니다",
+        description: err instanceof Error ? err.message : "CSV 형식을 확인해주세요",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBulkImportUsers = async () => {
+    if (!bulkImportPreview) return;
+    setBulkImportSaving(true);
+    try {
+      const result = await apiJson<{ created: number; skipped: number; excluded: number }>(
+        `${API}/users/bulk-import`,
+        {
+          method: "POST",
+          body: JSON.stringify({ contacts: bulkImportPreview.contacts }),
+        },
+      );
+      toast({
+        title: `${result.created}명 계정 등록 완료`,
+        description: `기존 계정 ${result.skipped}명은 건너뛰었습니다`,
+      });
+      setBulkImportPreview(null);
+      setUserAccountFilter("worker");
+      setUserPage(1);
+      await Promise.all([fetchUsers(), fetchAuditLogs()]);
+    } catch (err) {
+      toast({
+        title: "주소록 일괄 등록 실패",
+        description: err instanceof Error ? err.message : "잠시 후 다시 시도해주세요",
+        variant: "destructive",
+      });
+    } finally {
+      setBulkImportSaving(false);
     }
   };
 
@@ -934,6 +981,19 @@ export default function ManagePage() {
                   <h2 className="font-semibold text-[14px] text-[#191F28]">사용자 계정 관리</h2>
                   {!isMobile && <p className="text-[12px] text-[#8B95A1]">직원 계정을 생성하고 프로필을 설정합니다</p>}
                 </div>
+                <label className={`${BTN_GHOST} flex items-center gap-1.5 text-[13px] px-3 py-2 cursor-pointer`}>
+                  <Upload className="h-3.5 w-3.5" />
+                  {isMobile ? "CSV" : "CSV 일괄 등록"}
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    className="hidden"
+                    onChange={(event) => {
+                      void handleAddressBookFile(event.target.files?.[0]);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
                 <button
                   data-tour="manage-user-add"
                   onClick={() => { setEditingUser(null); setNewUserForm(EMPTY_USER_FORM); setShowUserDialog(true); }}
@@ -1898,6 +1958,67 @@ export default function ManagePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Address Book Bulk Import Dialog */}
+      <Dialog open={!!bulkImportPreview} onOpenChange={(open) => { if (!open && !bulkImportSaving) setBulkImportPreview(null); }}>
+        <DialogContent className="sm:max-w-[520px] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-[17px]">주소록 계정 일괄 등록</DialogTitle>
+          </DialogHeader>
+          {bulkImportPreview && (() => {
+            const existingEmails = new Set(users.map((user) => user.email?.toLowerCase()).filter(Boolean));
+            const existingUsernames = new Set(users.map((user) => user.username));
+            const newContacts = bulkImportPreview.contacts.filter(
+              (contact) => !existingEmails.has(contact.email) && !existingUsernames.has(contact.username),
+            );
+            const reasonCounts = bulkImportPreview.excluded.reduce<Record<string, number>>((counts, contact) => {
+              counts[contact.reason] = (counts[contact.reason] ?? 0) + 1;
+              return counts;
+            }, {});
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="rounded-xl bg-emerald-50 px-3 py-3 text-center">
+                    <p className="text-[20px] font-bold text-emerald-700">{newContacts.length}</p>
+                    <p className="text-[11px] text-emerald-600">신규 등록</p>
+                  </div>
+                  <div className="rounded-xl bg-[#F2F4F6] px-3 py-3 text-center">
+                    <p className="text-[20px] font-bold text-[#4E5968]">{bulkImportPreview.contacts.length - newContacts.length}</p>
+                    <p className="text-[11px] text-[#8B95A1]">기존 계정</p>
+                  </div>
+                  <div className="rounded-xl bg-amber-50 px-3 py-3 text-center">
+                    <p className="text-[20px] font-bold text-amber-700">{bulkImportPreview.excluded.length}</p>
+                    <p className="text-[11px] text-amber-600">자동 제외</p>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-[#E5E8EB] p-3">
+                  <p className="text-[12px] font-semibold text-[#191F28] mb-2">제외 기준</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(reasonCounts).map(([reason, count]) => (
+                      <span key={reason} className="rounded-lg bg-[#F2F4F6] px-2 py-1 text-[11px] text-[#4E5968]">
+                        {reason} {count}명
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-[12px] leading-5 text-[#8B95A1]">
+                  신규 계정은 모두 <strong className="text-[#191F28]">일반 등록자(worker)</strong>로 생성됩니다.
+                  기존 계정의 권한과 정보는 변경하지 않습니다.
+                </p>
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            <button type="button" className={BTN_GHOST} onClick={() => setBulkImportPreview(null)} disabled={bulkImportSaving}>
+              취소
+            </button>
+            <button type="button" className={`${BTN_DARK} flex items-center justify-center gap-2`} onClick={handleBulkImportUsers} disabled={bulkImportSaving}>
+              {bulkImportSaving && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
+              등록 실행
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* User Create / Edit Dialog */}
       <Dialog open={showUserDialog} onOpenChange={(open) => { if (!open) { setShowUserDialog(false); setEditingUser(null); setNewUserForm(EMPTY_USER_FORM); } }}>

@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import { eq, desc } from "drizzle-orm";
-import { db, usersTable, auditLogsTable } from "@workspace/db";
+import { db, usersTable, auditLogsTable, departmentsTable } from "@workspace/db";
 import { requireAdmin, requireAuth } from "../middleware/requireAuth.js";
 import { logger } from "../lib/logger.js";
 import { writeAuditLog } from "../lib/audit.js";
@@ -37,6 +37,42 @@ const UpdateUserBody = z.object({
   processCd: z.string().nullable().optional(),
   notifyLevel: z.enum(NOTIFY_LEVELS).optional(),
 });
+
+const BulkImportUsersBody = z.object({
+  contacts: z.array(z.object({
+    displayName: z.string().trim().min(1),
+    email: z.string().trim().email().transform((value) => value.toLowerCase()),
+    username: z.string().trim().min(2),
+    department: z.string().trim(),
+    title: z.string().trim(),
+    position: z.string().trim(),
+  })).min(1).max(500),
+});
+
+const NON_PERSON_NAMES = new Set([
+  "아워홈", "RPA Robot", "Zoom 인증 계정01", "Zoom 인증 계정02", "jhtest",
+  "부품구매", "고객지원", "마케팅", "세보틱스", "수산스캔", "시스템관리자",
+  "테스트01", "화성_영양사", "test1",
+]);
+
+const DEPARTMENT_ALIASES: Record<string, string> = {
+  "BR자재부품팀": "A4CSH11210400",
+  "고객지원팀": "A4CSH23101000",
+  "국내영업팀": "A4CSH21101000",
+  "대표이사": "A4CSH11000000",
+  "라인구성 TFT": "A4CSH22102000",
+  "부품팀": "A4CSH23103000",
+  "생산부문": "A4CSH11231000",
+  "생산팀-관리": "A4CSH22101000",
+  "수산비나모터": "A4CSH16000000",
+  "수산세보틱스": "A4CSH00000000",
+  "수산세보틱스 유지보수": "A4CSH00000000",
+  "신사업추진팀": "A4CSH24108000",
+  "입고품질팀": "A4CSH11231200",
+  "자재팀": "A4CSH22103000",
+  "천공기개발팀": "A4CSH24101000",
+  "특장사업본부": "A4CSH21100000",
+};
 
 function toPublicUser(user: typeof usersTable.$inferSelect) {
   const { passwordHash: _ph, tempPasswordHash: _tph, tempPasswordVersion: _tpv, ...rest } = user;
@@ -81,6 +117,82 @@ router.post("/users", requireAdmin, async (req, res): Promise<void> => {
     } else {
       res.status(500).json({ error: "사용자 생성 실패" });
     }
+  }
+});
+
+router.post("/users/bulk-import", requireAdmin, async (req, res): Promise<void> => {
+  const parsed = BulkImportUsersBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "주소록 입력값 오류" });
+    return;
+  }
+
+  const eligible = parsed.data.contacts.filter((contact) =>
+    !contact.department.includes("IT혁신팀")
+    && !contact.title.includes("촉탁")
+    && !contact.position.includes("촉탁")
+    && !NON_PERSON_NAMES.has(contact.displayName)
+  );
+  const uniqueContacts = Array.from(
+    new Map(eligible.map((contact) => [contact.email, contact])).values(),
+  );
+
+  const [existingUsers, departments] = await Promise.all([
+    db.select({ username: usersTable.username, email: usersTable.email }).from(usersTable),
+    db.select({ deptCd: departmentsTable.deptCd, deptName: departmentsTable.deptName }).from(departmentsTable),
+  ]);
+  const existingUsernames = new Set(existingUsers.map((user) => user.username));
+  const existingEmails = new Set(existingUsers.map((user) => user.email?.toLowerCase()).filter(Boolean));
+  const departmentByName = new Map(departments.map((department) => [department.deptName, department.deptCd]));
+  const missing = uniqueContacts.filter((contact) =>
+    !existingUsernames.has(contact.username) && !existingEmails.has(contact.email)
+  );
+
+  if (missing.length === 0) {
+    res.json({ created: 0, skipped: uniqueContacts.length, excluded: parsed.data.contacts.length - eligible.length });
+    return;
+  }
+
+  const sentinelHash = await bcrypt.hash(crypto.randomUUID(), 10);
+  try {
+    const created = await db.transaction(async (tx) => {
+      const inserted = await tx
+        .insert(usersTable)
+        .values(missing.map((contact) => ({
+          username: contact.username,
+          passwordHash: sentinelHash,
+          displayName: contact.displayName,
+          email: contact.email,
+          role: "worker" as const,
+          isActive: true,
+          deptCd: departmentByName.get(contact.department) ?? DEPARTMENT_ALIASES[contact.department] ?? null,
+          notifyLevel: "to" as const,
+        })))
+        .onConflictDoNothing({ target: usersTable.username })
+        .returning();
+
+      if (inserted.length > 0) {
+        await tx.insert(auditLogsTable).values(inserted.map((user) => ({
+          actorId: req.auth!.userId,
+          actorName: req.auth!.username,
+          action: "create_user",
+          targetType: "user",
+          targetId: user.id,
+          detail: `주소록 일괄 등록: ${user.displayName} (@${user.username}), 권한: worker`,
+        })));
+      }
+      return inserted;
+    });
+
+    req.log.info({ created: created.length, skipped: uniqueContacts.length - created.length }, "Bulk user import completed");
+    res.status(201).json({
+      created: created.length,
+      skipped: uniqueContacts.length - created.length,
+      excluded: parsed.data.contacts.length - eligible.length,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Bulk user import failed");
+    res.status(500).json({ error: "주소록 일괄 등록에 실패했습니다" });
   }
 });
 
