@@ -199,7 +199,7 @@ interface NewUserForm {
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "관리자",
-  worker: "작업자",
+  worker: "일반 등록자",
   reviewer: "검토자",
   approver: "승인자",
   collaborator: "협업자",
@@ -210,6 +210,9 @@ const NOTIFY_LEVEL_LABELS: Record<string, string> = {
   cc: "참조 (CC)",
   none: "수신 안 함",
 };
+
+const USER_PAGE_SIZE = 20;
+type UserAccountFilter = "all" | "worker" | "qc" | "admin" | "inactive";
 
 const EMPTY_USER_FORM: NewUserForm = {
   username: "", displayName: "", email: "", role: "worker",
@@ -255,6 +258,8 @@ export default function ManagePage() {
   const [inlineEditingId, setInlineEditingId] = useState<number | null>(null);
   const [inlineEdits, setInlineEdits] = useState<{ role: string; factory: string; deptCd: string; processName: string }>({ role: "", factory: "", deptCd: "", processName: "" });
   const [inlineSaving, setInlineSaving] = useState(false);
+  const [userAccountFilter, setUserAccountFilter] = useState<UserAccountFilter>("all");
+  const [userPage, setUserPage] = useState(1);
 
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [auditLogsLoading, setAuditLogsLoading] = useState(false);
@@ -684,6 +689,24 @@ export default function ManagePage() {
     { key: "print" as const, label: "보고서 출력" },
   ];
 
+  const userFilterOptions: Array<{ key: UserAccountFilter; label: string; count: number }> = [
+    { key: "all", label: "전체", count: users.length },
+    { key: "worker", label: "일반 등록자", count: users.filter((u) => u.isActive && u.role === "worker").length },
+    { key: "qc", label: "QC·협업", count: users.filter((u) => u.isActive && ["reviewer", "approver", "collaborator"].includes(u.role)).length },
+    { key: "admin", label: "관리자", count: users.filter((u) => u.isActive && u.role === "admin").length },
+    { key: "inactive", label: "비활성", count: users.filter((u) => !u.isActive).length },
+  ];
+  const filteredUsers = users.filter((u) => {
+    if (userAccountFilter === "worker") return u.isActive && u.role === "worker";
+    if (userAccountFilter === "qc") return u.isActive && ["reviewer", "approver", "collaborator"].includes(u.role);
+    if (userAccountFilter === "admin") return u.isActive && u.role === "admin";
+    if (userAccountFilter === "inactive") return !u.isActive;
+    return true;
+  });
+  const userTotalPages = Math.max(1, Math.ceil(filteredUsers.length / USER_PAGE_SIZE));
+  const safeUserPage = Math.min(userPage, userTotalPages);
+  const paginatedUsers = filteredUsers.slice((safeUserPage - 1) * USER_PAGE_SIZE, safeUserPage * USER_PAGE_SIZE);
+
   return (
     <Layout>
       <div className="max-w-[1400px] mx-auto px-5 py-5 pb-24">
@@ -922,13 +945,37 @@ export default function ManagePage() {
               </div>
 
               <div className="border-t border-[#F2F4F6]">
+                <div className="px-5 py-3 flex gap-2 overflow-x-auto border-b border-[#F2F4F6]">
+                  {userFilterOptions.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => {
+                        setUserAccountFilter(option.key);
+                        setUserPage(1);
+                        setInlineEditingId(null);
+                      }}
+                      className={`shrink-0 h-8 px-3 rounded-xl text-[12px] font-semibold transition-colors ${
+                        userAccountFilter === option.key
+                          ? "bg-[#1A1A1A] text-white"
+                          : "bg-[#F2F4F6] text-[#4E5968] hover:bg-[#E5E8EB]"
+                      }`}
+                    >
+                      {option.label}
+                      <span className={`ml-1.5 ${userAccountFilter === option.key ? "text-white/60" : "text-[#8B95A1]"}`}>
+                        {option.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
                 {usersLoading ? (
                   <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">불러오는 중...</div>
-                ) : users.length === 0 ? (
-                  <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">등록된 계정이 없습니다</div>
+                ) : filteredUsers.length === 0 ? (
+                  <div className="px-5 py-6 text-center text-[13px] text-[#8B95A1]">해당 구분에 등록된 계정이 없습니다</div>
                 ) : (
+                  <>
                   <div className="divide-y divide-[#F2F4F6]">
-                    {users.map((u) => {
+                    {paginatedUsers.map((u) => {
                       const isInlineEditing = inlineEditingId === u.id;
                       return (
                         <div key={u.id} className={`px-5 py-3 ${!u.isActive ? "opacity-50" : ""}`}>
@@ -1107,6 +1154,41 @@ export default function ManagePage() {
                       );
                     })}
                   </div>
+                  <div className="px-5 py-3 border-t border-[#F2F4F6] flex items-center justify-between gap-3">
+                    <p className="text-[11px] text-[#8B95A1]">
+                      전체 {filteredUsers.length}명 · {(safeUserPage - 1) * USER_PAGE_SIZE + 1}–{Math.min(safeUserPage * USER_PAGE_SIZE, filteredUsers.length)}명 표시
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-semibold text-[#4E5968]">
+                        {safeUserPage} / {userTotalPages}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label="이전 사용자 페이지"
+                        className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center disabled:opacity-40"
+                        onClick={() => {
+                          setUserPage((p) => Math.max(1, p - 1));
+                          setInlineEditingId(null);
+                        }}
+                        disabled={safeUserPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="다음 사용자 페이지"
+                        className="h-8 w-8 rounded-xl bg-[#F2F4F6] text-[#4E5968] flex items-center justify-center disabled:opacity-40"
+                        onClick={() => {
+                          setUserPage((p) => Math.min(userTotalPages, p + 1));
+                          setInlineEditingId(null);
+                        }}
+                        disabled={safeUserPage >= userTotalPages}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  </>
                 )}
               </div>
             </div>
