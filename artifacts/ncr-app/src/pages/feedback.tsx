@@ -110,10 +110,15 @@ async function apiJson<T>(
   url: string,
   init: RequestInit = {},
 ): Promise<T> {
+  const headers = new Headers(init.headers);
+  const token = localStorage.getItem("ncr_auth_token");
+  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
   const res = await fetch(url, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
     ...init,
+    credentials: "include",
+    headers,
   });
   if (res.status === 204) return undefined as unknown as T;
   const json = await res.json();

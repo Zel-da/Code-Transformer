@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NCR 사용자 가이드</title>
+    <style>
+      :root {
+        --ink: #191f28;
+        --muted: #6b7684;
+        --line: #e5e8eb;
+        --soft: #f8f9fa;
+        --accent: #176b4d;
+        --accent-soft: #eaf7f1;
+        --warn: #8a5a00;
+        --warn-soft: #fff7e6;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--soft);
+        font-family:
+          Pretendard, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+        line-height: 1.65;
+        word-break: keep-all;
+      }
+      main {
+        width: min(860px, calc(100% - 32px));
+        margin: 36px auto 64px;
+      }
+      header {
+        padding: 34px;
+        color: white;
+        border-radius: 22px;
+        background: linear-gradient(135deg, #15191f, #33404c);
+        box-shadow: 0 18px 50px rgba(25, 31, 40, 0.16);
+      }
+      header p {
+        margin: 8px 0 0;
+        color: #d6dce2;
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(25px, 5vw, 36px);
+        letter-spacing: -0.04em;
+      }
+      h2 {
+        margin: 0 0 16px;
+        font-size: 21px;
+        letter-spacing: -0.025em;
+      }
+      h3 {
+        margin: 0 0 6px;
+        font-size: 16px;
+      }
+      section {
+        margin-top: 18px;
+        padding: 26px;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+      }
+      .badge {
+        display: inline-block;
+        margin-bottom: 9px;
+        padding: 4px 9px;
+        color: var(--accent);
+        background: var(--accent-soft);
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .steps {
+        display: grid;
+        gap: 12px;
+      }
+      .step {
+        display: grid;
+        grid-template-columns: 34px 1fr;
+        gap: 12px;
+        align-items: start;
+      }
+      .num {
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        color: white;
+        background: var(--ink);
+        border-radius: 11px;
+        font-size: 14px;
+        font-weight: 800;
+      }
+      .step p,
+      .note p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .login-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .login-card {
+        padding: 18px;
+        background: var(--soft);
+        border-radius: 14px;
+      }
+      .login-card p {
+        margin: 7px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      code {
+        padding: 2px 6px;
+        color: #33404c;
+        background: #e9edf1;
+        border-radius: 6px;
+        font-family: inherit;
+        font-weight: 700;
+      }
+      .note {
+        margin-top: 14px;
+        padding: 15px 17px;
+        background: var(--warn-soft);
+        border: 1px solid #f2d69a;
+        border-radius: 13px;
+      }
+      .note strong {
+        color: var(--warn);
+      }
+      ul {
+        margin: 8px 0 0;
+        padding-left: 21px;
+        color: var(--muted);
+      }
+      li + li {
+        margin-top: 5px;
+      }
+      .help {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        align-items: center;
+        padding: 18px 20px;
+        background: var(--accent-soft);
+        border-color: #c9e9dc;
+      }
+      .help p {
+        margin: 3px 0 0;
+        color: #436c5d;
+        font-size: 14px;
+      }
+      footer {
+        padding: 24px 4px;
+        color: #8b95a1;
+        text-align: center;
+        font-size: 12px;
+      }
+      @media (max-width: 640px) {
+        main {
+          margin-top: 16px;
+        }
+        header,
+        section {
+          padding: 22px;
+          border-radius: 16px;
+        }
+        .login-grid {
+          grid-template-columns: 1fr;
+        }
+        .help {
+          display: block;
+        }
+      }
+      @media print {
+        body {
+          background: white;
+        }
+        main {
+          width: 100%;
+          margin: 0;
+        }
+        header {
+          box-shadow: none;
+        }
+        section {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>공정 부적합 등록 및 관리</h1>
+        <p>일반 등록자를 위한 빠른 사용자 가이드</p>
+      </header>
+
+      <section>
+        <span class="badge">LOGIN</span>
+        <h2>로그인 방법</h2>
+        <div class="login-grid">
+          <div class="login-card">
+            <h3>일반 사용자</h3>
+            <p>
+              <b>아이디:</b> 회사 전체 이메일 주소<br />예:
+              <code>name@soosan.co.kr</code>
+            </p>
+            <p><b>비밀번호:</b> 그룹웨어에서 사용하는 비밀번호</p>
+          </div>
+          <div class="login-card">
+            <h3>관리자</h3>
+            <p>
+              <b>아이디:</b> 관리자가 안내받은 관리자 아이디<br />예:
+              <code>admin</code>
+            </p>
+            <p><b>비밀번호:</b> 관리자 계정의 내부 비밀번호</p>
+          </div>
+        </div>
+        <div class="note">
+          <p>
+            <strong>중요:</strong> CSV로 새로 등록된 일반 사용자는 회사 이메일과
+            그룹웨어 비밀번호로 로그인합니다. 이메일 주소는 반드시 전체 주소를
+            입력하세요.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <span class="badge">SUBMIT</span>
+        <h2>부적합 보고서 등록</h2>
+        <div class="steps">
+          <div class="step">
+            <span class="num">1</span>
+            <div>
+              <h3>부적합 등록 메뉴 선택</h3>
+              <p>
+                로그인 후 상단 또는 하단 메뉴에서 <b>부적합 등록</b>을 누릅니다.
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="num">2</span>
+            <div>
+              <h3>기본 정보 입력</h3>
+              <p>
+                양산/개발, 등록자, 공장과 발생 공정을 확인하거나 선택합니다.
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="num">3</span>
+            <div>
+              <h3>품목 선택</h3>
+              <p>품목코드 또는 품목명으로 검색하고 올바른 품목을 선택합니다.</p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="num">4</span>
+            <div>
+              <h3>부적합 내용 작성</h3>
+              <p>발생일, 불량 수량과 부적합 현상을 구체적으로 입력합니다.</p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="num">5</span>
+            <div>
+              <h3>사진 첨부</h3>
+              <p>필요한 경우 현장 사진을 최대 5장까지 촬영하거나 선택합니다.</p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="num">6</span>
+            <div>
+              <h3>접수하기</h3>
+              <p>
+                내용을 다시 확인한 뒤 <b>접수하기</b>를 한 번 누르고 완료 화면이
+                표시될 때까지 기다립니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <span class="badge">CHECK</span>
+        <h2>등록 후 확인</h2>
+        <ul>
+          <li>접수된 보고서는 <b>관리대장</b>에서 확인할 수 있습니다.</li>
+          <li>
+            검색창에서 품목명, 모델명 또는 보고서 번호로 찾을 수 있습니다.
+          </li>
+          <li>등록 후 수정이 필요하면 관리자 또는 QC 담당자에게 요청하세요.</li>
+          <li>
+            완료 화면이 나오기 전에 화면을 닫거나 접수 버튼을 반복해서 누르지
+            마세요.
+          </li>
+        </ul>
+      </section>
+
+      <section class="help">
+        <div>
+          <h3>추가 도움이 필요한가요?</h3>
+          <p>
+            시스템의 <b>도움말</b> 메뉴에서 상세 안내와 화면 투어를 확인할 수
+            있습니다.
+          </p>
+        </div>
+        <strong>문의: 사내 NCR 시스템 관리자</strong>
+      </section>
+
+      <footer>수산세보틱스 NCR 사용자 가이드</footer>
+    </main>
+  </body>
+</html>

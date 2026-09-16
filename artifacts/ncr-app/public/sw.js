@@ -1,5 +1,4 @@
-const CACHE_NAME = "ncr-v1";
-const STATIC_ASSETS = ["/", "/src/main.tsx"];
+const CACHE_NAME = "ncr-v2";
 
 self.addEventListener("install", (e) => {
   self.skipWaiting();
@@ -17,17 +16,24 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   const url = new URL(e.request.url);
+  if (!["http:", "https:"].includes(url.protocol)) return;
+  if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/")) return;
+
   e.respondWith(
-    fetch(e.request)
-      .then((res) => {
-        if (res.ok) {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+    (async () => {
+      try {
+        const response = await fetch(e.request);
+        if (response.ok && response.type === "basic") {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(e.request, response.clone()).catch(() => undefined);
         }
-        return res;
-      })
-      .catch(() => caches.match(e.request))
+        return response;
+      } catch {
+        const cached = await caches.match(e.request);
+        return cached || Response.error();
+      }
+    })()
   );
 });
 

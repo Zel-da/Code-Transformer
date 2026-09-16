@@ -11,9 +11,25 @@ id = "B8ulrW45gLslHg4AhHkOk"
 uri = "file://수산톡_알림_발송_방식.md"
 type = "text"
 title = "수산톡 알림 발송 방식 정리"
+logical_id = "44b572b3-492c-427b-893c-b1b0f804aea5"
 
 [[outputs]]
 id = "tiN4lMIIbVqp5cWdIoPzG"
 uri = "file://수산톡_버튼_인터랙션_구현_명세서.md"
 type = "text"
 title = "수산톡 버튼 인터랙션 구현 명세서"
+logical_id = "38a7930e-5b7f-427f-8755-553c9727e257"
+
+[[outputs]]
+id = "EWvOKBvxxFYoeGkVh9LcZ"
+uri = "file://docs/ncr-user-guide.html"
+type = "text"
+title = "NCR 사용자 가이드"
+description = "그룹웨어·관리자 로그인 방법과 부적합 보고서 등록 절차를 담은 간단한 HTML 안내서입니다."
+logical_id = "595c0804-b61b-47c7-af77-4c50827bf351"
+content_hash = "sha256:25628f315a713b9f0ee954a9d2443adfad13e1decde023c045c4bfad83a21f85"
+size = 6860
+mtime_ms = 1789544004899
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:51661f33-a702-47d1-acb4-5ed7f22588b6/595c0804-b61b-47c7-af77-4c50827bf351/96c0b8ed-bb51-4133-8aec-f8862f21daa6"
+storage_version_token = "1789544016234134"
+content_type = "text/html"
