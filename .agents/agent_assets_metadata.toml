@@ -33,3 +33,31 @@ mtime_ms = 1789544004899
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:51661f33-a702-47d1-acb4-5ed7f22588b6/595c0804-b61b-47c7-af77-4c50827bf351/96c0b8ed-bb51-4133-8aec-f8862f21daa6"
 storage_version_token = "1789544016234134"
 content_type = "text/html"
+
+[[outputs]]
+id = "8BfY9kGlg1bn28mC_w93v"
+uri = "file://docs/ncr-guide-general-user.html"
+type = "text"
+title = "NCR 일반 사용자 가이드"
+description = "회사 계정 로그인, 부적합 등록, 사진 첨부, 관리대장 조회, 상태 확인과 문제 해결을 담은 상세 HTML 가이드입니다."
+logical_id = "861526ed-0284-4245-92da-bca96784446f"
+content_hash = "sha256:0796ade4ca93d51ff72faf50f164c2aa30cc251bf67d09a37bc5c2aa2c4d3fe6"
+size = 11732
+mtime_ms = 1789544166130
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:51661f33-a702-47d1-acb4-5ed7f22588b6/861526ed-0284-4245-92da-bca96784446f/58746a16-e7c8-41ba-a458-2930b4e82290"
+storage_version_token = "1789544243689326"
+content_type = "text/html"
+
+[[outputs]]
+id = "7kCpTbDbkj2koh4ChecJD"
+uri = "file://docs/ncr-guide-quality-manager.html"
+type = "text"
+title = "NCR 품질 관리자 가이드"
+description = "일일 확인, QC 분석, 협업 요청, 상태 전환, 승인, ERP 연동과 관리자 기능을 담은 상세 HTML 가이드입니다."
+logical_id = "1e9cefa7-db4f-4a51-92b3-21940246b62f"
+content_hash = "sha256:77f90d270d6f2b83c6a23e2791d94b0c8f28df7356eecb5ba244424d94f745e4"
+size = 14936
+mtime_ms = 1789544212398
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:51661f33-a702-47d1-acb4-5ed7f22588b6/1e9cefa7-db4f-4a51-92b3-21940246b62f/aebc8cb7-bbb5-4e59-adcc-40d54f779c3a"
+storage_version_token = "1789544244912073"
+content_type = "text/html"
