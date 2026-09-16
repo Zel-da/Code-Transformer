@@ -25,6 +25,9 @@ CANONICAL_FIELDS: tuple[str, ...] = (
     "itemGroup", "itemName",
     # item_groups 마스터에서 보강되는 ERP 입력용 코드 (예: CL411)
     "itemGroupCd",
+    # QC 분석 필드 (Replit 웹폼 QC 페이지 저장분 → 부적합판정등록 폼)
+    "claimStatus", "partsCost", "laborCost", "relatedDeptStatus",
+    "judgmentResult", "qcCorrectiveResult", "correctiveActionStatus", "qualityOpinion",
 )
 
 

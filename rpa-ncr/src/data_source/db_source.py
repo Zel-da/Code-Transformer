@@ -58,6 +58,15 @@ _OPTIONAL_NON_CONFORMITY_COLS: tuple[tuple[str, str], ...] = (
     ("manager_cd",         "managerCd"),
     ("manager_nm",         "managerNm"),
     ("ncr_number",         "ncrNumber"),
+    # 부적합판정등록(S) — QC 분석 필드 (Replit 웹폼 QC 페이지 저장분)
+    ("claim_status",              "claimStatus"),
+    ("parts_cost",                "partsCost"),
+    ("labor_cost",                "laborCost"),
+    ("related_dept_status",       "relatedDeptStatus"),
+    ("judgment_result",           "judgmentResult"),
+    ("qc_corrective_result",      "qcCorrectiveResult"),
+    ("corrective_action_status",  "correctiveActionStatus"),
+    ("quality_opinion",           "qualityOpinion"),
 )
 
 # 항상 포함되는 기본 FROM 절. item_groups는 존재 여부 확인 후 동적으로 JOIN 추가.
