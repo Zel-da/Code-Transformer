@@ -707,7 +707,7 @@ export default function SubmitReport() {
               control={form.control}
               name="itemCode"
               render={({ field }) => (
-                <FieldRow label="제품코드" error={form.formState.errors.itemCode?.message}>
+                <FieldRow label="제품품번" error={form.formState.errors.itemCode?.message}>
                   <input
                     type="text"
                     placeholder="제품코드를 입력하세요"
