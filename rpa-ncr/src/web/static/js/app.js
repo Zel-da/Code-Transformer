@@ -1,43 +1,94 @@
-// NCR → UNIERP RPA 대시보드 클라이언트
+// NCR → UNIERP RPA 대시보드 클라이언트 (2026 재편)
 "use strict";
 
 const $ = (id) => document.getElementById(id);
+const esc = (s) => (s == null ? "" : String(s).replace(/[&<>"']/g,
+    c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])));
 
+// ───── Log pane ─────
 function logLine(msg, cls) {
     const pane = $("logPane");
+    if (!pane) return;
     const div = document.createElement("div");
     if (cls) div.className = cls;
-    const ts = new Date().toLocaleTimeString();
-    div.textContent = `[${ts}] ${msg}`;
+    div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
     pane.appendChild(div);
     pane.scrollTop = pane.scrollHeight;
 }
 
+// ───── API helper ─────
 async function api(method, url, body) {
     const opts = { method, headers: { "Content-Type": "application/json" } };
     if (body !== undefined) opts.body = JSON.stringify(body);
     const resp = await fetch(url, opts);
     let data = null;
-    try { data = await resp.json(); } catch (e) { /* no body */ }
+    try { data = await resp.json(); } catch { /* no body */ }
     if (!resp.ok) {
         const err = (data && (data.error || data.message)) || resp.statusText;
         throw new Error(err);
     }
     return data;
 }
-
 function setResult(id, msg, ok) {
     const el = $(id);
+    if (!el) return;
     el.textContent = msg;
     el.className = "result " + (ok ? "ok" : "err");
 }
 
-// ── 큐 렌더링 ──
+// ───── 상태바 (chips) ─────
+function setChip(id, text, kind) {
+    const el = $(id);
+    if (!el) return;
+    el.textContent = text;
+    el.className = "chip chip-" + (kind || "neutral");
+}
+
+function updateQueueChip(queue) {
+    if (!queue || queue.length === 0) {
+        setChip("chipQueue", "큐 비어있음", "neutral");
+        return;
+    }
+    const total = queue.length;
+    const done = queue.filter(q => /완료|저장됨/.test(q.status)).length;
+    const err = queue.filter(q => /오류|실패/.test(q.status)).length;
+    const kind = err > 0 ? "err" : (done === total ? "ok" : "neutral");
+    setChip("chipQueue", `큐 ${done}/${total} 완료${err ? ` · 오류 ${err}` : ""}`, kind);
+}
+
+// ───── 큐 테이블 ─────
+function statusPill(status) {
+    if (!status) return `<span class="pill pill-pending">대기</span>`;
+    const s = String(status).trim();
+    if (/완료|COMPLETED/i.test(s))     return `<span class="pill pill-completed">${esc(s)}</span>`;
+    if (/저장됨|REVIEW/i.test(s))      return `<span class="pill pill-review">${esc(s)}</span>`;
+    if (/오류|실패|FAILED/i.test(s))   return `<span class="pill pill-failed">${esc(s)}</span>`;
+    if (/입력|PROCESSING/i.test(s))    return `<span class="pill pill-processing">${esc(s)}</span>`;
+    return `<span class="pill pill-pending">${esc(s)}</span>`;
+}
+
+function retryBadge(count, lastError) {
+    const n = Number(count || 0);
+    if (!n) return `<span class="retry-badge zero">-</span>`;
+    const title = lastError ? `마지막 오류: ${lastError}` : `재시도 ${n}회`;
+    return `<span class="retry-badge" title="${esc(title)}">↻ ${n}</span>`;
+}
+
+function qcBadge(qc) {
+    if (!qc) return `<span class="muted">—</span>`;
+    const s = String(qc);
+    if (/APPROVED/i.test(s))   return `<span class="pill pill-completed">승인</span>`;
+    if (/ERP_SYNCED/i.test(s)) return `<span class="pill pill-completed">ERP</span>`;
+    if (/REVIEW/i.test(s))     return `<span class="pill pill-review">검토</span>`;
+    return `<span class="pill pill-pending">${esc(s)}</span>`;
+}
+
 function renderQueue(queue) {
     const body = $("queueBody");
     $("queueCount").textContent = queue && queue.length ? `(${queue.length}건)` : "";
+    updateQueueChip(queue);
     if (!queue || queue.length === 0) {
-        body.innerHTML = '<tr><td colspan="5" class="muted">조회된 보고 없음</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" class="muted empty-row">조회된 보고 없음 — 상단 [PENDING 조회]</td></tr>';
         return;
     }
     body.innerHTML = "";
@@ -45,8 +96,13 @@ function renderQueue(queue) {
         const tr = document.createElement("tr");
         tr.dataset.index = q.index;
         tr.innerHTML =
-            `<td>${q.index + 1}</td><td>${q.id}</td><td>${q.item_code || ""}</td>` +
-            `<td class="qstatus">${q.status}</td><td class="qprogress">${q.progress}</td>`;
+            `<td>${q.index + 1}</td>` +
+            `<td>${q.id}</td>` +
+            `<td>${esc(q.ncr_number || "")}</td>` +
+            `<td>${esc(q.item_code || "")}</td>` +
+            `<td>${qcBadge(q.qc_status)}</td>` +
+            `<td class="qstatus">${statusPill(q.status)}<div class="qprogress muted" style="font-size:11px">${esc(q.progress || "")}</div></td>` +
+            `<td class="qretry">${retryBadge(q.attempt_count, q.last_error)}</td>`;
         body.appendChild(tr);
     });
 }
@@ -55,18 +111,19 @@ function updateQueueRow(index, status, progress) {
     const tr = $("queueBody").querySelector(`tr[data-index="${index}"]`);
     if (!tr) return;
     const st = tr.querySelector(".qstatus");
-    st.textContent = status;
-    st.className = "qstatus status-" + status.replace(/\s/g, "");
-    if (progress !== undefined) tr.querySelector(".qprogress").textContent = progress;
+    st.innerHTML = statusPill(status) +
+        `<div class="qprogress muted" style="font-size:11px">${esc(progress || "")}</div>`;
+    // 큐 전체 상태바 갱신: DOM 에서 수집
+    const q = [...$("queueBody").querySelectorAll("tr")]
+        .map(r => ({ status: r.querySelector(".pill")?.textContent || "대기" }));
+    updateQueueChip(q);
 }
 
-// ── WebSocket ──
+// ───── WebSocket ─────
 function connectWS(path, onMessage) {
     const proto = location.protocol === "https:" ? "wss" : "ws";
     const ws = new WebSocket(`${proto}://${location.host}${path}`);
-    ws.onmessage = (ev) => {
-        try { onMessage(JSON.parse(ev.data)); } catch (e) { /* ignore */ }
-    };
+    ws.onmessage = (ev) => { try { onMessage(JSON.parse(ev.data)); } catch { /* ignore */ } };
     ws.onclose = () => setTimeout(() => connectWS(path, onMessage), 2000);
     return ws;
 }
@@ -74,7 +131,7 @@ function connectWS(path, onMessage) {
 function handleProgress(d) {
     if (d.type === "fetched") {
         renderQueue(d.queue);
-        logLine(`PENDING 보고 ${d.count}건 조회됨`);
+        logLine(`PENDING 보고 ${d.count}건 조회됨`, "ok");
     } else if (d.type === "error") {
         logLine(`조회 오류: ${d.message}`, "err");
     }
@@ -82,12 +139,15 @@ function handleProgress(d) {
 
 function handleErp(d) {
     if (d.type === "log") {
-        const cls = /오류|실패|⚠/.test(d.message) ? (/⚠/.test(d.message) ? "warn" : "err") : null;
+        const cls = /오류|실패/.test(d.message) ? "err"
+                  : /⚠|warn/i.test(d.message)  ? "warn"
+                  : /✓|OK|성공/i.test(d.message) ? "ok" : null;
         logLine(d.message, cls);
     } else if (d.type === "queue_update") {
         updateQueueRow(d.index, d.status, d.progress);
     } else if (d.type === "connection") {
-        logLine((d.connected ? "✓ " : "✗ ") + d.message, d.connected ? null : "err");
+        setChip("chipErp", d.connected ? "ERP 연결됨" : "ERP 미연결", d.connected ? "ok" : "err");
+        logLine((d.connected ? "✓ " : "✗ ") + d.message, d.connected ? "ok" : "err");
     } else if (d.type === "focus_lost") {
         logLine(d.message, "warn");
     } else if (d.type === "running") {
@@ -99,15 +159,13 @@ function handleErp(d) {
     }
 }
 
-// ── 배치 검토 패널 (1 보고 = 1 페이지) ──
+// ───── 배치 검토 ─────
 let _reviewState = { reports: [], page: 0 };
 
 function showReviewPanel(d) {
     const panel = $("reviewPanel");
     panel.classList.remove("hidden");
     $("reviewResult").textContent = "";
-    // 새 페이로드: d.reports = [{queue_index, report_id, steps, status}, ...]
-    // 옛 호환: 단일 d.steps + d.report_id면 1개짜리 배열로 감쌈
     if (Array.isArray(d.reports)) {
         _reviewState = { reports: d.reports, page: 0 };
     } else if (d.steps) {
@@ -116,6 +174,7 @@ function showReviewPanel(d) {
         _reviewState = { reports: [], page: 0 };
     }
     renderReviewPage();
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderReviewPage() {
@@ -126,16 +185,14 @@ function renderReviewPage() {
     _reviewState.page = cur;
     const r = reports[cur];
 
-    // 헤더 — 보고 번호 + phase/form_id + 상태
     const statusBadge = r.status === "confirmed"
-        ? '<span style="color:#5cb85c;font-weight:bold">✓ 확인됨</span>'
-        : '<span style="color:#f0ad4e">대기 중</span>';
+        ? '<span class="pill pill-completed">✓ 확인됨</span>'
+        : '<span class="pill pill-review">대기 중</span>';
     const formTag = r.form_id
-        ? ` <span style="background:#2c5aa0;color:white;padding:2px 8px;border-radius:3px;font-size:12px">${escapeHtml(r.form_id)}${r.phase ? ` · Phase ${r.phase}` : ''}</span>`
+        ? ` <span class="pill pill-processing">${esc(r.form_id)}${r.phase ? ` · P${r.phase}` : ''}</span>`
         : '';
-    $("reviewReportLabel").innerHTML = `보고 #${r.report_id}${formTag} — ${statusBadge}`;
+    $("reviewReportLabel").innerHTML = `보고 #${r.report_id}${formTag} ${statusBadge}`;
 
-    // 17 필드 테이블
     const tbody = $("reviewSteps");
     tbody.innerHTML = "";
     (r.steps || []).forEach((s) => {
@@ -143,9 +200,9 @@ function renderReviewPage() {
         const valDisplay = s.value === "" || s.value === null ? "—" : s.value;
         const isSkip = s.method === "skip" || s.skippable;
         tr.innerHTML =
-            `<td>${s.idx + 1}</td><td>${escapeHtml(s.label)}</td>` +
-            `<td><code>${escapeHtml(String(valDisplay))}</code></td>` +
-            `<td class="muted">${escapeHtml(s.method)}</td>` +
+            `<td>${s.idx + 1}</td><td>${esc(s.label)}</td>` +
+            `<td><code>${esc(String(valDisplay))}</code></td>` +
+            `<td class="muted">${esc(s.method)}</td>` +
             `<td>${isSkip
                 ? '<span class="muted">(SKIP)</span>'
                 : `<button class="btn btn-secondary" data-redo="${s.idx}">재실행 #${s.idx + 1}</button>`}</td>`;
@@ -162,24 +219,20 @@ function renderReviewPage() {
         };
     });
 
-    // pager
-    const confirmedCount = reports.filter(x => x.status === "confirmed").length;
     const uniqueReports = new Set(reports.map(x => x.report_id)).size;
     const uniqueConfirmed = new Set(reports.filter(x => x.status === "confirmed").map(x => x.report_id)).size;
     const pager = $("reviewPager");
-    if (pager) {
-        pager.textContent = `엔트리 ${cur + 1}/${total}  (보고 ${uniqueConfirmed}/${uniqueReports} 확인)`;
-    }
+    if (pager) pager.textContent = `엔트리 ${cur + 1}/${total}  (보고 ${uniqueConfirmed}/${uniqueReports} 확인)`;
+
     const btnPrev = $("btnReviewPrev");
     const btnNext = $("btnReviewNext");
     if (btnPrev) btnPrev.disabled = cur === 0;
     if (btnNext) btnNext.disabled = cur >= total - 1;
 
-    // 완료 확인 / 모두 확인 버튼 상태
     const btnConfirm = $("btnConfirm");
     if (btnConfirm) {
         btnConfirm.disabled = r.status === "confirmed";
-        btnConfirm.textContent = r.status === "confirmed" ? "이미 확인됨" : "이 보고 완료 확인";
+        btnConfirm.textContent = r.status === "confirmed" ? "이미 확인됨" : "이 보고 완료";
     }
 }
 
@@ -188,19 +241,20 @@ function hideReviewPanel() {
     _reviewState = { reports: [], page: 0 };
 }
 
-// ── 소스 ──
+// ───── 설정 로드 ─────
 async function loadSource() {
     const d = await api("GET", "/api/source");
     document.querySelectorAll('input[name="source"]').forEach((r) => { r.checked = r.value === d.source; });
-    $("sourceInfo").textContent = `API: ${d.api_base_url || "(미설정)"} · DB: ${d.db_configured ? "설정됨" : "미설정"}`;
+    const info = $("sourceInfo");
+    if (info) info.textContent = `API: ${d.api_base_url || "(미설정)"} · DB: ${d.db_configured ? "설정됨" : "미설정"}`;
+    const label = d.source === "db" ? "DB (Neon)" : "API (리플릿)";
+    setChip("chipSource", `소스: ${label}`, d.db_configured || d.api_base_url ? "ok" : "warn");
 }
-
 function selectedSource() {
     const r = document.querySelector('input[name="source"]:checked');
     return r ? r.value : "api";
 }
 
-// ── ERP 설정 ──
 async function loadErpSettings() {
     const d = await api("GET", "/api/erp/settings");
     $("erpWindowTitle").value = d.window_title || "";
@@ -212,26 +266,142 @@ async function loadErpSettings() {
     $("erpGridColumns").value = d.grid_columns || "";
 }
 
-// ── 설정 점검 배너 ──
 async function loadSetupCheck() {
-    const d = await api("GET", "/api/setup/check");
-    const banner = $("setupBanner");
-    banner.classList.remove("hidden");
-    banner.classList.toggle("ok", d.all_required_ok);
-    const head = d.all_required_ok
-        ? "✓ 필수 설정 완료"
-        : `⚠ 필수 설정 ${d.required_missing_count}개 미완료`;
-    const lis = d.items
-        .filter((it) => it.status !== "ok")
-        .map((it) => `<li class="${it.status === "error" ? "err" : "warn"}">${it.label}: ${it.message}${it.hint ? " — " + it.hint : ""}</li>`)
-        .join("");
-    banner.innerHTML = `<strong>${head}</strong>` + (lis ? `<ul>${lis}</ul>` : "");
+    try {
+        const d = await api("GET", "/api/setup/check");
+        const banner = $("setupBanner");
+        if (!banner) return;
+        if (d.all_required_ok && d.recommended_missing_count === 0) {
+            banner.classList.add("hidden");
+            return;
+        }
+        banner.classList.remove("hidden");
+        banner.classList.toggle("ok", d.all_required_ok);
+        const head = d.all_required_ok
+            ? "✓ 필수 설정 완료"
+            : `⚠ 필수 설정 ${d.required_missing_count}개 미완료`;
+        const lis = d.items
+            .filter((it) => it.status !== "ok")
+            .map((it) => `<li class="${it.status === "error" ? "err" : "warn"}">${esc(it.label)}: ${esc(it.message)}${it.hint ? " — " + esc(it.hint) : ""}</li>`)
+            .join("");
+        banner.innerHTML = `<strong>${head}</strong>` + (lis ? `<ul>${lis}</ul>` : "");
+    } catch { /* ignore */ }
 }
 
-// ── 이벤트 바인딩 ──
+// ───── Drawer ─────
+function openDrawer() {
+    const d = $("settingsDrawer");
+    d.classList.remove("hidden");
+    requestAnimationFrame(() => d.classList.add("open"));
+    d.setAttribute("aria-hidden", "false");
+}
+function closeDrawer() {
+    const d = $("settingsDrawer");
+    d.classList.remove("open");
+    d.setAttribute("aria-hidden", "true");
+    setTimeout(() => d.classList.add("hidden"), 220);
+}
+
+// ───── Modal ─────
+function openModal(id) {
+    const m = $(id);
+    m.classList.remove("hidden");
+    m.setAttribute("aria-hidden", "false");
+}
+function closeModal(id) {
+    const m = $(id);
+    m.classList.add("hidden");
+    m.setAttribute("aria-hidden", "true");
+}
+
+// ───── Updater ─────
+const Updater = {
+    lastResult: null,
+
+    async check(openModalOnFound) {
+        try {
+            const data = await api("GET", "/api/update/check");
+            Updater.lastResult = data;
+            Updater._renderBadge(data);
+            Updater._render(data);
+            if (openModalOnFound && data.update_available) openModal("updateModal");
+        } catch (e) {
+            logLine(`업데이트 확인 실패: ${e.message}`, "warn");
+            const body = $("updateModalBody");
+            if (body) body.innerHTML = `<div class="result err">업데이트 확인 실패: ${esc(e.message)}</div>`;
+        }
+    },
+
+    _renderBadge(data) {
+        const btn = $("btnUpdateOpen");
+        const lbl = $("updateBtnLabel");
+        if (!btn) return;
+        if (data && data.update_available) {
+            btn.classList.remove("hidden");
+            if (lbl) lbl.textContent = "새 업데이트";
+        } else {
+            btn.classList.add("hidden");
+        }
+    },
+
+    _render(data) {
+        const body = $("updateModalBody");
+        const btnApply = $("btnUpdateApply");
+        if (!body) return;
+        if (!data) {
+            body.innerHTML = `<div class="muted">업데이트 정보 없음</div>`;
+            if (btnApply) btnApply.classList.add("hidden");
+            return;
+        }
+        const local = data.local_commit ? data.local_commit.slice(0, 10) : "(미확정)";
+        const remote = data.remote_commit ? data.remote_commit.slice(0, 10) : "(미확인)";
+        const msg = (data.remote_message || "").trim();
+        let html = `<dl class="version-grid">
+            <dt>현재</dt><dd>${esc(local)} <span class="muted">(${esc(data.mode || "?")})</span></dd>
+            <dt>원격</dt><dd>${esc(remote)}</dd>
+        </dl>`;
+        if (data.update_available) {
+            html += `<div style="margin-bottom:6px;font-weight:600">새 변경사항</div>
+                     <div class="commit-box">${esc(msg || "(커밋 메시지 없음)")}</div>`;
+            if (btnApply) btnApply.classList.remove("hidden");
+        } else if (data.reason) {
+            html += `<div class="result err">${esc(data.reason)}</div>`;
+            if (btnApply) btnApply.classList.add("hidden");
+        } else {
+            html += `<div class="result ok">✓ 최신 버전입니다.</div>`;
+            if (btnApply) btnApply.classList.add("hidden");
+        }
+        body.innerHTML = html;
+    },
+
+    async apply() {
+        const btnApply = $("btnUpdateApply");
+        if (btnApply) { btnApply.disabled = true; btnApply.textContent = "업데이트 중..."; }
+        try {
+            const data = await api("POST", "/api/update/apply", {});
+            const body = $("updateModalBody");
+            if (data.success) {
+                if (body) body.innerHTML = `<div class="result ok">✓ 업데이트 완료 — 프로그램을 재시작하세요.</div>
+                    <div class="muted" style="margin-top:8px">${esc(data.message || "")}</div>`;
+                if (btnApply) btnApply.classList.add("hidden");
+            } else {
+                if (body) body.innerHTML = `<div class="result err">업데이트 실패: ${esc(data.message || "")}</div>`;
+                if (btnApply) { btnApply.disabled = false; btnApply.textContent = "지금 업데이트"; }
+            }
+        } catch (e) {
+            const body = $("updateModalBody");
+            if (body) body.innerHTML = `<div class="result err">업데이트 오류: ${esc(e.message)}</div>`;
+            if (btnApply) { btnApply.disabled = false; btnApply.textContent = "지금 업데이트"; }
+        }
+    },
+};
+
+// ───── 이벤트 바인딩 ─────
 function bind() {
+    // 데이터 소스
     $("btnSourceSave").onclick = async () => {
-        try { const d = await api("PUT", "/api/source", { source: selectedSource() }); setResult("sourceTestResult", d.message, true); loadSetupCheck(); }
+        try { const d = await api("PUT", "/api/source", { source: selectedSource() });
+            setResult("sourceTestResult", d.message, true); loadSetupCheck(); loadSource(); }
         catch (e) { setResult("sourceTestResult", e.message, false); }
     };
     $("btnSourceTest").onclick = async () => {
@@ -239,6 +409,7 @@ function bind() {
         try { const d = await api("POST", "/api/source/test"); setResult("sourceTestResult", d.message, d.ok); }
         catch (e) { setResult("sourceTestResult", e.message, false); }
     };
+    // ERP 설정
     $("btnErpSettingsSave").onclick = async () => {
         const body = {
             window_title: $("erpWindowTitle").value,
@@ -252,14 +423,16 @@ function bind() {
         try { const d = await api("PUT", "/api/erp/settings", body); setResult("erpSettingsResult", d.message, true); loadSetupCheck(); }
         catch (e) { setResult("erpSettingsResult", e.message, false); }
     };
+    // 실행
     $("btnFetch").onclick = async () => {
-        try { const d = await api("POST", "/api/reports/fetch"); logLine(d.message); }
+        try { const d = await api("POST", "/api/reports/fetch"); logLine(d.message, "ok"); }
         catch (e) { logLine(e.message, "err"); }
     };
     $("btnErpTest").onclick = async () => {
         try {
             const d = await api("POST", "/api/erp/test");
-            logLine(d.connected ? `✓ ERP 창 발견: ${d.window_title}` : `✗ ${d.error}`, d.connected ? null : "err");
+            setChip("chipErp", d.connected ? "ERP 연결됨" : "ERP 미연결", d.connected ? "ok" : "err");
+            logLine(d.connected ? `✓ ERP 창 발견: ${d.window_title}` : `✗ ${d.error}`, d.connected ? "ok" : "err");
         } catch (e) { logLine(e.message, "err"); }
     };
     $("btnStart").onclick = async () => {
@@ -274,27 +447,25 @@ function bind() {
         try { const d = await api("POST", "/api/erp/stop"); setResult("runStatus", d.message, true); }
         catch (e) { setResult("runStatus", e.message, false); }
     };
+    // 검토 패널
     $("btnRedoAll").onclick = async () => {
-        const r = _reviewState.reports[_reviewState.page];
-        if (!r) return;
-        try { const d = await api("POST", "/api/erp/review/redo-all", { report_id: r.report_id }); setResult("reviewResult", d.message, true); }
+        const r = _reviewState.reports[_reviewState.page]; if (!r) return;
+        try { const d = await api("POST", "/api/erp/review/redo-all", { report_id: r.report_id });
+            setResult("reviewResult", d.message, true); }
         catch (e) { setResult("reviewResult", e.message, false); }
     };
     $("btnConfirm").onclick = async () => {
-        const r = _reviewState.reports[_reviewState.page];
-        if (!r) return;
+        const r = _reviewState.reports[_reviewState.page]; if (!r) return;
         try {
             const d = await api("POST", "/api/erp/review/confirm", { report_id: r.report_id });
             setResult("reviewResult", d.message, true);
             r.status = "confirmed";
-            // 다음 미확인 페이지로 자동 이동
             const next = _reviewState.reports.findIndex((x, i) => i > _reviewState.page && x.status !== "confirmed");
             if (next >= 0) _reviewState.page = next;
             renderReviewPage();
         } catch (e) { setResult("reviewResult", e.message, false); }
     };
-    const btnConfirmAll = $("btnConfirmAll");
-    if (btnConfirmAll) btnConfirmAll.onclick = async () => {
+    $("btnConfirmAll").onclick = async () => {
         if (!confirm(`${_reviewState.reports.length}건 모두 완료로 표시하시겠습니까?`)) return;
         try {
             const d = await api("POST", "/api/erp/review/confirm", { report_id: null });
@@ -303,16 +474,35 @@ function bind() {
             hideReviewPanel();
         } catch (e) { setResult("reviewResult", e.message, false); }
     };
-    // 검토 페이지 이동
-    const btnPrev = $("btnReviewPrev");
-    const btnNext = $("btnReviewNext");
-    if (btnPrev) btnPrev.onclick = () => { _reviewState.page = Math.max(0, _reviewState.page - 1); renderReviewPage(); };
-    if (btnNext) btnNext.onclick = () => { _reviewState.page = _reviewState.page + 1; renderReviewPage(); };
-}
+    $("btnReviewPrev").onclick = () => { _reviewState.page = Math.max(0, _reviewState.page - 1); renderReviewPage(); };
+    $("btnReviewNext").onclick = () => { _reviewState.page = _reviewState.page + 1; renderReviewPage(); };
 
-function escapeHtml(s) {
-    if (s === null || s === undefined) return "";
-    return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    // 로그 접기
+    $("btnLogToggle").onclick = () => {
+        const pane = $("logPane");
+        const btn = $("btnLogToggle");
+        pane.classList.toggle("collapsed");
+        btn.textContent = pane.classList.contains("collapsed") ? "펼치기" : "접기";
+    };
+
+    // Drawer
+    $("btnOpenSettings").onclick = openDrawer;
+    $("btnCloseSettings").onclick = closeDrawer;
+
+    // Update modal
+    $("btnUpdateOpen").onclick = () => { openModal("updateModal"); Updater.check(false); };
+    $("btnUpdateRecheck").onclick = () => Updater.check(false);
+    $("btnUpdateApply").onclick = () => Updater.apply();
+    document.querySelectorAll("[data-close-modal]").forEach(el => {
+        el.onclick = () => closeModal("updateModal");
+    });
+
+    // ESC 로 drawer/modal 닫기
+    document.addEventListener("keydown", (ev) => {
+        if (ev.key !== "Escape") return;
+        if (!$("updateModal").classList.contains("hidden")) closeModal("updateModal");
+        else if ($("settingsDrawer").classList.contains("open")) closeDrawer();
+    });
 }
 
 // 새로고침 후 검토 중이었으면 복원
@@ -320,9 +510,9 @@ async function restoreReviewState() {
     try {
         const d = await api("GET", "/api/erp/review");
         if (d.active) {
-            showReviewPanel({ report_id: d.report_id, steps: d.steps });
+            showReviewPanel({ reports: d.reports || [], report_id: d.report_id, steps: d.steps });
         }
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
 }
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -333,5 +523,7 @@ window.addEventListener("DOMContentLoaded", () => {
     loadErpSettings().catch((e) => logLine("ERP 설정 로드 실패: " + e.message, "err"));
     loadSetupCheck().catch(() => {});
     restoreReviewState().catch(() => {});
-    logLine("대시보드 준비 완료");
+    // 배경에서 1회 업데이트 체크 (모달 자동 오픈 X, 배지만)
+    Updater.check(false).catch(() => {});
+    logLine("대시보드 준비 완료", "ok");
 });

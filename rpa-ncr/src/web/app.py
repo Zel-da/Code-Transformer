@@ -131,6 +131,11 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
                         "index": i,
                         "id": r.id,
                         "item_code": r.get_str("itemCode"),
+                        "ncr_number": r.get_str("ncrNumber"),
+                        "qc_status": r.get_str("qcStatus"),
+                        "sync_status": r.get_str("syncStatus"),
+                        "attempt_count": int(r.get("syncAttemptCount") or 0),
+                        "last_error": r.get_str("syncLastError"),
                         "status": "대기",
                         "progress": "0%",
                     }
@@ -157,10 +162,14 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
             {
                 "index": i,
                 "id": r.id,
+                "ncrNumber": r.get_str("ncrNumber"),
                 "itemCode": r.get_str("itemCode"),
                 "modelName": r.get_str("modelName"),
                 "defectType": r.get_str("defectType"),
                 "syncStatus": r.get_str("syncStatus"),
+                "qcStatus": r.get_str("qcStatus"),
+                "syncAttemptCount": int(r.get("syncAttemptCount") or 0),
+                "syncLastError": r.get_str("syncLastError"),
             }
             for i, r in enumerate(state.reports)
         ]
@@ -872,6 +881,71 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
             }
         except Exception as e:
             return JSONResponse({"error": f"ERP 윈도우에 연결할 수 없습니다: {e}"}, status_code=500)
+
+    # ── 업데이트 (OCR_EU 스타일) ──
+
+    @app.get("/api/update/check")
+    async def update_check():
+        """GitHub 원격 확인 — 모달/배지에서 현재/원격 커밋 비교용.
+
+        JS 가 기대하는 키 이름 (`local_commit`, `remote_commit`) 으로 재매핑한다.
+        updater.check_for_update() 는 레거시로 `local`/`remote` 를 쓰므로 변환.
+        """
+        from src.utils.file_utils import get_project_root
+        from src.utils.updater import check_for_update
+        try:
+            root = get_project_root()
+            result = await asyncio.get_event_loop().run_in_executor(
+                None, check_for_update, root)
+            return {
+                "update_available": bool(result.get("update_available")),
+                "local_commit": result.get("local") or "",
+                "remote_commit": result.get("remote") or "",
+                "remote_message": result.get("remote_message") or "",
+                "mode": result.get("mode") or "git",
+                "disabled": bool(result.get("disabled")),
+                "reason": result.get("reason") or "",
+            }
+        except Exception as e:
+            logger.error("업데이트 확인 실패: %s", e, exc_info=True)
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    @app.post("/api/update/apply")
+    async def update_apply():
+        """현재 체크된 원격 커밋으로 업데이트 수행.
+
+        - git repo → `git pull --ff-only`
+        - 아니면 → archive.zip 다운로드 + 백업/롤백
+        성공 시 .version 갱신, requirements 바뀌면 .venv/.install_ok 삭제.
+        사용자는 성공 메시지 보고 수동으로 프로그램 재시작 (시작.bat 재실행).
+        """
+        from src.utils.file_utils import get_project_root
+        from src.utils.updater import apply_update, check_for_update
+        try:
+            root = get_project_root()
+            loop = asyncio.get_event_loop()
+            # 1) 다시 체크 — JS 로드 후 커밋이 이동했을 수 있음
+            status = await loop.run_in_executor(None, check_for_update, root)
+            if status.get("disabled"):
+                return {"success": False, "message": "자동 업데이트 비활성화 (.no_auto_update)"}
+            if not status.get("remote"):
+                return {"success": False, "message": status.get("reason") or "원격 조회 실패"}
+            if not status.get("update_available"):
+                return {"success": True, "message": "이미 최신 버전입니다."}
+
+            sha = status["remote"]
+            mode = status.get("mode", "git")
+            result = await loop.run_in_executor(None, apply_update, root, sha, mode)
+            return {
+                "success": bool(result.get("success")),
+                "message": result.get("message") or "",
+                "requirements_changed": bool(result.get("requirements_changed")),
+                "mode": mode,
+                "new_commit": sha,
+            }
+        except Exception as e:
+            logger.error("업데이트 적용 실패: %s", e, exc_info=True)
+            return JSONResponse({"error": str(e)}, status_code=500)
 
     # ── WebSocket ──
 

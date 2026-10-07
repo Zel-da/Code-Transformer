@@ -19,19 +19,27 @@ Replit 웹폼에서 등록된 **부적합 보고**를 RPA 가 UNIERP 의 **부�
 전체 흐름:
 
 ```
-[현장 작업자] 웹폼 등록 → sync_status=PENDING
+[현장 작업자] 웹폼 등록 → sync_status=PENDING, qc_status=OPEN
         ↓
-[QC 담당자] 웹 QC 페이지에서 판정·비용·의견 입력 (claim/parts/labor/judgment/quality)
+[QC 담당자] 웹 QC 페이지에서 판정·비용·의견 입력 → qc_status=APPROVED
         ↓
 [Neon 클라우드 DB] non_conformity_reports 테이블
         ↓
-[RPA 운영자] 시작.bat 실행 → 대시보드 → [입력 시작]
+[RPA 운영자] 시작.bat 실행 → 대시보드 → [PENDING 조회]
+        ※ PENDING + qc_status=APPROVED 보고만 큐에 뜬다 (QC 미승인은 자동 제외)
         ↓
-[UNIERP 판정등록 폼] Tab 시퀀스로 25필드 자동 입력
+[입력 시작] → sync_status=PROCESSING → UNIERP Tab 시퀀스 25필드 자동 입력
         ↓
-[사용자 검토] 배치 검토 UI → [완료 확인]
+[저장] → sync_status=REVIEW (fetch_pending 에서 자동 제외, 이중 입력 방지)
         ↓
-[Neon DB] sync_status=COMPLETED
+[배치 검토 UI] 좌우로 보고 넘기며 ERP 결과 확인 → [이 보고 완료] / [모두 확인]
+        ↓
+[Neon DB] sync_status=COMPLETED, qc_status=APPROVED→ERP_SYNCED
+        ※ 웹 ledger/manage 에서 "ERP 등록 완료" 뱃지로 표시
+
+실패 시: sync_attempt_count++, 지수 백오프(2^n분, 최대 60분) 로 sync_next_retry_at 세팅.
+        5회 미만 → PENDING 복원 (백오프 시간 지나면 다음 조회에서 다시 뜸)
+        5회 이상 → FAILED 확정 (수동 조치 필요)
 ```
 
 ---
@@ -52,10 +60,9 @@ Replit 웹폼에서 등록된 **부적합 보고**를 RPA 가 UNIERP 의 **부�
 
 1. UAC 창 뜨면 **[예]**
 2. Python 설치 확인
-3. **자동 업데이트 확인** (인터넷 있으면):
-   - `[update] 최신 버전 사용 중 (xxxxxxx)` — 아무 것도 안 함
-   - `[update] 새 버전 발견: aaa → bbb` — 자동 다운로드/적용
-   - 오프라인이면 조용히 스킵
+3. **자동 업데이트는 첫 실행 시에만** (`.venv` 없거나 `.version` 없을 때):
+   - 이후 실행에서는 "[안내] 업데이트는 웹 화면 상단의 '새 업데이트' 버튼을 사용하세요" 메시지만 뜸
+   - 평상시 업데이트는 **웹 UI 상단 "새 업데이트" 노란 배지** 클릭 → 모달 → [지금 업데이트]
 4. `.venv` 있으면 재사용, 없거나 requirements 바뀌면 자동 설치 (2~3분)
 5. `main.py` 실행 → 브라우저 자동 오픈 (`http://127.0.0.1:8010`)
 
@@ -173,11 +180,21 @@ RPA 가 다음 순서로 Tab 이동하며 입력한다. **Tab×N** 은 이전 �
 
 ---
 
-## 3. 자동 업데이트
+## 3. 자동 업데이트 (OCR_EU 패턴)
 
-### 동작
-매 시작 시 `시작.bat` 내부에서 `update.py` 실행:
+### 동작 — 2 경로
 
+**[경로 1] 첫 설치 시만 자동** (`.venv` 미설치 또는 `.version` 없음)
+`시작.bat` 가 `update.py` 를 자동 실행 — 초기 세팅 겸 한 번만.
+
+**[경로 2] 평상시는 웹 UI 로 (대화형)**
+- 대시보드 로드 시 백그라운드에서 `/api/update/check` 호출
+- 새 버전이 있으면 **상단 우측에 "새 업데이트" 노란 배지**가 뜸 (깜빡임)
+- 배지 클릭 → 모달 열림 → 현재/원격 커밋 SHA + 커밋 메시지 표시
+- **[지금 업데이트]** 버튼 → `/api/update/apply` → 파일 교체 완료 → "프로그램을 재시작하세요" 토스트
+- 사용자가 수동으로 창 닫고 `시작.bat` 재실행 (requirements 바뀌었다면 자동 재설치)
+
+### 업데이트 로직 내부
 1. **git 저장소면**: `git ls-remote origin main` 으로 원격 SHA 조회 → 다르면 `git pull --ff-only`
 2. **ZIP 배포본이면**: GitHub API → `.version` 비교 → 다르면 `archive.zip` 다운로드
 3. **보존 규칙**:
@@ -187,14 +204,37 @@ RPA 가 다음 순서로 Tab 이동하며 입력한다. **Tab×N** 은 이전 �
 5. **requirements 변경 시**: `.venv/.install_ok` 삭제 → 다음 실행 시 재설치
 
 ### 비활성화 (필요 시)
-`rpa-ncr/.no_auto_update` 빈 파일 생성 → 자동 업데이트 스킵
+`rpa-ncr/.no_auto_update` 빈 파일 생성 → 양쪽 경로 모두 스킵
 
-### 수동 확인
+### 수동 확인 (고급)
 ```powershell
 cd C:\Users\<계정>\Documents\rpa-ncr
 python update.py --check    # 새 버전 있는지만 확인 (exit 1 이면 있음)
 python update.py --force    # 최신이어도 강제 재다운로드
 ```
+
+---
+
+## 3-A. 데이터 상태와 큐 색상 (대시보드)
+
+큐 테이블에 각 보고의 상태가 **색상 pill** 로 표시된다:
+
+| 색 | 상태 | 의미 |
+|---|---|---|
+| 회색 | `대기` / PENDING | 아직 입력 안 함 |
+| 파랑 | `입력중` / PROCESSING | RPA 가 지금 ERP 에 타이핑 중 |
+| 노랑 | `저장됨` / REVIEW | ERP 저장 완료, 사용자 검토 대기 (이중 입력 자동 방지) |
+| 초록 | `완료` / COMPLETED | 사용자 [완료 확인] → `qc_status` 가 `ERP_SYNCED` 로 전이, 웹 ledger 에 뱃지 뜸 |
+| 빨강 | `오류` / FAILED | 재시도 5회 모두 실패 — 수동 조치 필요 |
+
+**QC 열**: QC 담당자가 승인한 보고만 큐에 오름 (`APPROVED`). RPA 가 ERP 저장까지 끝내면 `ERP_SYNCED` 로 바뀐다.
+
+**재시도 열** (↻ N): 실패 횟수. 지수 백오프 (2분 → 4 → 8 → 16 → 32분, 최대 60분). 백오프 시간이 지나야 다음 조회에서 다시 뜬다.
+
+**상단 상태 chip**:
+- `소스: DB (Neon)` 데이터 소스 상태
+- `ERP 연결됨 / 미연결` 창 발견 여부
+- `큐 N/M 완료 · 오류 X` 큐 요약
 
 ---
 

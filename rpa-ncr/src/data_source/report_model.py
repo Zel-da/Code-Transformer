@@ -28,6 +28,8 @@ CANONICAL_FIELDS: tuple[str, ...] = (
     # QC 분석 필드 (Replit 웹폼 QC 페이지 저장분 → 부적합판정등록 폼)
     "claimStatus", "partsCost", "laborCost", "relatedDeptStatus",
     "judgmentResult", "qcCorrectiveResult", "correctiveActionStatus", "qualityOpinion",
+    # QC 승인 상태 + 재시도 메타 (UI 큐 테이블·필터링용)
+    "qcStatus", "syncAttemptCount", "syncLastError", "syncNextRetryAt",
 )
 
 

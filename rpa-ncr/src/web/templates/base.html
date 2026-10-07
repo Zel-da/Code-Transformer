@@ -8,12 +8,87 @@
 </head>
 <body>
     <header class="topbar">
-        <h1>NCR → UNIERP RPA 자동 입력</h1>
-        <span class="subtitle">부적합 보고를 받아 UNIERP 부적합보고서에 자동 입력</span>
+        <div class="topbar-brand">
+            <span class="brand-mark">NCR</span>
+            <span class="brand-title">UNIERP 자동 입력</span>
+        </div>
+        <div class="topbar-status" id="topStatus">
+            <span class="chip chip-neutral" id="chipSource" title="데이터 소스">—</span>
+            <span class="chip chip-neutral" id="chipErp" title="ERP 연결">ERP 미연결</span>
+            <span class="chip chip-neutral" id="chipQueue" title="큐 상태">큐 0건</span>
+        </div>
+        <div class="topbar-actions">
+            <button id="btnUpdateOpen" class="btn-chip hidden" title="업데이트 가능">
+                <span class="update-dot"></span>
+                <span id="updateBtnLabel">업데이트</span>
+            </button>
+            <button id="btnOpenSettings" class="btn-chip" title="설정 열기">⚙ 설정</button>
+        </div>
     </header>
     <main class="container">
         {% block content %}{% endblock %}
     </main>
+
+    <!-- 설정 Drawer (오른쪽 슬라이드) -->
+    <aside id="settingsDrawer" class="drawer hidden" aria-hidden="true">
+        <div class="drawer-head">
+            <h2>설정</h2>
+            <button id="btnCloseSettings" class="btn-chip">✕</button>
+        </div>
+        <div class="drawer-body">
+            <!-- 설정 점검 요약 -->
+            <section id="setupBanner" class="banner hidden"></section>
+
+            <!-- 데이터 소스 -->
+            <section class="card">
+                <h3>데이터 소스</h3>
+                <div class="row">
+                    <label><input type="radio" name="source" value="api"> 리플릿 API</label>
+                    <label><input type="radio" name="source" value="db"> 공용 DB (Neon)</label>
+                </div>
+                <div class="row muted" id="sourceInfo">—</div>
+                <div class="row">
+                    <button id="btnSourceSave" class="btn">소스 저장</button>
+                    <button id="btnSourceTest" class="btn btn-secondary">연결 테스트</button>
+                </div>
+                <div id="sourceTestResult" class="result"></div>
+            </section>
+
+            <!-- ERP 설정 -->
+            <section class="card">
+                <h3>ERP 설정</h3>
+                <div class="field"><label>창 제목</label><input id="erpWindowTitle" type="text" placeholder="UNIERP"></div>
+                <div class="field"><label>실행 경로</label><input id="erpLaunchPath" type="text" placeholder=".appref-ms 또는 .exe"></div>
+                <div class="field"><label>로그인 비밀번호</label><input id="erpLoginPw" type="password"></div>
+                <div class="field"><label>대상 메뉴</label><input id="erpTargetMenu" type="text" placeholder="부적합판정등록(S)"></div>
+                <div class="field"><label>첫 필드 Tab 수</label><input id="erpFirstFieldTabs" type="number" min="0" value="2"></div>
+                <div class="field"><label>저장 단축키</label><input id="erpSaveShortcut" type="text" placeholder="예: ^s (비우면 버튼)"></div>
+                <div class="field"><label>그리드 열(선택)</label><input id="erpGridColumns" type="text" placeholder="다행 그리드면 헤더 붙여넣기"></div>
+                <button id="btnErpSettingsSave" class="btn">ERP 설정 저장</button>
+                <div id="erpSettingsResult" class="result"></div>
+            </section>
+        </div>
+    </aside>
+
+    <!-- 업데이트 모달 -->
+    <div id="updateModal" class="modal hidden" aria-hidden="true">
+        <div class="modal-backdrop" data-close-modal></div>
+        <div class="modal-dialog">
+            <div class="modal-head">
+                <h2>프로그램 업데이트</h2>
+                <button class="btn-chip" data-close-modal>✕</button>
+            </div>
+            <div class="modal-body" id="updateModalBody">
+                <div class="muted">GitHub 확인 중…</div>
+            </div>
+            <div class="modal-foot">
+                <button id="btnUpdateRecheck" class="btn btn-secondary">다시 확인</button>
+                <button id="btnUpdateApply" class="btn btn-primary hidden">지금 업데이트</button>
+                <button class="btn" data-close-modal>닫기</button>
+            </div>
+        </div>
+    </div>
+
     {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -67,7 +67,23 @@ _OPTIONAL_NON_CONFORMITY_COLS: tuple[tuple[str, str], ...] = (
     ("qc_corrective_result",      "qcCorrectiveResult"),
     ("corrective_action_status",  "correctiveActionStatus"),
     ("quality_opinion",           "qualityOpinion"),
+    # QC/재시도 상태 (UI 표시 + 서버 라우트와 동일 기준으로 필터링하기 위해 조회)
+    ("qc_status",            "qcStatus"),
+    ("sync_attempt_count",   "syncAttemptCount"),
+    ("sync_last_error",      "syncLastError"),
+    ("sync_next_retry_at",   "syncNextRetryAt"),
 )
+
+# RPA 입력 대상이 되기 위해 필요한 QC 상태 (artifacts/api-server/routes/rpa.ts 와 동일 기준)
+_RPA_ELIGIBLE_QC_STATUS = "APPROVED"
+
+# 재시도 최대 횟수 (artifacts/api-server/routes/rpa.ts 의 MAX_ATTEMPTS 와 일치)
+_MAX_ATTEMPTS = 5
+
+
+def _backoff_minutes(attempt: int) -> int:
+    """재시도 백오프 (지수, 최대 60분). rpa.ts 의 backoffMinutes 와 동일 공식."""
+    return min(2 ** max(1, attempt), 60)
 
 # 항상 포함되는 기본 FROM 절. item_groups는 존재 여부 확인 후 동적으로 JOIN 추가.
 _FROM_BASE = (
@@ -107,6 +123,8 @@ class DbSource(DataSource):
         self._url = _resolve_database_url(cfg)
         # 첫 조회에서 정보스키마 보고 (select_clause, from_clause) 튜플 캐시
         self._query_parts: tuple[str, str] | None = None
+        # 신규 컬럼 존재 여부 캐시 (fetch_pending / mark_* 에서 참조)
+        self._existing_cols: set[str] = set()
         # PROCESSING 갇힘 자동 회수 임계값 (분). RPA 정상 처리는 초~수분이라
         # 5시간이면 실 처리와 절대 겹치지 않는 안전 여백.
         stale_minutes = cfg.get("stale_processing_minutes", 300)
@@ -142,6 +160,8 @@ class DbSource(DataSource):
             "WHERE table_name='non_conformity_reports'"
         )
         existing_cols = {(r["column_name"] if isinstance(r, dict) else r[0]) for r in cur.fetchall()}
+        # mark_completed/mark_failed 에서도 참조하도록 캐시
+        self._existing_cols = existing_cols
 
         # item_groups 테이블 존재 여부 (없으면 JOIN/itemGroupCd 생략)
         cur.execute(
@@ -220,6 +240,16 @@ class DbSource(DataSource):
         return recovered
 
     def fetch_pending(self) -> list[NcrReport]:
+        """RPA 입력 대상 보고 목록.
+
+        필터 (artifacts/api-server/routes/rpa.ts 와 동일 기준):
+          - sync_status = 'PENDING'
+          - qc_status = 'APPROVED' (컬럼 존재 시) — QC 승인 안 난 보고는 제외
+          - sync_next_retry_at IS NULL 또는 지금 이전 — 백오프 중인 보고는 제외
+
+        이로써 웹에서 QC 승인 안 된 보고가 로컬 RPA 큐에 섞이지 않고,
+        최근 실패 후 재시도 대기 중인 보고가 즉시 다시 뜨지도 않는다.
+        """
         from psycopg2.extras import RealDictCursor
         with self._connect() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -235,14 +265,31 @@ class DbSource(DataSource):
 
                 # 2) PENDING 목록 조회 (방금 복원한 것도 포함)
                 select_clause, from_clause = self._get_query_parts(cur)
+                where_parts = ["r.sync_status = %s"]
+                params: list[Any] = [ReportStatus.PENDING.value]
+
+                if "qc_status" in self._existing_cols:
+                    where_parts.append("r.qc_status = %s")
+                    params.append(_RPA_ELIGIBLE_QC_STATUS)
+                else:
+                    logger.warning(
+                        "qc_status 컬럼이 Neon 에 없어 QC 승인 필터를 건너뜁니다 "
+                        "— Replit 백엔드 schema push 가 필요합니다."
+                    )
+
+                if "sync_next_retry_at" in self._existing_cols:
+                    where_parts.append(
+                        "(r.sync_next_retry_at IS NULL OR r.sync_next_retry_at <= now())"
+                    )
+
                 sql = (
                     f"SELECT {select_clause} FROM {from_clause} "
-                    f"WHERE r.sync_status = %s ORDER BY r.created_at"
+                    f"WHERE {' AND '.join(where_parts)} ORDER BY r.created_at"
                 )
-                cur.execute(sql, (ReportStatus.PENDING.value,))
+                cur.execute(sql, params)
                 rows = cur.fetchall()
         reports = [NcrReport.from_db_row(dict(r)) for r in rows]
-        logger.info("PENDING 보고 %d건 조회 (DB)", len(reports))
+        logger.info("PENDING(QC승인) 보고 %d건 조회 (DB)", len(reports))
         return reports
 
     def get_report(self, report_id: int) -> NcrReport | None:
@@ -261,44 +308,123 @@ class DbSource(DataSource):
     # 상태 업데이트 (단일 테이블, JOIN 없음)
     # ------------------------------------------------------------------
 
-    def _update_status(self, report_id: int, status: ReportStatus, error: str | None = None) -> None:
+    def _simple_status_update(self, report_id: int, status: ReportStatus) -> None:
+        """단순 상태 전이 (PROCESSING / REVIEW 용). qc_status/재시도 미건드림."""
         with self._connect() as conn:
             with conn.cursor() as cur:
-                if status == ReportStatus.FAILED:
-                    cur.execute(
-                        "UPDATE non_conformity_reports SET sync_status = %s, "
-                        "sync_last_error = %s, "
-                        "sync_attempt_count = COALESCE(sync_attempt_count, 0) + 1, "
-                        "updated_at = now() WHERE id = %s",
-                        (status.value, (error or "")[:1000], report_id),
-                    )
-                else:
-                    cur.execute(
-                        "UPDATE non_conformity_reports SET sync_status = %s, updated_at = now() "
-                        "WHERE id = %s",
-                        (status.value, report_id),
-                    )
+                cur.execute(
+                    "UPDATE non_conformity_reports SET sync_status = %s, updated_at = now() "
+                    "WHERE id = %s",
+                    (status.value, report_id),
+                )
             conn.commit()
 
     def mark_processing(self, report_id: int) -> None:
-        self._update_status(report_id, ReportStatus.PROCESSING)
+        self._simple_status_update(report_id, ReportStatus.PROCESSING)
         logger.info("보고 #%d PROCESSING (DB)", report_id)
 
     def mark_completed(self, report_id: int) -> None:
-        self._update_status(report_id, ReportStatus.COMPLETED)
-        logger.info("보고 #%d COMPLETED (DB)", report_id)
+        """ERP 입력 성공 — sync_status=COMPLETED + qc_status APPROVED→ERP_SYNCED.
+
+        qc_status 를 ERP_SYNCED 로 함께 전이시켜 웹 ledger/manage 뱃지가
+        "ERP 등록 완료" 로 표시되도록 한다. artifacts/api-server/routes/rpa.ts
+        의 성공 경로와 동일한 전이.
+        """
+        # 캐시 비어있으면 (fetch_pending 이전에 호출) 1회 로드
+        if not self._existing_cols:
+            with self._connect() as conn:
+                with conn.cursor() as cur:
+                    self._get_query_parts(cur)
+        has_qc = "qc_status" in self._existing_cols
+        has_retry_cols = "sync_last_error" in self._existing_cols
+
+        set_parts = ["sync_status = %s"]
+        params: list[Any] = [ReportStatus.COMPLETED.value]
+        if has_qc:
+            set_parts.append(
+                "qc_status = CASE WHEN qc_status = 'APPROVED' THEN 'ERP_SYNCED' ELSE qc_status END"
+            )
+        if has_retry_cols:
+            set_parts.append("sync_last_error = NULL")
+            set_parts.append("sync_next_retry_at = NULL")
+        set_parts.append("updated_at = now()")
+
+        with self._connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"UPDATE non_conformity_reports SET {', '.join(set_parts)} WHERE id = %s",
+                    (*params, report_id),
+                )
+            conn.commit()
+        logger.info("보고 #%d COMPLETED (DB) + qc_status→ERP_SYNCED", report_id)
 
     def mark_failed(self, report_id: int, error: str) -> None:
-        logger.error("보고 #%d FAILED (DB): %s", report_id, error)
-        self._update_status(report_id, ReportStatus.FAILED, error=error)
+        """ERP 입력 실패 — attempt_count++ + 백오프.
+
+        - attempts < MAX_ATTEMPTS: sync_status=PENDING, sync_next_retry_at = now + backoff
+          → fetch_pending 이 백오프 시간 지나면 자동으로 다시 집어감
+        - attempts >= MAX_ATTEMPTS: sync_status=FAILED, 더 이상 재시도 안 함
+        artifacts/api-server/routes/rpa.ts 의 실패 경로와 동일한 로직.
+        """
+        error_msg = (error or "")[:1000]
+        logger.error("보고 #%d 입력 실패 (DB): %s", report_id, error_msg)
+
+        with self._connect() as conn:
+            with conn.cursor() as cur:
+                # 현재 attempt_count 조회해서 다음 값 결정
+                cur.execute(
+                    "SELECT COALESCE(sync_attempt_count, 0) FROM non_conformity_reports WHERE id = %s",
+                    (report_id,),
+                )
+                row = cur.fetchone()
+                current_attempts = int(row[0]) if row else 0
+                new_attempts = current_attempts + 1
+
+                if new_attempts >= _MAX_ATTEMPTS:
+                    # 영구 실패
+                    cur.execute(
+                        "UPDATE non_conformity_reports SET "
+                        "sync_status = %s, "
+                        "sync_attempt_count = %s, "
+                        "sync_last_error = %s, "
+                        "sync_next_retry_at = NULL, "
+                        "updated_at = now() WHERE id = %s",
+                        (ReportStatus.FAILED.value, new_attempts, error_msg, report_id),
+                    )
+                    logger.warning(
+                        "보고 #%d 최대 재시도(%d) 도달 → FAILED 확정",
+                        report_id, _MAX_ATTEMPTS,
+                    )
+                else:
+                    # 재시도 예정 — PENDING 으로 되돌리되 next_retry 로 백오프
+                    backoff_min = _backoff_minutes(new_attempts)
+                    cur.execute(
+                        "UPDATE non_conformity_reports SET "
+                        "sync_status = %s, "
+                        "sync_attempt_count = %s, "
+                        "sync_last_error = %s, "
+                        f"sync_next_retry_at = now() + interval '{backoff_min} minutes', "
+                        "updated_at = now() WHERE id = %s",
+                        (ReportStatus.PENDING.value, new_attempts, error_msg, report_id),
+                    )
+                    logger.info(
+                        "보고 #%d 재시도 %d/%d 예약 (%d분 후)",
+                        report_id, new_attempts, _MAX_ATTEMPTS, backoff_min,
+                    )
+            conn.commit()
 
     def mark_pending(self, report_id: int) -> None:
-        """PROCESSING → PENDING 복원 + 재시도 카운터/마지막 오류 클리어."""
+        """PROCESSING → PENDING 복원 + 재시도 상태 전부 클리어.
+
+        사용자 중지(stop) 로 호출되므로 attempt_count/last_error/next_retry_at
+        전부 초기화해 즉시 다시 처리 가능한 깨끗한 상태로 돌림.
+        """
         with self._connect() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "UPDATE non_conformity_reports SET sync_status = %s, "
                     "sync_attempt_count = 0, sync_last_error = NULL, "
+                    "sync_next_retry_at = NULL, "
                     "updated_at = now() WHERE id = %s",
                     (ReportStatus.PENDING.value, report_id),
                 )
@@ -311,7 +437,7 @@ class DbSource(DataSource):
         이 상태에 있는 보고는 fetch_pending 에서 제외되므로 UNIERP 이중
         입력이 자동 방지된다.
         """
-        self._update_status(report_id, ReportStatus.REVIEW)
+        self._simple_status_update(report_id, ReportStatus.REVIEW)
         logger.info("보고 #%d REVIEW (DB)", report_id)
 
     def fetch_review(self) -> list[NcrReport]:
