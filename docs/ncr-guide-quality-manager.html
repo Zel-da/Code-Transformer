@@ -123,4 +123,879 @@
   <footer>수산세보틱스 · 공정 부적합 등록 및 관리 시스템</footer>
 </main>
 </body>
+</html><!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NCR 품질 관리자 가이드</title>
+  <style>
+    :root{--ink:#191f28;--muted:#6b7684;--line:#e5e8eb;--soft:#f6f8fa;--brand:#254f89;--brand2:#edf4ff;--warn:#9a6200;--warn2:#fff7e5;--danger:#a13d3d;--danger2:#fff0f0;--green:#176b4d;--green2:#e9f7f1}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--soft);color:var(--ink);font:15px/1.65 Pretendard,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;word-break:keep-all}
+    main{width:min(980px,calc(100% - 28px));margin:26px auto 60px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(135deg,#172333,#254f89);box-shadow:0 18px 48px #17335830}
+    .eyebrow{font-size:12px;font-weight:800;letter-spacing:.12em;opacity:.75}.hero h1{margin:8px 0 4px;font-size:clamp(27px,5vw,40px);letter-spacing:-.05em}.hero p{margin:0;color:#d9e5f7}
+    nav{position:sticky;top:0;z-index:2;display:flex;gap:7px;overflow:auto;margin:16px 0;padding:10px;background:#fffffff2;border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(12px)}
+    nav a{flex:0 0 auto;padding:7px 10px;border-radius:9px;color:var(--muted);text-decoration:none;font-size:13px;font-weight:700}nav a:hover{background:var(--soft);color:var(--ink)}
+    section{margin-top:16px;padding:28px;background:#fff;border:1px solid var(--line);border-radius:19px}h2{margin:0 0 6px;font-size:22px;letter-spacing:-.03em}h3{margin:0 0 4px;font-size:16px}.lead{margin:0 0 20px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.card{padding:17px;background:var(--soft);border-radius:14px}.card p{margin:5px 0 0;color:var(--muted);font-size:14px}
+    .steps{display:grid;gap:12px}.step{display:grid;grid-template-columns:38px 1fr;gap:13px;padding:14px;border:1px solid var(--line);border-radius:14px}.num{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--ink);color:#fff;font-weight:800}.step p{margin:2px 0 0;color:var(--muted);font-size:14px}
+    .note{margin-top:14px;padding:15px 17px;border-radius:13px;background:var(--warn2);border:1px solid #efd594;color:#75521a}.ok{background:var(--green2);border-color:#c8e8da;color:#285f4b}.danger{background:var(--danger2);border-color:#efcccc;color:#8a3434}.info{background:var(--brand2);border-color:#ccdcf6;color:#385b8e}
+    .tag{display:inline-block;margin-bottom:9px;padding:4px 9px;border-radius:999px;background:var(--brand2);color:var(--brand);font-size:11px;font-weight:800;letter-spacing:.06em}
+    table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:var(--soft);font-size:12px;color:var(--muted)}ul{margin:8px 0 0;padding-left:21px;color:var(--muted)}li+li{margin-top:5px}.flow{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:14px 0}.flow b{padding:7px 10px;border-radius:999px;background:var(--brand2);color:var(--brand);font-size:12px}.flow i{color:#a8b1bb;font-style:normal}
+    code{padding:2px 6px;border-radius:6px;background:#e9edf1;font:700 13px inherit}footer{text-align:center;padding:25px;color:#8b95a1;font-size:12px}
+    @media(max-width:650px){main{margin-top:14px}.hero,section{padding:21px;border-radius:16px}.grid{grid-template-columns:1fr}table{font-size:12px}th,td{padding:9px 7px}.step{grid-template-columns:34px 1fr}.num{width:34px;height:34px}}
+    @media print{body{background:#fff}main{width:100%;margin:0}.hero{box-shadow:none}nav{display:none}section{break-inside:avoid}}
+  </style>
+</head>
+<body>
+<main>
+  <header class="hero"><div class="eyebrow">NCR QUALITY GUIDE</div><h1>품질 관리자 가이드</h1><p>접수 검토부터 원인 분석, 조치, 승인과 ERP 연동까지</p></header>
+  <nav><a href="#login">로그인</a><a href="#daily">일일 확인</a><a href="#review">QC 처리</a><a href="#fields">입력 항목</a><a href="#status">상태 전환</a><a href="#ledger">관리대장</a><a href="#admin">관리 기능</a><a href="#faq">주의사항</a></nav>
+
+  <section id="login">
+    <span class="tag">01 · 로그인과 권한</span><h2>품질 관리자 로그인</h2>
+    <div class="grid">
+      <div class="card"><h3>회사 이메일 계정</h3><p><code>name@soosan.co.kr</code>와 그룹웨어 비밀번호를 사용합니다.</p></div>
+      <div class="card"><h3>전용 관리자 계정</h3><p><code>admin</code>처럼 안내받은 관리자 아이디와 내부 비밀번호를 사용합니다.</p></div>
+    </div>
+    <div class="note info"><b>메뉴가 보이지 않을 때</b><br>QC 등록 또는 관리자 패널이 보이지 않으면 현재 계정의 역할이 일반 등록자일 수 있습니다. 사용자 관리에서 권한을 확인하세요.</div>
+  </section>
+
+  <section id="daily">
+    <span class="tag">02 · 일일 업무</span><h2>업무 시작 시 확인할 항목</h2>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>관리대장 현황 확인</h3><p>총 건수, 조치 중, 판정 완료와 지연 건수를 확인합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>QC 등록의 미완료 목록 확인</h3><p>접수, 검토 중, 협업 대기 상태 중 우선 처리할 보고서를 찾습니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>경과일 우선순위 확인</h3><p>5~6일 경과는 주황색, 7일 이상 미처리는 빨간색 경고를 우선 확인합니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>수산톡 요청 확인</h3><p>신규 접수와 협업 요청 알림을 확인하고 해당 보고서 상세로 이동합니다.</p></div></div>
+    </div>
+  </section>
+
+  <section id="review">
+    <span class="tag">03 · QC 처리 절차</span><h2>접수부터 승인까지</h2>
+    <div class="flow"><b>접수</b><i>→</i><b>검토 중</b><i>→</i><b>협업 대기(필요 시)</b><i>→</i><b>조치 완료</b><i>→</i><b>승인 완료</b><i>→</i><b>ERP 등록</b></div>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>보고서 사실관계 확인</h3><p>공장, 공정, 품목코드, 발생일, 수량, 현상 설명과 사진이 일치하는지 확인합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>검토 시작</h3><p><b>검토 시작</b>으로 상태를 접수에서 검토 중으로 변경합니다. 다른 담당자에게 현재 처리 중임을 알리는 단계입니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>QC 분석 입력</h3><p>불량 분류, 원인, 귀책, 조치 방향과 조치 결과를 근거에 따라 작성합니다. 작성 중에는 임시저장 내용을 활용할 수 있습니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>협업 요청</h3><p>생산·구매·설계 등 확인이 필요하면 담당자를 선택하고 요청 내용을 작성해 협업 대기로 전환합니다.</p></div></div>
+      <div class="step"><span class="num">5</span><div><h3>분석 저장</h3><p>입력값과 첨부 근거를 다시 확인하고 저장합니다. 저장 완료 알림을 확인한 뒤 다음 단계로 진행합니다.</p></div></div>
+      <div class="step"><span class="num">6</span><div><h3>조치 완료</h3><p>실제 현장 조치가 끝나고 결과가 확인된 경우에만 조치 완료로 변경합니다.</p></div></div>
+      <div class="step"><span class="num">7</span><div><h3>최종 승인</h3><p>승인 권한자가 분석과 조치를 검토한 뒤 승인합니다. 승인 완료 후 ERP 자동 등록 준비 상태가 됩니다.</p></div></div>
+      <div class="step"><span class="num">8</span><div><h3>ERP 등록 확인</h3><p>RPA 등록을 실행하고 성공 여부를 확인합니다. 성공하면 상태가 ERP 등록으로 자동 변경됩니다.</p></div></div>
+    </div>
+    <div class="note danger"><b>중요:</b> 조치 완료와 승인은 단순 진행 표시가 아닙니다. 실제 조치와 검증이 끝난 뒤 변경해야 하며, 승인 완료 후 되돌릴 때는 변경 사유를 남기세요.</div>
+  </section>
+
+  <section id="fields">
+    <span class="tag">04 · 분석 품질</span><h2>QC 입력 항목 작성 기준</h2>
+    <table><thead><tr><th>항목</th><th>작성 기준</th><th>확인할 근거</th></tr></thead><tbody>
+      <tr><td><b>불량 분류</b></td><td>외관·치수·기능·재료 등 실제 현상에 맞는 항목 선택</td><td>사진, 측정값, 검사 결과</td></tr>
+      <tr><td><b>원인 분석</b></td><td>현상 반복이 아니라 발생 원인과 유출 원인을 구분해 구체적으로 작성</td><td>작업 조건, 설비, 자재 LOT, 도면</td></tr>
+      <tr><td><b>조치 방향</b></td><td>업체 방문 수정, 생산팀 자체 수정, 반출 후 수정 입고 등 실제 방향 선택</td><td>담당 부서 합의, 일정</td></tr>
+      <tr><td><b>조치 결과</b></td><td>누가, 언제, 무엇을, 몇 개 처리했고 확인 결과가 어땠는지 작성</td><td>재검 결과, 완료 사진</td></tr>
+      <tr><td><b>시정·예방조치</b></td><td>재발 방지 활동의 필요 여부와 진행 상태 기록</td><td>표준서 변경, 교육, 설비 개선</td></tr>
+      <tr><td><b>부적합 제외</b></td><td>실제 부적합이 아니어서 ERP 등록 대상에서 제외할 때만 선택</td><td>제외 사유와 판정 근거</td></tr>
+    </tbody></table>
+    <div class="note ok"><b>좋은 조치 결과 예</b><br>“9월 16일 생산팀에서 대상 12EA 전수 재체결 완료. 토크렌치 85N·m 확인 후 마킹했으며 재검 결과 이상 없음.”</div>
+  </section>
+
+  <section id="status">
+    <span class="tag">05 · 상태 관리</span><h2>상태별 전환 기준</h2>
+    <table><thead><tr><th>현재 상태</th><th>다음 상태</th><th>전환 기준</th></tr></thead><tbody>
+      <tr><td>접수</td><td><b>검토 중</b></td><td>품질 담당자가 보고서를 확인하고 분석을 시작함</td></tr>
+      <tr><td>검토 중</td><td><b>협업 대기</b></td><td>다른 부서 또는 담당자의 확인·조치가 필요함</td></tr>
+      <tr><td>협업 대기</td><td><b>검토 중</b></td><td>협업 답변을 받고 품질 검토를 재개함</td></tr>
+      <tr><td>검토 중</td><td><b>조치 완료</b></td><td>원인 분석, 조치 실행과 결과 확인이 완료됨</td></tr>
+      <tr><td>조치 완료</td><td><b>승인 완료</b></td><td>승인 권한자가 분석과 조치의 적정성을 최종 확인함</td></tr>
+      <tr><td>승인 완료</td><td><b>ERP 등록</b></td><td>RPA가 ERP 등록에 성공하면 자동 전환됨</td></tr>
+    </tbody></table>
+    <ul><li>ERP 등록 상태는 수동으로 선택하지 않습니다.</li><li>동시에 여러 담당자가 같은 보고서를 수정하지 않도록 댓글이나 수산톡으로 담당자를 명확히 하세요.</li><li>반려 또는 상태 되돌림이 필요하면 사유를 댓글과 이력에 남기세요.</li></ul>
+  </section>
+
+  <section id="ledger">
+    <span class="tag">06 · 관리대장</span><h2>검색·상세·RPA 처리</h2>
+    <div class="grid">
+      <div class="card"><h3>검색과 필터</h3><p>NCR 번호, 품목명, 모델명으로 검색하고 상태·공장·공정 필터를 조합합니다.</p></div>
+      <div class="card"><h3>상세 패널</h3><p>접수 내용, 사진, QC 분석, 처리 상태와 댓글을 한 화면에서 확인합니다.</p></div>
+      <div class="card"><h3>협업 요청</h3><p>검토 담당자를 지정하고 요청 내용을 보내면 대상자에게 알림이 발송됩니다.</p></div>
+      <div class="card"><h3>RPA 등록</h3><p>승인 완료 보고서에서 RPA 등록을 실행하고 성공·대기·실패 상태를 확인합니다.</p></div>
+    </div>
+    <div class="note"><b>RPA 실패 시</b><br>바로 반복 실행하지 말고 오류 상태와 입력값을 확인합니다. 재시도 초기화가 필요한 경우 중복 ERP 등록 여부를 먼저 확인하세요.</div>
+  </section>
+
+  <section id="admin">
+    <span class="tag">07 · 관리자 기능</span><h2>계정과 기준정보 관리</h2>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>사용자 관리</h3><p>일반 등록자, QC·협업, 관리자, 비활성 계정을 구분해 확인하고 역할과 활성 상태를 관리합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>CSV 일괄 등록</h3><p>Outlook CSV를 선택해 신규·기존·제외 인원을 확인한 뒤 실행합니다. 신규 계정만 일반 등록자로 생성되며 기존 권한은 유지됩니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>부서와 알림</h3><p>부서 코드와 수산톡 Webhook을 확인하고 테스트 전송으로 연결 상태를 검증합니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>보고서 수정·삭제</h3><p>잘못된 접수 또는 상태를 수정할 수 있습니다. 삭제는 복구할 수 없으므로 NCR 번호와 사유를 다시 확인합니다.</p></div></div>
+    </div>
+    <div class="note danger"><b>계정 관리 주의:</b> 퇴사자는 삭제보다 비활성화를 우선 사용하세요. 기존 보고서의 등록자 이력을 유지할 수 있습니다.</div>
+  </section>
+
+  <section id="faq">
+    <span class="tag">08 · 문제 해결</span><h2>운영 중 자주 발생하는 상황</h2>
+    <div class="grid">
+      <div class="card"><h3>승인을 잘못 눌렀어요</h3><p>관리자 패널의 보고서 관리에서 상태를 수정하고, 변경 사유를 댓글 또는 감사 이력에 남깁니다.</p></div>
+      <div class="card"><h3>협업 알림이 가지 않아요</h3><p>담당자 계정의 활성 상태와 알림 설정, 부서 Webhook 설정을 확인한 뒤 테스트 전송합니다.</p></div>
+      <div class="card"><h3>피드백 메뉴가 401을 표시해요</h3><p>다시 로그인하고 브라우저를 새로고침합니다. 계속되면 최신 버전 게시 여부와 인증 토큰 만료를 확인합니다.</p></div>
+      <div class="card"><h3>화면이 이전 버전으로 보여요</h3><p>브라우저를 완전히 닫았다 열거나 Ctrl+Shift+R로 새로고침해 서비스 워커 캐시를 갱신합니다.</p></div>
+    </div>
+    <div class="note info"><b>문의 시 함께 전달할 정보</b><br>NCR 번호, 발생 시간, 사용 계정, 오류 문구, 화면 캡처를 함께 전달하면 확인이 빨라집니다. 비밀번호는 전달하지 마세요.</div>
+  </section>
+  <footer>수산세보틱스 · 공정 부적합 등록 및 관리 시스템</footer>
+</main>
+</body>
+</html><!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NCR 품질 관리자 가이드</title>
+  <style>
+    :root{--ink:#191f28;--muted:#6b7684;--line:#e5e8eb;--soft:#f6f8fa;--brand:#254f89;--brand2:#edf4ff;--warn:#9a6200;--warn2:#fff7e5;--danger:#a13d3d;--danger2:#fff0f0;--green:#176b4d;--green2:#e9f7f1}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--soft);color:var(--ink);font:15px/1.65 Pretendard,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;word-break:keep-all}
+    main{width:min(980px,calc(100% - 28px));margin:26px auto 60px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(135deg,#172333,#254f89);box-shadow:0 18px 48px #17335830}
+    .eyebrow{font-size:12px;font-weight:800;letter-spacing:.12em;opacity:.75}.hero h1{margin:8px 0 4px;font-size:clamp(27px,5vw,40px);letter-spacing:-.05em}.hero p{margin:0;color:#d9e5f7}
+    nav{position:sticky;top:0;z-index:2;display:flex;gap:7px;overflow:auto;margin:16px 0;padding:10px;background:#fffffff2;border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(12px)}
+    nav a{flex:0 0 auto;padding:7px 10px;border-radius:9px;color:var(--muted);text-decoration:none;font-size:13px;font-weight:700}nav a:hover{background:var(--soft);color:var(--ink)}
+    section{margin-top:16px;padding:28px;background:#fff;border:1px solid var(--line);border-radius:19px}h2{margin:0 0 6px;font-size:22px;letter-spacing:-.03em}h3{margin:0 0 4px;font-size:16px}.lead{margin:0 0 20px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.card{padding:17px;background:var(--soft);border-radius:14px}.card p{margin:5px 0 0;color:var(--muted);font-size:14px}
+    .steps{display:grid;gap:12px}.step{display:grid;grid-template-columns:38px 1fr;gap:13px;padding:14px;border:1px solid var(--line);border-radius:14px}.num{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--ink);color:#fff;font-weight:800}.step p{margin:2px 0 0;color:var(--muted);font-size:14px}
+    .note{margin-top:14px;padding:15px 17px;border-radius:13px;background:var(--warn2);border:1px solid #efd594;color:#75521a}.ok{background:var(--green2);border-color:#c8e8da;color:#285f4b}.danger{background:var(--danger2);border-color:#efcccc;color:#8a3434}.info{background:var(--brand2);border-color:#ccdcf6;color:#385b8e}
+    .tag{display:inline-block;margin-bottom:9px;padding:4px 9px;border-radius:999px;background:var(--brand2);color:var(--brand);font-size:11px;font-weight:800;letter-spacing:.06em}
+    table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:var(--soft);font-size:12px;color:var(--muted)}ul{margin:8px 0 0;padding-left:21px;color:var(--muted)}li+li{margin-top:5px}.flow{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:14px 0}.flow b{padding:7px 10px;border-radius:999px;background:var(--brand2);color:var(--brand);font-size:12px}.flow i{color:#a8b1bb;font-style:normal}
+    code{padding:2px 6px;border-radius:6px;background:#e9edf1;font:700 13px inherit}footer{text-align:center;padding:25px;color:#8b95a1;font-size:12px}
+    @media(max-width:650px){main{margin-top:14px}.hero,section{padding:21px;border-radius:16px}.grid{grid-template-columns:1fr}table{font-size:12px}th,td{padding:9px 7px}.step{grid-template-columns:34px 1fr}.num{width:34px;height:34px}}
+    @media print{body{background:#fff}main{width:100%;margin:0}.hero{box-shadow:none}nav{display:none}section{break-inside:avoid}}
+  </style>
+</head>
+<body>
+<main>
+  <header class="hero"><div class="eyebrow">NCR QUALITY GUIDE</div><h1>품질 관리자 가이드</h1><p>접수 검토부터 원인 분석, 조치, 승인과 ERP 연동까지</p></header>
+  <nav><a href="#login">로그인</a><a href="#daily">일일 확인</a><a href="#review">QC 처리</a><a href="#fields">입력 항목</a><a href="#status">상태 전환</a><a href="#ledger">관리대장</a><a href="#admin">관리 기능</a><a href="#faq">주의사항</a></nav>
+
+  <section id="login">
+    <span class="tag">01 · 로그인과 권한</span><h2>품질 관리자 로그인</h2>
+    <div class="grid">
+      <div class="card"><h3>회사 이메일 계정</h3><p><code>name@soosan.co.kr</code>와 그룹웨어 비밀번호를 사용합니다.</p></div>
+      <div class="card"><h3>전용 관리자 계정</h3><p><code>admin</code>처럼 안내받은 관리자 아이디와 내부 비밀번호를 사용합니다.</p></div>
+    </div>
+    <div class="note info"><b>메뉴가 보이지 않을 때</b><br>QC 등록 또는 관리자 패널이 보이지 않으면 현재 계정의 역할이 일반 등록자일 수 있습니다. 사용자 관리에서 권한을 확인하세요.</div>
+  </section>
+
+  <section id="daily">
+    <span class="tag">02 · 일일 업무</span><h2>업무 시작 시 확인할 항목</h2>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>관리대장 현황 확인</h3><p>총 건수, 조치 중, 판정 완료와 지연 건수를 확인합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>QC 등록의 미완료 목록 확인</h3><p>접수, 검토 중, 협업 대기 상태 중 우선 처리할 보고서를 찾습니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>경과일 우선순위 확인</h3><p>5~6일 경과는 주황색, 7일 이상 미처리는 빨간색 경고를 우선 확인합니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>수산톡 요청 확인</h3><p>신규 접수와 협업 요청 알림을 확인하고 해당 보고서 상세로 이동합니다.</p></div></div>
+    </div>
+  </section>
+
+  <section id="review">
+    <span class="tag">03 · QC 처리 절차</span><h2>접수부터 승인까지</h2>
+    <div class="flow"><b>접수</b><i>→</i><b>검토 중</b><i>→</i><b>협업 대기(필요 시)</b><i>→</i><b>조치 완료</b><i>→</i><b>승인 완료</b><i>→</i><b>ERP 등록</b></div>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>보고서 사실관계 확인</h3><p>공장, 공정, 품목코드, 발생일, 수량, 현상 설명과 사진이 일치하는지 확인합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>검토 시작</h3><p><b>검토 시작</b>으로 상태를 접수에서 검토 중으로 변경합니다. 다른 담당자에게 현재 처리 중임을 알리는 단계입니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>QC 분석 입력</h3><p>불량 분류, 원인, 귀책, 조치 방향과 조치 결과를 근거에 따라 작성합니다. 작성 중에는 임시저장 내용을 활용할 수 있습니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>협업 요청</h3><p>생산·구매·설계 등 확인이 필요하면 담당자를 선택하고 요청 내용을 작성해 협업 대기로 전환합니다.</p></div></div>
+      <div class="step"><span class="num">5</span><div><h3>분석 저장</h3><p>입력값과 첨부 근거를 다시 확인하고 저장합니다. 저장 완료 알림을 확인한 뒤 다음 단계로 진행합니다.</p></div></div>
+      <div class="step"><span class="num">6</span><div><h3>조치 완료</h3><p>실제 현장 조치가 끝나고 결과가 확인된 경우에만 조치 완료로 변경합니다.</p></div></div>
+      <div class="step"><span class="num">7</span><div><h3>최종 승인</h3><p>승인 권한자가 분석과 조치를 검토한 뒤 승인합니다. 승인 완료 후 ERP 자동 등록 준비 상태가 됩니다.</p></div></div>
+      <div class="step"><span class="num">8</span><div><h3>ERP 등록 확인</h3><p>RPA 등록을 실행하고 성공 여부를 확인합니다. 성공하면 상태가 ERP 등록으로 자동 변경됩니다.</p></div></div>
+    </div>
+    <div class="note danger"><b>중요:</b> 조치 완료와 승인은 단순 진행 표시가 아닙니다. 실제 조치와 검증이 끝난 뒤 변경해야 하며, 승인 완료 후 되돌릴 때는 변경 사유를 남기세요.</div>
+  </section>
+
+  <section id="fields">
+    <span class="tag">04 · 분석 품질</span><h2>QC 입력 항목 작성 기준</h2>
+    <table><thead><tr><th>항목</th><th>작성 기준</th><th>확인할 근거</th></tr></thead><tbody>
+      <tr><td><b>불량 분류</b></td><td>외관·치수·기능·재료 등 실제 현상에 맞는 항목 선택</td><td>사진, 측정값, 검사 결과</td></tr>
+      <tr><td><b>원인 분석</b></td><td>현상 반복이 아니라 발생 원인과 유출 원인을 구분해 구체적으로 작성</td><td>작업 조건, 설비, 자재 LOT, 도면</td></tr>
+      <tr><td><b>조치 방향</b></td><td>업체 방문 수정, 생산팀 자체 수정, 반출 후 수정 입고 등 실제 방향 선택</td><td>담당 부서 합의, 일정</td></tr>
+      <tr><td><b>조치 결과</b></td><td>누가, 언제, 무엇을, 몇 개 처리했고 확인 결과가 어땠는지 작성</td><td>재검 결과, 완료 사진</td></tr>
+      <tr><td><b>시정·예방조치</b></td><td>재발 방지 활동의 필요 여부와 진행 상태 기록</td><td>표준서 변경, 교육, 설비 개선</td></tr>
+      <tr><td><b>부적합 제외</b></td><td>실제 부적합이 아니어서 ERP 등록 대상에서 제외할 때만 선택</td><td>제외 사유와 판정 근거</td></tr>
+    </tbody></table>
+    <div class="note ok"><b>좋은 조치 결과 예</b><br>“9월 16일 생산팀에서 대상 12EA 전수 재체결 완료. 토크렌치 85N·m 확인 후 마킹했으며 재검 결과 이상 없음.”</div>
+  </section>
+
+  <section id="status">
+    <span class="tag">05 · 상태 관리</span><h2>상태별 전환 기준</h2>
+    <table><thead><tr><th>현재 상태</th><th>다음 상태</th><th>전환 기준</th></tr></thead><tbody>
+      <tr><td>접수</td><td><b>검토 중</b></td><td>품질 담당자가 보고서를 확인하고 분석을 시작함</td></tr>
+      <tr><td>검토 중</td><td><b>협업 대기</b></td><td>다른 부서 또는 담당자의 확인·조치가 필요함</td></tr>
+      <tr><td>협업 대기</td><td><b>검토 중</b></td><td>협업 답변을 받고 품질 검토를 재개함</td></tr>
+      <tr><td>검토 중</td><td><b>조치 완료</b></td><td>원인 분석, 조치 실행과 결과 확인이 완료됨</td></tr>
+      <tr><td>조치 완료</td><td><b>승인 완료</b></td><td>승인 권한자가 분석과 조치의 적정성을 최종 확인함</td></tr>
+      <tr><td>승인 완료</td><td><b>ERP 등록</b></td><td>RPA가 ERP 등록에 성공하면 자동 전환됨</td></tr>
+    </tbody></table>
+    <ul><li>ERP 등록 상태는 수동으로 선택하지 않습니다.</li><li>동시에 여러 담당자가 같은 보고서를 수정하지 않도록 댓글이나 수산톡으로 담당자를 명확히 하세요.</li><li>반려 또는 상태 되돌림이 필요하면 사유를 댓글과 이력에 남기세요.</li></ul>
+  </section>
+
+  <section id="ledger">
+    <span class="tag">06 · 관리대장</span><h2>검색·상세·RPA 처리</h2>
+    <div class="grid">
+      <div class="card"><h3>검색과 필터</h3><p>NCR 번호, 품목명, 모델명으로 검색하고 상태·공장·공정 필터를 조합합니다.</p></div>
+      <div class="card"><h3>상세 패널</h3><p>접수 내용, 사진, QC 분석, 처리 상태와 댓글을 한 화면에서 확인합니다.</p></div>
+      <div class="card"><h3>협업 요청</h3><p>검토 담당자를 지정하고 요청 내용을 보내면 대상자에게 알림이 발송됩니다.</p></div>
+      <div class="card"><h3>RPA 등록</h3><p>승인 완료 보고서에서 RPA 등록을 실행하고 성공·대기·실패 상태를 확인합니다.</p></div>
+    </div>
+    <div class="note"><b>RPA 실패 시</b><br>바로 반복 실행하지 말고 오류 상태와 입력값을 확인합니다. 재시도 초기화가 필요한 경우 중복 ERP 등록 여부를 먼저 확인하세요.</div>
+  </section>
+
+  <section id="admin">
+    <span class="tag">07 · 관리자 기능</span><h2>계정과 기준정보 관리</h2>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>사용자 관리</h3><p>일반 등록자, QC·협업, 관리자, 비활성 계정을 구분해 확인하고 역할과 활성 상태를 관리합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>CSV 일괄 등록</h3><p>Outlook CSV를 선택해 신규·기존·제외 인원을 확인한 뒤 실행합니다. 신규 계정만 일반 등록자로 생성되며 기존 권한은 유지됩니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>부서와 알림</h3><p>부서 코드와 수산톡 Webhook을 확인하고 테스트 전송으로 연결 상태를 검증합니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>보고서 수정·삭제</h3><p>잘못된 접수 또는 상태를 수정할 수 있습니다. 삭제는 복구할 수 없으므로 NCR 번호와 사유를 다시 확인합니다.</p></div></div>
+    </div>
+    <div class="note danger"><b>계정 관리 주의:</b> 퇴사자는 삭제보다 비활성화를 우선 사용하세요. 기존 보고서의 등록자 이력을 유지할 수 있습니다.</div>
+  </section>
+
+  <section id="faq">
+    <span class="tag">08 · 문제 해결</span><h2>운영 중 자주 발생하는 상황</h2>
+    <div class="grid">
+      <div class="card"><h3>승인을 잘못 눌렀어요</h3><p>관리자 패널의 보고서 관리에서 상태를 수정하고, 변경 사유를 댓글 또는 감사 이력에 남깁니다.</p></div>
+      <div class="card"><h3>협업 알림이 가지 않아요</h3><p>담당자 계정의 활성 상태와 알림 설정, 부서 Webhook 설정을 확인한 뒤 테스트 전송합니다.</p></div>
+      <div class="card"><h3>피드백 메뉴가 401을 표시해요</h3><p>다시 로그인하고 브라우저를 새로고침합니다. 계속되면 최신 버전 게시 여부와 인증 토큰 만료를 확인합니다.</p></div>
+      <div class="card"><h3>화면이 이전 버전으로 보여요</h3><p>브라우저를 완전히 닫았다 열거나 Ctrl+Shift+R로 새로고침해 서비스 워커 캐시를 갱신합니다.</p></div>
+    </div>
+    <div class="note info"><b>문의 시 함께 전달할 정보</b><br>NCR 번호, 발생 시간, 사용 계정, 오류 문구, 화면 캡처를 함께 전달하면 확인이 빨라집니다. 비밀번호는 전달하지 마세요.</div>
+  </section>
+  <footer>수산세보틱스 · 공정 부적합 등록 및 관리 시스템</footer>
+</main>
+</body>
+</html><!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NCR 품질 관리자 가이드</title>
+  <style>
+    :root{--ink:#191f28;--muted:#6b7684;--line:#e5e8eb;--soft:#f6f8fa;--brand:#254f89;--brand2:#edf4ff;--warn:#9a6200;--warn2:#fff7e5;--danger:#a13d3d;--danger2:#fff0f0;--green:#176b4d;--green2:#e9f7f1}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--soft);color:var(--ink);font:15px/1.65 Pretendard,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;word-break:keep-all}
+    main{width:min(980px,calc(100% - 28px));margin:26px auto 60px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(135deg,#172333,#254f89);box-shadow:0 18px 48px #17335830}
+    .eyebrow{font-size:12px;font-weight:800;letter-spacing:.12em;opacity:.75}.hero h1{margin:8px 0 4px;font-size:clamp(27px,5vw,40px);letter-spacing:-.05em}.hero p{margin:0;color:#d9e5f7}
+    nav{position:sticky;top:0;z-index:2;display:flex;gap:7px;overflow:auto;margin:16px 0;padding:10px;background:#fffffff2;border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(12px)}
+    nav a{flex:0 0 auto;padding:7px 10px;border-radius:9px;color:var(--muted);text-decoration:none;font-size:13px;font-weight:700}nav a:hover{background:var(--soft);color:var(--ink)}
+    section{margin-top:16px;padding:28px;background:#fff;border:1px solid var(--line);border-radius:19px}h2{margin:0 0 6px;font-size:22px;letter-spacing:-.03em}h3{margin:0 0 4px;font-size:16px}.lead{margin:0 0 20px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.card{padding:17px;background:var(--soft);border-radius:14px}.card p{margin:5px 0 0;color:var(--muted);font-size:14px}
+    .steps{display:grid;gap:12px}.step{display:grid;grid-template-columns:38px 1fr;gap:13px;padding:14px;border:1px solid var(--line);border-radius:14px}.num{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--ink);color:#fff;font-weight:800}.step p{margin:2px 0 0;color:var(--muted);font-size:14px}
+    .note{margin-top:14px;padding:15px 17px;border-radius:13px;background:var(--warn2);border:1px solid #efd594;color:#75521a}.ok{background:var(--green2);border-color:#c8e8da;color:#285f4b}.danger{background:var(--danger2);border-color:#efcccc;color:#8a3434}.info{background:var(--brand2);border-color:#ccdcf6;color:#385b8e}
+    .tag{display:inline-block;margin-bottom:9px;padding:4px 9px;border-radius:999px;background:var(--brand2);color:var(--brand);font-size:11px;font-weight:800;letter-spacing:.06em}
+    table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:var(--soft);font-size:12px;color:var(--muted)}ul{margin:8px 0 0;padding-left:21px;color:var(--muted)}li+li{margin-top:5px}.flow{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:14px 0}.flow b{padding:7px 10px;border-radius:999px;background:var(--brand2);color:var(--brand);font-size:12px}.flow i{color:#a8b1bb;font-style:normal}
+    code{padding:2px 6px;border-radius:6px;background:#e9edf1;font:700 13px inherit}footer{text-align:center;padding:25px;color:#8b95a1;font-size:12px}
+    @media(max-width:650px){main{margin-top:14px}.hero,section{padding:21px;border-radius:16px}.grid{grid-template-columns:1fr}table{font-size:12px}th,td{padding:9px 7px}.step{grid-template-columns:34px 1fr}.num{width:34px;height:34px}}
+    @media print{body{background:#fff}main{width:100%;margin:0}.hero{box-shadow:none}nav{display:none}section{break-inside:avoid}}
+  </style>
+</head>
+<body>
+<main>
+  <header class="hero"><div class="eyebrow">NCR QUALITY GUIDE</div><h1>품질 관리자 가이드</h1><p>접수 검토부터 원인 분석, 조치, 승인과 ERP 연동까지</p></header>
+  <nav><a href="#login">로그인</a><a href="#daily">일일 확인</a><a href="#review">QC 처리</a><a href="#fields">입력 항목</a><a href="#status">상태 전환</a><a href="#ledger">관리대장</a><a href="#admin">관리 기능</a><a href="#faq">주의사항</a></nav>
+
+  <section id="login">
+    <span class="tag">01 · 로그인과 권한</span><h2>품질 관리자 로그인</h2>
+    <div class="grid">
+      <div class="card"><h3>회사 이메일 계정</h3><p><code>name@soosan.co.kr</code>와 그룹웨어 비밀번호를 사용합니다.</p></div>
+      <div class="card"><h3>전용 관리자 계정</h3><p><code>admin</code>처럼 안내받은 관리자 아이디와 내부 비밀번호를 사용합니다.</p></div>
+    </div>
+    <div class="note info"><b>메뉴가 보이지 않을 때</b><br>QC 등록 또는 관리자 패널이 보이지 않으면 현재 계정의 역할이 일반 등록자일 수 있습니다. 사용자 관리에서 권한을 확인하세요.</div>
+  </section>
+
+  <section id="daily">
+    <span class="tag">02 · 일일 업무</span><h2>업무 시작 시 확인할 항목</h2>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>관리대장 현황 확인</h3><p>총 건수, 조치 중, 판정 완료와 지연 건수를 확인합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>QC 등록의 미완료 목록 확인</h3><p>접수, 검토 중, 협업 대기 상태 중 우선 처리할 보고서를 찾습니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>경과일 우선순위 확인</h3><p>5~6일 경과는 주황색, 7일 이상 미처리는 빨간색 경고를 우선 확인합니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>수산톡 요청 확인</h3><p>신규 접수와 협업 요청 알림을 확인하고 해당 보고서 상세로 이동합니다.</p></div></div>
+    </div>
+  </section>
+
+  <section id="review">
+    <span class="tag">03 · QC 처리 절차</span><h2>접수부터 승인까지</h2>
+    <div class="flow"><b>접수</b><i>→</i><b>검토 중</b><i>→</i><b>협업 대기(필요 시)</b><i>→</i><b>조치 완료</b><i>→</i><b>승인 완료</b><i>→</i><b>ERP 등록</b></div>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>보고서 사실관계 확인</h3><p>공장, 공정, 품목코드, 발생일, 수량, 현상 설명과 사진이 일치하는지 확인합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>검토 시작</h3><p><b>검토 시작</b>으로 상태를 접수에서 검토 중으로 변경합니다. 다른 담당자에게 현재 처리 중임을 알리는 단계입니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>QC 분석 입력</h3><p>불량 분류, 원인, 귀책, 조치 방향과 조치 결과를 근거에 따라 작성합니다. 작성 중에는 임시저장 내용을 활용할 수 있습니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>협업 요청</h3><p>생산·구매·설계 등 확인이 필요하면 담당자를 선택하고 요청 내용을 작성해 협업 대기로 전환합니다.</p></div></div>
+      <div class="step"><span class="num">5</span><div><h3>분석 저장</h3><p>입력값과 첨부 근거를 다시 확인하고 저장합니다. 저장 완료 알림을 확인한 뒤 다음 단계로 진행합니다.</p></div></div>
+      <div class="step"><span class="num">6</span><div><h3>조치 완료</h3><p>실제 현장 조치가 끝나고 결과가 확인된 경우에만 조치 완료로 변경합니다.</p></div></div>
+      <div class="step"><span class="num">7</span><div><h3>최종 승인</h3><p>승인 권한자가 분석과 조치를 검토한 뒤 승인합니다. 승인 완료 후 ERP 자동 등록 준비 상태가 됩니다.</p></div></div>
+      <div class="step"><span class="num">8</span><div><h3>ERP 등록 확인</h3><p>RPA 등록을 실행하고 성공 여부를 확인합니다. 성공하면 상태가 ERP 등록으로 자동 변경됩니다.</p></div></div>
+    </div>
+    <div class="note danger"><b>중요:</b> 조치 완료와 승인은 단순 진행 표시가 아닙니다. 실제 조치와 검증이 끝난 뒤 변경해야 하며, 승인 완료 후 되돌릴 때는 변경 사유를 남기세요.</div>
+  </section>
+
+  <section id="fields">
+    <span class="tag">04 · 분석 품질</span><h2>QC 입력 항목 작성 기준</h2>
+    <table><thead><tr><th>항목</th><th>작성 기준</th><th>확인할 근거</th></tr></thead><tbody>
+      <tr><td><b>불량 분류</b></td><td>외관·치수·기능·재료 등 실제 현상에 맞는 항목 선택</td><td>사진, 측정값, 검사 결과</td></tr>
+      <tr><td><b>원인 분석</b></td><td>현상 반복이 아니라 발생 원인과 유출 원인을 구분해 구체적으로 작성</td><td>작업 조건, 설비, 자재 LOT, 도면</td></tr>
+      <tr><td><b>조치 방향</b></td><td>업체 방문 수정, 생산팀 자체 수정, 반출 후 수정 입고 등 실제 방향 선택</td><td>담당 부서 합의, 일정</td></tr>
+      <tr><td><b>조치 결과</b></td><td>누가, 언제, 무엇을, 몇 개 처리했고 확인 결과가 어땠는지 작성</td><td>재검 결과, 완료 사진</td></tr>
+      <tr><td><b>시정·예방조치</b></td><td>재발 방지 활동의 필요 여부와 진행 상태 기록</td><td>표준서 변경, 교육, 설비 개선</td></tr>
+      <tr><td><b>부적합 제외</b></td><td>실제 부적합이 아니어서 ERP 등록 대상에서 제외할 때만 선택</td><td>제외 사유와 판정 근거</td></tr>
+    </tbody></table>
+    <div class="note ok"><b>좋은 조치 결과 예</b><br>“9월 16일 생산팀에서 대상 12EA 전수 재체결 완료. 토크렌치 85N·m 확인 후 마킹했으며 재검 결과 이상 없음.”</div>
+  </section>
+
+  <section id="status">
+    <span class="tag">05 · 상태 관리</span><h2>상태별 전환 기준</h2>
+    <table><thead><tr><th>현재 상태</th><th>다음 상태</th><th>전환 기준</th></tr></thead><tbody>
+      <tr><td>접수</td><td><b>검토 중</b></td><td>품질 담당자가 보고서를 확인하고 분석을 시작함</td></tr>
+      <tr><td>검토 중</td><td><b>협업 대기</b></td><td>다른 부서 또는 담당자의 확인·조치가 필요함</td></tr>
+      <tr><td>협업 대기</td><td><b>검토 중</b></td><td>협업 답변을 받고 품질 검토를 재개함</td></tr>
+      <tr><td>검토 중</td><td><b>조치 완료</b></td><td>원인 분석, 조치 실행과 결과 확인이 완료됨</td></tr>
+      <tr><td>조치 완료</td><td><b>승인 완료</b></td><td>승인 권한자가 분석과 조치의 적정성을 최종 확인함</td></tr>
+      <tr><td>승인 완료</td><td><b>ERP 등록</b></td><td>RPA가 ERP 등록에 성공하면 자동 전환됨</td></tr>
+    </tbody></table>
+    <ul><li>ERP 등록 상태는 수동으로 선택하지 않습니다.</li><li>동시에 여러 담당자가 같은 보고서를 수정하지 않도록 댓글이나 수산톡으로 담당자를 명확히 하세요.</li><li>반려 또는 상태 되돌림이 필요하면 사유를 댓글과 이력에 남기세요.</li></ul>
+  </section>
+
+  <section id="ledger">
+    <span class="tag">06 · 관리대장</span><h2>검색·상세·RPA 처리</h2>
+    <div class="grid">
+      <div class="card"><h3>검색과 필터</h3><p>NCR 번호, 품목명, 모델명으로 검색하고 상태·공장·공정 필터를 조합합니다.</p></div>
+      <div class="card"><h3>상세 패널</h3><p>접수 내용, 사진, QC 분석, 처리 상태와 댓글을 한 화면에서 확인합니다.</p></div>
+      <div class="card"><h3>협업 요청</h3><p>검토 담당자를 지정하고 요청 내용을 보내면 대상자에게 알림이 발송됩니다.</p></div>
+      <div class="card"><h3>RPA 등록</h3><p>승인 완료 보고서에서 RPA 등록을 실행하고 성공·대기·실패 상태를 확인합니다.</p></div>
+    </div>
+    <div class="note"><b>RPA 실패 시</b><br>바로 반복 실행하지 말고 오류 상태와 입력값을 확인합니다. 재시도 초기화가 필요한 경우 중복 ERP 등록 여부를 먼저 확인하세요.</div>
+  </section>
+
+  <section id="admin">
+    <span class="tag">07 · 관리자 기능</span><h2>계정과 기준정보 관리</h2>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>사용자 관리</h3><p>일반 등록자, QC·협업, 관리자, 비활성 계정을 구분해 확인하고 역할과 활성 상태를 관리합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>CSV 일괄 등록</h3><p>Outlook CSV를 선택해 신규·기존·제외 인원을 확인한 뒤 실행합니다. 신규 계정만 일반 등록자로 생성되며 기존 권한은 유지됩니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>부서와 알림</h3><p>부서 코드와 수산톡 Webhook을 확인하고 테스트 전송으로 연결 상태를 검증합니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>보고서 수정·삭제</h3><p>잘못된 접수 또는 상태를 수정할 수 있습니다. 삭제는 복구할 수 없으므로 NCR 번호와 사유를 다시 확인합니다.</p></div></div>
+    </div>
+    <div class="note danger"><b>계정 관리 주의:</b> 퇴사자는 삭제보다 비활성화를 우선 사용하세요. 기존 보고서의 등록자 이력을 유지할 수 있습니다.</div>
+  </section>
+
+  <section id="faq">
+    <span class="tag">08 · 문제 해결</span><h2>운영 중 자주 발생하는 상황</h2>
+    <div class="grid">
+      <div class="card"><h3>승인을 잘못 눌렀어요</h3><p>관리자 패널의 보고서 관리에서 상태를 수정하고, 변경 사유를 댓글 또는 감사 이력에 남깁니다.</p></div>
+      <div class="card"><h3>협업 알림이 가지 않아요</h3><p>담당자 계정의 활성 상태와 알림 설정, 부서 Webhook 설정을 확인한 뒤 테스트 전송합니다.</p></div>
+      <div class="card"><h3>피드백 메뉴가 401을 표시해요</h3><p>다시 로그인하고 브라우저를 새로고침합니다. 계속되면 최신 버전 게시 여부와 인증 토큰 만료를 확인합니다.</p></div>
+      <div class="card"><h3>화면이 이전 버전으로 보여요</h3><p>브라우저를 완전히 닫았다 열거나 Ctrl+Shift+R로 새로고침해 서비스 워커 캐시를 갱신합니다.</p></div>
+    </div>
+    <div class="note info"><b>문의 시 함께 전달할 정보</b><br>NCR 번호, 발생 시간, 사용 계정, 오류 문구, 화면 캡처를 함께 전달하면 확인이 빨라집니다. 비밀번호는 전달하지 마세요.</div>
+  </section>
+  <footer>수산세보틱스 · 공정 부적합 등록 및 관리 시스템</footer>
+</main>
+</body>
+</html><!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NCR 품질 관리자 가이드</title>
+  <style>
+    :root{--ink:#191f28;--muted:#6b7684;--line:#e5e8eb;--soft:#f6f8fa;--brand:#254f89;--brand2:#edf4ff;--warn:#9a6200;--warn2:#fff7e5;--danger:#a13d3d;--danger2:#fff0f0;--green:#176b4d;--green2:#e9f7f1}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--soft);color:var(--ink);font:15px/1.65 Pretendard,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;word-break:keep-all}
+    main{width:min(980px,calc(100% - 28px));margin:26px auto 60px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(135deg,#172333,#254f89);box-shadow:0 18px 48px #17335830}
+    .eyebrow{font-size:12px;font-weight:800;letter-spacing:.12em;opacity:.75}.hero h1{margin:8px 0 4px;font-size:clamp(27px,5vw,40px);letter-spacing:-.05em}.hero p{margin:0;color:#d9e5f7}
+    nav{position:sticky;top:0;z-index:2;display:flex;gap:7px;overflow:auto;margin:16px 0;padding:10px;background:#fffffff2;border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(12px)}
+    nav a{flex:0 0 auto;padding:7px 10px;border-radius:9px;color:var(--muted);text-decoration:none;font-size:13px;font-weight:700}nav a:hover{background:var(--soft);color:var(--ink)}
+    section{margin-top:16px;padding:28px;background:#fff;border:1px solid var(--line);border-radius:19px}h2{margin:0 0 6px;font-size:22px;letter-spacing:-.03em}h3{margin:0 0 4px;font-size:16px}.lead{margin:0 0 20px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.card{padding:17px;background:var(--soft);border-radius:14px}.card p{margin:5px 0 0;color:var(--muted);font-size:14px}
+    .steps{display:grid;gap:12px}.step{display:grid;grid-template-columns:38px 1fr;gap:13px;padding:14px;border:1px solid var(--line);border-radius:14px}.num{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--ink);color:#fff;font-weight:800}.step p{margin:2px 0 0;color:var(--muted);font-size:14px}
+    .note{margin-top:14px;padding:15px 17px;border-radius:13px;background:var(--warn2);border:1px solid #efd594;color:#75521a}.ok{background:var(--green2);border-color:#c8e8da;color:#285f4b}.danger{background:var(--danger2);border-color:#efcccc;color:#8a3434}.info{background:var(--brand2);border-color:#ccdcf6;color:#385b8e}
+    .tag{display:inline-block;margin-bottom:9px;padding:4px 9px;border-radius:999px;background:var(--brand2);color:var(--brand);font-size:11px;font-weight:800;letter-spacing:.06em}
+    table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:var(--soft);font-size:12px;color:var(--muted)}ul{margin:8px 0 0;padding-left:21px;color:var(--muted)}li+li{margin-top:5px}.flow{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:14px 0}.flow b{padding:7px 10px;border-radius:999px;background:var(--brand2);color:var(--brand);font-size:12px}.flow i{color:#a8b1bb;font-style:normal}
+    code{padding:2px 6px;border-radius:6px;background:#e9edf1;font:700 13px inherit}footer{text-align:center;padding:25px;color:#8b95a1;font-size:12px}
+    @media(max-width:650px){main{margin-top:14px}.hero,section{padding:21px;border-radius:16px}.grid{grid-template-columns:1fr}table{font-size:12px}th,td{padding:9px 7px}.step{grid-template-columns:34px 1fr}.num{width:34px;height:34px}}
+    @media print{body{background:#fff}main{width:100%;margin:0}.hero{box-shadow:none}nav{display:none}section{break-inside:avoid}}
+  </style>
+</head>
+<body>
+<main>
+  <header class="hero"><div class="eyebrow">NCR QUALITY GUIDE</div><h1>품질 관리자 가이드</h1><p>접수 검토부터 원인 분석, 조치, 승인과 ERP 연동까지</p></header>
+  <nav><a href="#login">로그인</a><a href="#daily">일일 확인</a><a href="#review">QC 처리</a><a href="#fields">입력 항목</a><a href="#status">상태 전환</a><a href="#ledger">관리대장</a><a href="#admin">관리 기능</a><a href="#faq">주의사항</a></nav>
+
+  <section id="login">
+    <span class="tag">01 · 로그인과 권한</span><h2>품질 관리자 로그인</h2>
+    <div class="grid">
+      <div class="card"><h3>회사 이메일 계정</h3><p><code>name@soosan.co.kr</code>와 그룹웨어 비밀번호를 사용합니다.</p></div>
+      <div class="card"><h3>전용 관리자 계정</h3><p><code>admin</code>처럼 안내받은 관리자 아이디와 내부 비밀번호를 사용합니다.</p></div>
+    </div>
+    <div class="note info"><b>메뉴가 보이지 않을 때</b><br>QC 등록 또는 관리자 패널이 보이지 않으면 현재 계정의 역할이 일반 등록자일 수 있습니다. 사용자 관리에서 권한을 확인하세요.</div>
+  </section>
+
+  <section id="daily">
+    <span class="tag">02 · 일일 업무</span><h2>업무 시작 시 확인할 항목</h2>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>관리대장 현황 확인</h3><p>총 건수, 조치 중, 판정 완료와 지연 건수를 확인합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>QC 등록의 미완료 목록 확인</h3><p>접수, 검토 중, 협업 대기 상태 중 우선 처리할 보고서를 찾습니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>경과일 우선순위 확인</h3><p>5~6일 경과는 주황색, 7일 이상 미처리는 빨간색 경고를 우선 확인합니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>수산톡 요청 확인</h3><p>신규 접수와 협업 요청 알림을 확인하고 해당 보고서 상세로 이동합니다.</p></div></div>
+    </div>
+  </section>
+
+  <section id="review">
+    <span class="tag">03 · QC 처리 절차</span><h2>접수부터 승인까지</h2>
+    <div class="flow"><b>접수</b><i>→</i><b>검토 중</b><i>→</i><b>협업 대기(필요 시)</b><i>→</i><b>조치 완료</b><i>→</i><b>승인 완료</b><i>→</i><b>ERP 등록</b></div>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>보고서 사실관계 확인</h3><p>공장, 공정, 품목코드, 발생일, 수량, 현상 설명과 사진이 일치하는지 확인합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>검토 시작</h3><p><b>검토 시작</b>으로 상태를 접수에서 검토 중으로 변경합니다. 다른 담당자에게 현재 처리 중임을 알리는 단계입니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>QC 분석 입력</h3><p>불량 분류, 원인, 귀책, 조치 방향과 조치 결과를 근거에 따라 작성합니다. 작성 중에는 임시저장 내용을 활용할 수 있습니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>협업 요청</h3><p>생산·구매·설계 등 확인이 필요하면 담당자를 선택하고 요청 내용을 작성해 협업 대기로 전환합니다.</p></div></div>
+      <div class="step"><span class="num">5</span><div><h3>분석 저장</h3><p>입력값과 첨부 근거를 다시 확인하고 저장합니다. 저장 완료 알림을 확인한 뒤 다음 단계로 진행합니다.</p></div></div>
+      <div class="step"><span class="num">6</span><div><h3>조치 완료</h3><p>실제 현장 조치가 끝나고 결과가 확인된 경우에만 조치 완료로 변경합니다.</p></div></div>
+      <div class="step"><span class="num">7</span><div><h3>최종 승인</h3><p>승인 권한자가 분석과 조치를 검토한 뒤 승인합니다. 승인 완료 후 ERP 자동 등록 준비 상태가 됩니다.</p></div></div>
+      <div class="step"><span class="num">8</span><div><h3>ERP 등록 확인</h3><p>RPA 등록을 실행하고 성공 여부를 확인합니다. 성공하면 상태가 ERP 등록으로 자동 변경됩니다.</p></div></div>
+    </div>
+    <div class="note danger"><b>중요:</b> 조치 완료와 승인은 단순 진행 표시가 아닙니다. 실제 조치와 검증이 끝난 뒤 변경해야 하며, 승인 완료 후 되돌릴 때는 변경 사유를 남기세요.</div>
+  </section>
+
+  <section id="fields">
+    <span class="tag">04 · 분석 품질</span><h2>QC 입력 항목 작성 기준</h2>
+    <table><thead><tr><th>항목</th><th>작성 기준</th><th>확인할 근거</th></tr></thead><tbody>
+      <tr><td><b>불량 분류</b></td><td>외관·치수·기능·재료 등 실제 현상에 맞는 항목 선택</td><td>사진, 측정값, 검사 결과</td></tr>
+      <tr><td><b>원인 분석</b></td><td>현상 반복이 아니라 발생 원인과 유출 원인을 구분해 구체적으로 작성</td><td>작업 조건, 설비, 자재 LOT, 도면</td></tr>
+      <tr><td><b>조치 방향</b></td><td>업체 방문 수정, 생산팀 자체 수정, 반출 후 수정 입고 등 실제 방향 선택</td><td>담당 부서 합의, 일정</td></tr>
+      <tr><td><b>조치 결과</b></td><td>누가, 언제, 무엇을, 몇 개 처리했고 확인 결과가 어땠는지 작성</td><td>재검 결과, 완료 사진</td></tr>
+      <tr><td><b>시정·예방조치</b></td><td>재발 방지 활동의 필요 여부와 진행 상태 기록</td><td>표준서 변경, 교육, 설비 개선</td></tr>
+      <tr><td><b>부적합 제외</b></td><td>실제 부적합이 아니어서 ERP 등록 대상에서 제외할 때만 선택</td><td>제외 사유와 판정 근거</td></tr>
+    </tbody></table>
+    <div class="note ok"><b>좋은 조치 결과 예</b><br>“9월 16일 생산팀에서 대상 12EA 전수 재체결 완료. 토크렌치 85N·m 확인 후 마킹했으며 재검 결과 이상 없음.”</div>
+  </section>
+
+  <section id="status">
+    <span class="tag">05 · 상태 관리</span><h2>상태별 전환 기준</h2>
+    <table><thead><tr><th>현재 상태</th><th>다음 상태</th><th>전환 기준</th></tr></thead><tbody>
+      <tr><td>접수</td><td><b>검토 중</b></td><td>품질 담당자가 보고서를 확인하고 분석을 시작함</td></tr>
+      <tr><td>검토 중</td><td><b>협업 대기</b></td><td>다른 부서 또는 담당자의 확인·조치가 필요함</td></tr>
+      <tr><td>협업 대기</td><td><b>검토 중</b></td><td>협업 답변을 받고 품질 검토를 재개함</td></tr>
+      <tr><td>검토 중</td><td><b>조치 완료</b></td><td>원인 분석, 조치 실행과 결과 확인이 완료됨</td></tr>
+      <tr><td>조치 완료</td><td><b>승인 완료</b></td><td>승인 권한자가 분석과 조치의 적정성을 최종 확인함</td></tr>
+      <tr><td>승인 완료</td><td><b>ERP 등록</b></td><td>RPA가 ERP 등록에 성공하면 자동 전환됨</td></tr>
+    </tbody></table>
+    <ul><li>ERP 등록 상태는 수동으로 선택하지 않습니다.</li><li>동시에 여러 담당자가 같은 보고서를 수정하지 않도록 댓글이나 수산톡으로 담당자를 명확히 하세요.</li><li>반려 또는 상태 되돌림이 필요하면 사유를 댓글과 이력에 남기세요.</li></ul>
+  </section>
+
+  <section id="ledger">
+    <span class="tag">06 · 관리대장</span><h2>검색·상세·RPA 처리</h2>
+    <div class="grid">
+      <div class="card"><h3>검색과 필터</h3><p>NCR 번호, 품목명, 모델명으로 검색하고 상태·공장·공정 필터를 조합합니다.</p></div>
+      <div class="card"><h3>상세 패널</h3><p>접수 내용, 사진, QC 분석, 처리 상태와 댓글을 한 화면에서 확인합니다.</p></div>
+      <div class="card"><h3>협업 요청</h3><p>검토 담당자를 지정하고 요청 내용을 보내면 대상자에게 알림이 발송됩니다.</p></div>
+      <div class="card"><h3>RPA 등록</h3><p>승인 완료 보고서에서 RPA 등록을 실행하고 성공·대기·실패 상태를 확인합니다.</p></div>
+    </div>
+    <div class="note"><b>RPA 실패 시</b><br>바로 반복 실행하지 말고 오류 상태와 입력값을 확인합니다. 재시도 초기화가 필요한 경우 중복 ERP 등록 여부를 먼저 확인하세요.</div>
+  </section>
+
+  <section id="admin">
+    <span class="tag">07 · 관리자 기능</span><h2>계정과 기준정보 관리</h2>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>사용자 관리</h3><p>일반 등록자, QC·협업, 관리자, 비활성 계정을 구분해 확인하고 역할과 활성 상태를 관리합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>CSV 일괄 등록</h3><p>Outlook CSV를 선택해 신규·기존·제외 인원을 확인한 뒤 실행합니다. 신규 계정만 일반 등록자로 생성되며 기존 권한은 유지됩니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>부서와 알림</h3><p>부서 코드와 수산톡 Webhook을 확인하고 테스트 전송으로 연결 상태를 검증합니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>보고서 수정·삭제</h3><p>잘못된 접수 또는 상태를 수정할 수 있습니다. 삭제는 복구할 수 없으므로 NCR 번호와 사유를 다시 확인합니다.</p></div></div>
+    </div>
+    <div class="note danger"><b>계정 관리 주의:</b> 퇴사자는 삭제보다 비활성화를 우선 사용하세요. 기존 보고서의 등록자 이력을 유지할 수 있습니다.</div>
+  </section>
+
+  <section id="faq">
+    <span class="tag">08 · 문제 해결</span><h2>운영 중 자주 발생하는 상황</h2>
+    <div class="grid">
+      <div class="card"><h3>승인을 잘못 눌렀어요</h3><p>관리자 패널의 보고서 관리에서 상태를 수정하고, 변경 사유를 댓글 또는 감사 이력에 남깁니다.</p></div>
+      <div class="card"><h3>협업 알림이 가지 않아요</h3><p>담당자 계정의 활성 상태와 알림 설정, 부서 Webhook 설정을 확인한 뒤 테스트 전송합니다.</p></div>
+      <div class="card"><h3>피드백 메뉴가 401을 표시해요</h3><p>다시 로그인하고 브라우저를 새로고침합니다. 계속되면 최신 버전 게시 여부와 인증 토큰 만료를 확인합니다.</p></div>
+      <div class="card"><h3>화면이 이전 버전으로 보여요</h3><p>브라우저를 완전히 닫았다 열거나 Ctrl+Shift+R로 새로고침해 서비스 워커 캐시를 갱신합니다.</p></div>
+    </div>
+    <div class="note info"><b>문의 시 함께 전달할 정보</b><br>NCR 번호, 발생 시간, 사용 계정, 오류 문구, 화면 캡처를 함께 전달하면 확인이 빨라집니다. 비밀번호는 전달하지 마세요.</div>
+  </section>
+  <footer>수산세보틱스 · 공정 부적합 등록 및 관리 시스템</footer>
+</main>
+</body>
+</html><!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NCR 품질 관리자 가이드</title>
+  <style>
+    :root{--ink:#191f28;--muted:#6b7684;--line:#e5e8eb;--soft:#f6f8fa;--brand:#254f89;--brand2:#edf4ff;--warn:#9a6200;--warn2:#fff7e5;--danger:#a13d3d;--danger2:#fff0f0;--green:#176b4d;--green2:#e9f7f1}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--soft);color:var(--ink);font:15px/1.65 Pretendard,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;word-break:keep-all}
+    main{width:min(980px,calc(100% - 28px));margin:26px auto 60px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(135deg,#172333,#254f89);box-shadow:0 18px 48px #17335830}
+    .eyebrow{font-size:12px;font-weight:800;letter-spacing:.12em;opacity:.75}.hero h1{margin:8px 0 4px;font-size:clamp(27px,5vw,40px);letter-spacing:-.05em}.hero p{margin:0;color:#d9e5f7}
+    nav{position:sticky;top:0;z-index:2;display:flex;gap:7px;overflow:auto;margin:16px 0;padding:10px;background:#fffffff2;border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(12px)}
+    nav a{flex:0 0 auto;padding:7px 10px;border-radius:9px;color:var(--muted);text-decoration:none;font-size:13px;font-weight:700}nav a:hover{background:var(--soft);color:var(--ink)}
+    section{margin-top:16px;padding:28px;background:#fff;border:1px solid var(--line);border-radius:19px}h2{margin:0 0 6px;font-size:22px;letter-spacing:-.03em}h3{margin:0 0 4px;font-size:16px}.lead{margin:0 0 20px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.card{padding:17px;background:var(--soft);border-radius:14px}.card p{margin:5px 0 0;color:var(--muted);font-size:14px}
+    .steps{display:grid;gap:12px}.step{display:grid;grid-template-columns:38px 1fr;gap:13px;padding:14px;border:1px solid var(--line);border-radius:14px}.num{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--ink);color:#fff;font-weight:800}.step p{margin:2px 0 0;color:var(--muted);font-size:14px}
+    .note{margin-top:14px;padding:15px 17px;border-radius:13px;background:var(--warn2);border:1px solid #efd594;color:#75521a}.ok{background:var(--green2);border-color:#c8e8da;color:#285f4b}.danger{background:var(--danger2);border-color:#efcccc;color:#8a3434}.info{background:var(--brand2);border-color:#ccdcf6;color:#385b8e}
+    .tag{display:inline-block;margin-bottom:9px;padding:4px 9px;border-radius:999px;background:var(--brand2);color:var(--brand);font-size:11px;font-weight:800;letter-spacing:.06em}
+    table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:var(--soft);font-size:12px;color:var(--muted)}ul{margin:8px 0 0;padding-left:21px;color:var(--muted)}li+li{margin-top:5px}.flow{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:14px 0}.flow b{padding:7px 10px;border-radius:999px;background:var(--brand2);color:var(--brand);font-size:12px}.flow i{color:#a8b1bb;font-style:normal}
+    code{padding:2px 6px;border-radius:6px;background:#e9edf1;font:700 13px inherit}footer{text-align:center;padding:25px;color:#8b95a1;font-size:12px}
+    @media(max-width:650px){main{margin-top:14px}.hero,section{padding:21px;border-radius:16px}.grid{grid-template-columns:1fr}table{font-size:12px}th,td{padding:9px 7px}.step{grid-template-columns:34px 1fr}.num{width:34px;height:34px}}
+    @media print{body{background:#fff}main{width:100%;margin:0}.hero{box-shadow:none}nav{display:none}section{break-inside:avoid}}
+  </style>
+</head>
+<body>
+<main>
+  <header class="hero"><div class="eyebrow">NCR QUALITY GUIDE</div><h1>품질 관리자 가이드</h1><p>접수 검토부터 원인 분석, 조치, 승인과 ERP 연동까지</p></header>
+  <nav><a href="#login">로그인</a><a href="#daily">일일 확인</a><a href="#review">QC 처리</a><a href="#fields">입력 항목</a><a href="#status">상태 전환</a><a href="#ledger">관리대장</a><a href="#admin">관리 기능</a><a href="#faq">주의사항</a></nav>
+
+  <section id="login">
+    <span class="tag">01 · 로그인과 권한</span><h2>품질 관리자 로그인</h2>
+    <div class="grid">
+      <div class="card"><h3>회사 이메일 계정</h3><p><code>name@soosan.co.kr</code>와 그룹웨어 비밀번호를 사용합니다.</p></div>
+      <div class="card"><h3>전용 관리자 계정</h3><p><code>admin</code>처럼 안내받은 관리자 아이디와 내부 비밀번호를 사용합니다.</p></div>
+    </div>
+    <div class="note info"><b>메뉴가 보이지 않을 때</b><br>QC 등록 또는 관리자 패널이 보이지 않으면 현재 계정의 역할이 일반 등록자일 수 있습니다. 사용자 관리에서 권한을 확인하세요.</div>
+  </section>
+
+  <section id="daily">
+    <span class="tag">02 · 일일 업무</span><h2>업무 시작 시 확인할 항목</h2>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>관리대장 현황 확인</h3><p>총 건수, 조치 중, 판정 완료와 지연 건수를 확인합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>QC 등록의 미완료 목록 확인</h3><p>접수, 검토 중, 협업 대기 상태 중 우선 처리할 보고서를 찾습니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>경과일 우선순위 확인</h3><p>5~6일 경과는 주황색, 7일 이상 미처리는 빨간색 경고를 우선 확인합니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>수산톡 요청 확인</h3><p>신규 접수와 협업 요청 알림을 확인하고 해당 보고서 상세로 이동합니다.</p></div></div>
+    </div>
+  </section>
+
+  <section id="review">
+    <span class="tag">03 · QC 처리 절차</span><h2>접수부터 승인까지</h2>
+    <div class="flow"><b>접수</b><i>→</i><b>검토 중</b><i>→</i><b>협업 대기(필요 시)</b><i>→</i><b>조치 완료</b><i>→</i><b>승인 완료</b><i>→</i><b>ERP 등록</b></div>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>보고서 사실관계 확인</h3><p>공장, 공정, 품목코드, 발생일, 수량, 현상 설명과 사진이 일치하는지 확인합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>검토 시작</h3><p><b>검토 시작</b>으로 상태를 접수에서 검토 중으로 변경합니다. 다른 담당자에게 현재 처리 중임을 알리는 단계입니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>QC 분석 입력</h3><p>불량 분류, 원인, 귀책, 조치 방향과 조치 결과를 근거에 따라 작성합니다. 작성 중에는 임시저장 내용을 활용할 수 있습니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>협업 요청</h3><p>생산·구매·설계 등 확인이 필요하면 담당자를 선택하고 요청 내용을 작성해 협업 대기로 전환합니다.</p></div></div>
+      <div class="step"><span class="num">5</span><div><h3>분석 저장</h3><p>입력값과 첨부 근거를 다시 확인하고 저장합니다. 저장 완료 알림을 확인한 뒤 다음 단계로 진행합니다.</p></div></div>
+      <div class="step"><span class="num">6</span><div><h3>조치 완료</h3><p>실제 현장 조치가 끝나고 결과가 확인된 경우에만 조치 완료로 변경합니다.</p></div></div>
+      <div class="step"><span class="num">7</span><div><h3>최종 승인</h3><p>승인 권한자가 분석과 조치를 검토한 뒤 승인합니다. 승인 완료 후 ERP 자동 등록 준비 상태가 됩니다.</p></div></div>
+      <div class="step"><span class="num">8</span><div><h3>ERP 등록 확인</h3><p>RPA 등록을 실행하고 성공 여부를 확인합니다. 성공하면 상태가 ERP 등록으로 자동 변경됩니다.</p></div></div>
+    </div>
+    <div class="note danger"><b>중요:</b> 조치 완료와 승인은 단순 진행 표시가 아닙니다. 실제 조치와 검증이 끝난 뒤 변경해야 하며, 승인 완료 후 되돌릴 때는 변경 사유를 남기세요.</div>
+  </section>
+
+  <section id="fields">
+    <span class="tag">04 · 분석 품질</span><h2>QC 입력 항목 작성 기준</h2>
+    <table><thead><tr><th>항목</th><th>작성 기준</th><th>확인할 근거</th></tr></thead><tbody>
+      <tr><td><b>불량 분류</b></td><td>외관·치수·기능·재료 등 실제 현상에 맞는 항목 선택</td><td>사진, 측정값, 검사 결과</td></tr>
+      <tr><td><b>원인 분석</b></td><td>현상 반복이 아니라 발생 원인과 유출 원인을 구분해 구체적으로 작성</td><td>작업 조건, 설비, 자재 LOT, 도면</td></tr>
+      <tr><td><b>조치 방향</b></td><td>업체 방문 수정, 생산팀 자체 수정, 반출 후 수정 입고 등 실제 방향 선택</td><td>담당 부서 합의, 일정</td></tr>
+      <tr><td><b>조치 결과</b></td><td>누가, 언제, 무엇을, 몇 개 처리했고 확인 결과가 어땠는지 작성</td><td>재검 결과, 완료 사진</td></tr>
+      <tr><td><b>시정·예방조치</b></td><td>재발 방지 활동의 필요 여부와 진행 상태 기록</td><td>표준서 변경, 교육, 설비 개선</td></tr>
+      <tr><td><b>부적합 제외</b></td><td>실제 부적합이 아니어서 ERP 등록 대상에서 제외할 때만 선택</td><td>제외 사유와 판정 근거</td></tr>
+    </tbody></table>
+    <div class="note ok"><b>좋은 조치 결과 예</b><br>“9월 16일 생산팀에서 대상 12EA 전수 재체결 완료. 토크렌치 85N·m 확인 후 마킹했으며 재검 결과 이상 없음.”</div>
+  </section>
+
+  <section id="status">
+    <span class="tag">05 · 상태 관리</span><h2>상태별 전환 기준</h2>
+    <table><thead><tr><th>현재 상태</th><th>다음 상태</th><th>전환 기준</th></tr></thead><tbody>
+      <tr><td>접수</td><td><b>검토 중</b></td><td>품질 담당자가 보고서를 확인하고 분석을 시작함</td></tr>
+      <tr><td>검토 중</td><td><b>협업 대기</b></td><td>다른 부서 또는 담당자의 확인·조치가 필요함</td></tr>
+      <tr><td>협업 대기</td><td><b>검토 중</b></td><td>협업 답변을 받고 품질 검토를 재개함</td></tr>
+      <tr><td>검토 중</td><td><b>조치 완료</b></td><td>원인 분석, 조치 실행과 결과 확인이 완료됨</td></tr>
+      <tr><td>조치 완료</td><td><b>승인 완료</b></td><td>승인 권한자가 분석과 조치의 적정성을 최종 확인함</td></tr>
+      <tr><td>승인 완료</td><td><b>ERP 등록</b></td><td>RPA가 ERP 등록에 성공하면 자동 전환됨</td></tr>
+    </tbody></table>
+    <ul><li>ERP 등록 상태는 수동으로 선택하지 않습니다.</li><li>동시에 여러 담당자가 같은 보고서를 수정하지 않도록 댓글이나 수산톡으로 담당자를 명확히 하세요.</li><li>반려 또는 상태 되돌림이 필요하면 사유를 댓글과 이력에 남기세요.</li></ul>
+  </section>
+
+  <section id="ledger">
+    <span class="tag">06 · 관리대장</span><h2>검색·상세·RPA 처리</h2>
+    <div class="grid">
+      <div class="card"><h3>검색과 필터</h3><p>NCR 번호, 품목명, 모델명으로 검색하고 상태·공장·공정 필터를 조합합니다.</p></div>
+      <div class="card"><h3>상세 패널</h3><p>접수 내용, 사진, QC 분석, 처리 상태와 댓글을 한 화면에서 확인합니다.</p></div>
+      <div class="card"><h3>협업 요청</h3><p>검토 담당자를 지정하고 요청 내용을 보내면 대상자에게 알림이 발송됩니다.</p></div>
+      <div class="card"><h3>RPA 등록</h3><p>승인 완료 보고서에서 RPA 등록을 실행하고 성공·대기·실패 상태를 확인합니다.</p></div>
+    </div>
+    <div class="note"><b>RPA 실패 시</b><br>바로 반복 실행하지 말고 오류 상태와 입력값을 확인합니다. 재시도 초기화가 필요한 경우 중복 ERP 등록 여부를 먼저 확인하세요.</div>
+  </section>
+
+  <section id="admin">
+    <span class="tag">07 · 관리자 기능</span><h2>계정과 기준정보 관리</h2>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>사용자 관리</h3><p>일반 등록자, QC·협업, 관리자, 비활성 계정을 구분해 확인하고 역할과 활성 상태를 관리합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>CSV 일괄 등록</h3><p>Outlook CSV를 선택해 신규·기존·제외 인원을 확인한 뒤 실행합니다. 신규 계정만 일반 등록자로 생성되며 기존 권한은 유지됩니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>부서와 알림</h3><p>부서 코드와 수산톡 Webhook을 확인하고 테스트 전송으로 연결 상태를 검증합니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>보고서 수정·삭제</h3><p>잘못된 접수 또는 상태를 수정할 수 있습니다. 삭제는 복구할 수 없으므로 NCR 번호와 사유를 다시 확인합니다.</p></div></div>
+    </div>
+    <div class="note danger"><b>계정 관리 주의:</b> 퇴사자는 삭제보다 비활성화를 우선 사용하세요. 기존 보고서의 등록자 이력을 유지할 수 있습니다.</div>
+  </section>
+
+  <section id="faq">
+    <span class="tag">08 · 문제 해결</span><h2>운영 중 자주 발생하는 상황</h2>
+    <div class="grid">
+      <div class="card"><h3>승인을 잘못 눌렀어요</h3><p>관리자 패널의 보고서 관리에서 상태를 수정하고, 변경 사유를 댓글 또는 감사 이력에 남깁니다.</p></div>
+      <div class="card"><h3>협업 알림이 가지 않아요</h3><p>담당자 계정의 활성 상태와 알림 설정, 부서 Webhook 설정을 확인한 뒤 테스트 전송합니다.</p></div>
+      <div class="card"><h3>피드백 메뉴가 401을 표시해요</h3><p>다시 로그인하고 브라우저를 새로고침합니다. 계속되면 최신 버전 게시 여부와 인증 토큰 만료를 확인합니다.</p></div>
+      <div class="card"><h3>화면이 이전 버전으로 보여요</h3><p>브라우저를 완전히 닫았다 열거나 Ctrl+Shift+R로 새로고침해 서비스 워커 캐시를 갱신합니다.</p></div>
+    </div>
+    <div class="note info"><b>문의 시 함께 전달할 정보</b><br>NCR 번호, 발생 시간, 사용 계정, 오류 문구, 화면 캡처를 함께 전달하면 확인이 빨라집니다. 비밀번호는 전달하지 마세요.</div>
+  </section>
+  <footer>수산세보틱스 · 공정 부적합 등록 및 관리 시스템</footer>
+</main>
+</body>
+</html><!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NCR 품질 관리자 가이드</title>
+  <style>
+    :root{--ink:#191f28;--muted:#6b7684;--line:#e5e8eb;--soft:#f6f8fa;--brand:#254f89;--brand2:#edf4ff;--warn:#9a6200;--warn2:#fff7e5;--danger:#a13d3d;--danger2:#fff0f0;--green:#176b4d;--green2:#e9f7f1}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--soft);color:var(--ink);font:15px/1.65 Pretendard,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;word-break:keep-all}
+    main{width:min(980px,calc(100% - 28px));margin:26px auto 60px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(135deg,#172333,#254f89);box-shadow:0 18px 48px #17335830}
+    .eyebrow{font-size:12px;font-weight:800;letter-spacing:.12em;opacity:.75}.hero h1{margin:8px 0 4px;font-size:clamp(27px,5vw,40px);letter-spacing:-.05em}.hero p{margin:0;color:#d9e5f7}
+    nav{position:sticky;top:0;z-index:2;display:flex;gap:7px;overflow:auto;margin:16px 0;padding:10px;background:#fffffff2;border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(12px)}
+    nav a{flex:0 0 auto;padding:7px 10px;border-radius:9px;color:var(--muted);text-decoration:none;font-size:13px;font-weight:700}nav a:hover{background:var(--soft);color:var(--ink)}
+    section{margin-top:16px;padding:28px;background:#fff;border:1px solid var(--line);border-radius:19px}h2{margin:0 0 6px;font-size:22px;letter-spacing:-.03em}h3{margin:0 0 4px;font-size:16px}.lead{margin:0 0 20px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.card{padding:17px;background:var(--soft);border-radius:14px}.card p{margin:5px 0 0;color:var(--muted);font-size:14px}
+    .steps{display:grid;gap:12px}.step{display:grid;grid-template-columns:38px 1fr;gap:13px;padding:14px;border:1px solid var(--line);border-radius:14px}.num{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--ink);color:#fff;font-weight:800}.step p{margin:2px 0 0;color:var(--muted);font-size:14px}
+    .note{margin-top:14px;padding:15px 17px;border-radius:13px;background:var(--warn2);border:1px solid #efd594;color:#75521a}.ok{background:var(--green2);border-color:#c8e8da;color:#285f4b}.danger{background:var(--danger2);border-color:#efcccc;color:#8a3434}.info{background:var(--brand2);border-color:#ccdcf6;color:#385b8e}
+    .tag{display:inline-block;margin-bottom:9px;padding:4px 9px;border-radius:999px;background:var(--brand2);color:var(--brand);font-size:11px;font-weight:800;letter-spacing:.06em}
+    table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:var(--soft);font-size:12px;color:var(--muted)}ul{margin:8px 0 0;padding-left:21px;color:var(--muted)}li+li{margin-top:5px}.flow{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:14px 0}.flow b{padding:7px 10px;border-radius:999px;background:var(--brand2);color:var(--brand);font-size:12px}.flow i{color:#a8b1bb;font-style:normal}
+    code{padding:2px 6px;border-radius:6px;background:#e9edf1;font:700 13px inherit}footer{text-align:center;padding:25px;color:#8b95a1;font-size:12px}
+    @media(max-width:650px){main{margin-top:14px}.hero,section{padding:21px;border-radius:16px}.grid{grid-template-columns:1fr}table{font-size:12px}th,td{padding:9px 7px}.step{grid-template-columns:34px 1fr}.num{width:34px;height:34px}}
+    @media print{body{background:#fff}main{width:100%;margin:0}.hero{box-shadow:none}nav{display:none}section{break-inside:avoid}}
+  </style>
+</head>
+<body>
+<main>
+  <header class="hero"><div class="eyebrow">NCR QUALITY GUIDE</div><h1>품질 관리자 가이드</h1><p>접수 검토부터 원인 분석, 조치, 승인과 ERP 연동까지</p></header>
+  <nav><a href="#login">로그인</a><a href="#daily">일일 확인</a><a href="#review">QC 처리</a><a href="#fields">입력 항목</a><a href="#status">상태 전환</a><a href="#ledger">관리대장</a><a href="#admin">관리 기능</a><a href="#faq">주의사항</a></nav>
+
+  <section id="login">
+    <span class="tag">01 · 로그인과 권한</span><h2>품질 관리자 로그인</h2>
+    <div class="grid">
+      <div class="card"><h3>회사 이메일 계정</h3><p><code>name@soosan.co.kr</code>와 그룹웨어 비밀번호를 사용합니다.</p></div>
+      <div class="card"><h3>전용 관리자 계정</h3><p><code>admin</code>처럼 안내받은 관리자 아이디와 내부 비밀번호를 사용합니다.</p></div>
+    </div>
+    <div class="note info"><b>메뉴가 보이지 않을 때</b><br>QC 등록 또는 관리자 패널이 보이지 않으면 현재 계정의 역할이 일반 등록자일 수 있습니다. 사용자 관리에서 권한을 확인하세요.</div>
+  </section>
+
+  <section id="daily">
+    <span class="tag">02 · 일일 업무</span><h2>업무 시작 시 확인할 항목</h2>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>관리대장 현황 확인</h3><p>총 건수, 조치 중, 판정 완료와 지연 건수를 확인합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>QC 등록의 미완료 목록 확인</h3><p>접수, 검토 중, 협업 대기 상태 중 우선 처리할 보고서를 찾습니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>경과일 우선순위 확인</h3><p>5~6일 경과는 주황색, 7일 이상 미처리는 빨간색 경고를 우선 확인합니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>수산톡 요청 확인</h3><p>신규 접수와 협업 요청 알림을 확인하고 해당 보고서 상세로 이동합니다.</p></div></div>
+    </div>
+  </section>
+
+  <section id="review">
+    <span class="tag">03 · QC 처리 절차</span><h2>접수부터 승인까지</h2>
+    <div class="flow"><b>접수</b><i>→</i><b>검토 중</b><i>→</i><b>협업 대기(필요 시)</b><i>→</i><b>조치 완료</b><i>→</i><b>승인 완료</b><i>→</i><b>ERP 등록</b></div>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>보고서 사실관계 확인</h3><p>공장, 공정, 품목코드, 발생일, 수량, 현상 설명과 사진이 일치하는지 확인합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>검토 시작</h3><p><b>검토 시작</b>으로 상태를 접수에서 검토 중으로 변경합니다. 다른 담당자에게 현재 처리 중임을 알리는 단계입니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>QC 분석 입력</h3><p>불량 분류, 원인, 귀책, 조치 방향과 조치 결과를 근거에 따라 작성합니다. 작성 중에는 임시저장 내용을 활용할 수 있습니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>협업 요청</h3><p>생산·구매·설계 등 확인이 필요하면 담당자를 선택하고 요청 내용을 작성해 협업 대기로 전환합니다.</p></div></div>
+      <div class="step"><span class="num">5</span><div><h3>분석 저장</h3><p>입력값과 첨부 근거를 다시 확인하고 저장합니다. 저장 완료 알림을 확인한 뒤 다음 단계로 진행합니다.</p></div></div>
+      <div class="step"><span class="num">6</span><div><h3>조치 완료</h3><p>실제 현장 조치가 끝나고 결과가 확인된 경우에만 조치 완료로 변경합니다.</p></div></div>
+      <div class="step"><span class="num">7</span><div><h3>최종 승인</h3><p>승인 권한자가 분석과 조치를 검토한 뒤 승인합니다. 승인 완료 후 ERP 자동 등록 준비 상태가 됩니다.</p></div></div>
+      <div class="step"><span class="num">8</span><div><h3>ERP 등록 확인</h3><p>RPA 등록을 실행하고 성공 여부를 확인합니다. 성공하면 상태가 ERP 등록으로 자동 변경됩니다.</p></div></div>
+    </div>
+    <div class="note danger"><b>중요:</b> 조치 완료와 승인은 단순 진행 표시가 아닙니다. 실제 조치와 검증이 끝난 뒤 변경해야 하며, 승인 완료 후 되돌릴 때는 변경 사유를 남기세요.</div>
+  </section>
+
+  <section id="fields">
+    <span class="tag">04 · 분석 품질</span><h2>QC 입력 항목 작성 기준</h2>
+    <table><thead><tr><th>항목</th><th>작성 기준</th><th>확인할 근거</th></tr></thead><tbody>
+      <tr><td><b>불량 분류</b></td><td>외관·치수·기능·재료 등 실제 현상에 맞는 항목 선택</td><td>사진, 측정값, 검사 결과</td></tr>
+      <tr><td><b>원인 분석</b></td><td>현상 반복이 아니라 발생 원인과 유출 원인을 구분해 구체적으로 작성</td><td>작업 조건, 설비, 자재 LOT, 도면</td></tr>
+      <tr><td><b>조치 방향</b></td><td>업체 방문 수정, 생산팀 자체 수정, 반출 후 수정 입고 등 실제 방향 선택</td><td>담당 부서 합의, 일정</td></tr>
+      <tr><td><b>조치 결과</b></td><td>누가, 언제, 무엇을, 몇 개 처리했고 확인 결과가 어땠는지 작성</td><td>재검 결과, 완료 사진</td></tr>
+      <tr><td><b>시정·예방조치</b></td><td>재발 방지 활동의 필요 여부와 진행 상태 기록</td><td>표준서 변경, 교육, 설비 개선</td></tr>
+      <tr><td><b>부적합 제외</b></td><td>실제 부적합이 아니어서 ERP 등록 대상에서 제외할 때만 선택</td><td>제외 사유와 판정 근거</td></tr>
+    </tbody></table>
+    <div class="note ok"><b>좋은 조치 결과 예</b><br>“9월 16일 생산팀에서 대상 12EA 전수 재체결 완료. 토크렌치 85N·m 확인 후 마킹했으며 재검 결과 이상 없음.”</div>
+  </section>
+
+  <section id="status">
+    <span class="tag">05 · 상태 관리</span><h2>상태별 전환 기준</h2>
+    <table><thead><tr><th>현재 상태</th><th>다음 상태</th><th>전환 기준</th></tr></thead><tbody>
+      <tr><td>접수</td><td><b>검토 중</b></td><td>품질 담당자가 보고서를 확인하고 분석을 시작함</td></tr>
+      <tr><td>검토 중</td><td><b>협업 대기</b></td><td>다른 부서 또는 담당자의 확인·조치가 필요함</td></tr>
+      <tr><td>협업 대기</td><td><b>검토 중</b></td><td>협업 답변을 받고 품질 검토를 재개함</td></tr>
+      <tr><td>검토 중</td><td><b>조치 완료</b></td><td>원인 분석, 조치 실행과 결과 확인이 완료됨</td></tr>
+      <tr><td>조치 완료</td><td><b>승인 완료</b></td><td>승인 권한자가 분석과 조치의 적정성을 최종 확인함</td></tr>
+      <tr><td>승인 완료</td><td><b>ERP 등록</b></td><td>RPA가 ERP 등록에 성공하면 자동 전환됨</td></tr>
+    </tbody></table>
+    <ul><li>ERP 등록 상태는 수동으로 선택하지 않습니다.</li><li>동시에 여러 담당자가 같은 보고서를 수정하지 않도록 댓글이나 수산톡으로 담당자를 명확히 하세요.</li><li>반려 또는 상태 되돌림이 필요하면 사유를 댓글과 이력에 남기세요.</li></ul>
+  </section>
+
+  <section id="ledger">
+    <span class="tag">06 · 관리대장</span><h2>검색·상세·RPA 처리</h2>
+    <div class="grid">
+      <div class="card"><h3>검색과 필터</h3><p>NCR 번호, 품목명, 모델명으로 검색하고 상태·공장·공정 필터를 조합합니다.</p></div>
+      <div class="card"><h3>상세 패널</h3><p>접수 내용, 사진, QC 분석, 처리 상태와 댓글을 한 화면에서 확인합니다.</p></div>
+      <div class="card"><h3>협업 요청</h3><p>검토 담당자를 지정하고 요청 내용을 보내면 대상자에게 알림이 발송됩니다.</p></div>
+      <div class="card"><h3>RPA 등록</h3><p>승인 완료 보고서에서 RPA 등록을 실행하고 성공·대기·실패 상태를 확인합니다.</p></div>
+    </div>
+    <div class="note"><b>RPA 실패 시</b><br>바로 반복 실행하지 말고 오류 상태와 입력값을 확인합니다. 재시도 초기화가 필요한 경우 중복 ERP 등록 여부를 먼저 확인하세요.</div>
+  </section>
+
+  <section id="admin">
+    <span class="tag">07 · 관리자 기능</span><h2>계정과 기준정보 관리</h2>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>사용자 관리</h3><p>일반 등록자, QC·협업, 관리자, 비활성 계정을 구분해 확인하고 역할과 활성 상태를 관리합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>CSV 일괄 등록</h3><p>Outlook CSV를 선택해 신규·기존·제외 인원을 확인한 뒤 실행합니다. 신규 계정만 일반 등록자로 생성되며 기존 권한은 유지됩니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>부서와 알림</h3><p>부서 코드와 수산톡 Webhook을 확인하고 테스트 전송으로 연결 상태를 검증합니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>보고서 수정·삭제</h3><p>잘못된 접수 또는 상태를 수정할 수 있습니다. 삭제는 복구할 수 없으므로 NCR 번호와 사유를 다시 확인합니다.</p></div></div>
+    </div>
+    <div class="note danger"><b>계정 관리 주의:</b> 퇴사자는 삭제보다 비활성화를 우선 사용하세요. 기존 보고서의 등록자 이력을 유지할 수 있습니다.</div>
+  </section>
+
+  <section id="faq">
+    <span class="tag">08 · 문제 해결</span><h2>운영 중 자주 발생하는 상황</h2>
+    <div class="grid">
+      <div class="card"><h3>승인을 잘못 눌렀어요</h3><p>관리자 패널의 보고서 관리에서 상태를 수정하고, 변경 사유를 댓글 또는 감사 이력에 남깁니다.</p></div>
+      <div class="card"><h3>협업 알림이 가지 않아요</h3><p>담당자 계정의 활성 상태와 알림 설정, 부서 Webhook 설정을 확인한 뒤 테스트 전송합니다.</p></div>
+      <div class="card"><h3>피드백 메뉴가 401을 표시해요</h3><p>다시 로그인하고 브라우저를 새로고침합니다. 계속되면 최신 버전 게시 여부와 인증 토큰 만료를 확인합니다.</p></div>
+      <div class="card"><h3>화면이 이전 버전으로 보여요</h3><p>브라우저를 완전히 닫았다 열거나 Ctrl+Shift+R로 새로고침해 서비스 워커 캐시를 갱신합니다.</p></div>
+    </div>
+    <div class="note info"><b>문의 시 함께 전달할 정보</b><br>NCR 번호, 발생 시간, 사용 계정, 오류 문구, 화면 캡처를 함께 전달하면 확인이 빨라집니다. 비밀번호는 전달하지 마세요.</div>
+  </section>
+  <footer>수산세보틱스 · 공정 부적합 등록 및 관리 시스템</footer>
+</main>
+</body>
+</html><!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NCR 품질 관리자 가이드</title>
+  <style>
+    :root{--ink:#191f28;--muted:#6b7684;--line:#e5e8eb;--soft:#f6f8fa;--brand:#254f89;--brand2:#edf4ff;--warn:#9a6200;--warn2:#fff7e5;--danger:#a13d3d;--danger2:#fff0f0;--green:#176b4d;--green2:#e9f7f1}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--soft);color:var(--ink);font:15px/1.65 Pretendard,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;word-break:keep-all}
+    main{width:min(980px,calc(100% - 28px));margin:26px auto 60px}.hero{padding:38px;border-radius:24px;color:#fff;background:linear-gradient(135deg,#172333,#254f89);box-shadow:0 18px 48px #17335830}
+    .eyebrow{font-size:12px;font-weight:800;letter-spacing:.12em;opacity:.75}.hero h1{margin:8px 0 4px;font-size:clamp(27px,5vw,40px);letter-spacing:-.05em}.hero p{margin:0;color:#d9e5f7}
+    nav{position:sticky;top:0;z-index:2;display:flex;gap:7px;overflow:auto;margin:16px 0;padding:10px;background:#fffffff2;border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(12px)}
+    nav a{flex:0 0 auto;padding:7px 10px;border-radius:9px;color:var(--muted);text-decoration:none;font-size:13px;font-weight:700}nav a:hover{background:var(--soft);color:var(--ink)}
+    section{margin-top:16px;padding:28px;background:#fff;border:1px solid var(--line);border-radius:19px}h2{margin:0 0 6px;font-size:22px;letter-spacing:-.03em}h3{margin:0 0 4px;font-size:16px}.lead{margin:0 0 20px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.card{padding:17px;background:var(--soft);border-radius:14px}.card p{margin:5px 0 0;color:var(--muted);font-size:14px}
+    .steps{display:grid;gap:12px}.step{display:grid;grid-template-columns:38px 1fr;gap:13px;padding:14px;border:1px solid var(--line);border-radius:14px}.num{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:var(--ink);color:#fff;font-weight:800}.step p{margin:2px 0 0;color:var(--muted);font-size:14px}
+    .note{margin-top:14px;padding:15px 17px;border-radius:13px;background:var(--warn2);border:1px solid #efd594;color:#75521a}.ok{background:var(--green2);border-color:#c8e8da;color:#285f4b}.danger{background:var(--danger2);border-color:#efcccc;color:#8a3434}.info{background:var(--brand2);border-color:#ccdcf6;color:#385b8e}
+    .tag{display:inline-block;margin-bottom:9px;padding:4px 9px;border-radius:999px;background:var(--brand2);color:var(--brand);font-size:11px;font-weight:800;letter-spacing:.06em}
+    table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:var(--soft);font-size:12px;color:var(--muted)}ul{margin:8px 0 0;padding-left:21px;color:var(--muted)}li+li{margin-top:5px}.flow{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:14px 0}.flow b{padding:7px 10px;border-radius:999px;background:var(--brand2);color:var(--brand);font-size:12px}.flow i{color:#a8b1bb;font-style:normal}
+    code{padding:2px 6px;border-radius:6px;background:#e9edf1;font:700 13px inherit}footer{text-align:center;padding:25px;color:#8b95a1;font-size:12px}
+    @media(max-width:650px){main{margin-top:14px}.hero,section{padding:21px;border-radius:16px}.grid{grid-template-columns:1fr}table{font-size:12px}th,td{padding:9px 7px}.step{grid-template-columns:34px 1fr}.num{width:34px;height:34px}}
+    @media print{body{background:#fff}main{width:100%;margin:0}.hero{box-shadow:none}nav{display:none}section{break-inside:avoid}}
+  </style>
+</head>
+<body>
+<main>
+  <header class="hero"><div class="eyebrow">NCR QUALITY GUIDE</div><h1>품질 관리자 가이드</h1><p>접수 검토부터 원인 분석, 조치, 승인과 ERP 연동까지</p></header>
+  <nav><a href="#login">로그인</a><a href="#daily">일일 확인</a><a href="#review">QC 처리</a><a href="#fields">입력 항목</a><a href="#status">상태 전환</a><a href="#ledger">관리대장</a><a href="#admin">관리 기능</a><a href="#faq">주의사항</a></nav>
+
+  <section id="login">
+    <span class="tag">01 · 로그인과 권한</span><h2>품질 관리자 로그인</h2>
+    <div class="grid">
+      <div class="card"><h3>회사 이메일 계정</h3><p><code>name@soosan.co.kr</code>와 그룹웨어 비밀번호를 사용합니다.</p></div>
+      <div class="card"><h3>전용 관리자 계정</h3><p><code>admin</code>처럼 안내받은 관리자 아이디와 내부 비밀번호를 사용합니다.</p></div>
+    </div>
+    <div class="note info"><b>메뉴가 보이지 않을 때</b><br>QC 등록 또는 관리자 패널이 보이지 않으면 현재 계정의 역할이 일반 등록자일 수 있습니다. 사용자 관리에서 권한을 확인하세요.</div>
+  </section>
+
+  <section id="daily">
+    <span class="tag">02 · 일일 업무</span><h2>업무 시작 시 확인할 항목</h2>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>관리대장 현황 확인</h3><p>총 건수, 조치 중, 판정 완료와 지연 건수를 확인합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>QC 등록의 미완료 목록 확인</h3><p>접수, 검토 중, 협업 대기 상태 중 우선 처리할 보고서를 찾습니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>경과일 우선순위 확인</h3><p>5~6일 경과는 주황색, 7일 이상 미처리는 빨간색 경고를 우선 확인합니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>수산톡 요청 확인</h3><p>신규 접수와 협업 요청 알림을 확인하고 해당 보고서 상세로 이동합니다.</p></div></div>
+    </div>
+  </section>
+
+  <section id="review">
+    <span class="tag">03 · QC 처리 절차</span><h2>접수부터 승인까지</h2>
+    <div class="flow"><b>접수</b><i>→</i><b>검토 중</b><i>→</i><b>협업 대기(필요 시)</b><i>→</i><b>조치 완료</b><i>→</i><b>승인 완료</b><i>→</i><b>ERP 등록</b></div>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>보고서 사실관계 확인</h3><p>공장, 공정, 품목코드, 발생일, 수량, 현상 설명과 사진이 일치하는지 확인합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>검토 시작</h3><p><b>검토 시작</b>으로 상태를 접수에서 검토 중으로 변경합니다. 다른 담당자에게 현재 처리 중임을 알리는 단계입니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>QC 분석 입력</h3><p>불량 분류, 원인, 귀책, 조치 방향과 조치 결과를 근거에 따라 작성합니다. 작성 중에는 임시저장 내용을 활용할 수 있습니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>협업 요청</h3><p>생산·구매·설계 등 확인이 필요하면 담당자를 선택하고 요청 내용을 작성해 협업 대기로 전환합니다.</p></div></div>
+      <div class="step"><span class="num">5</span><div><h3>분석 저장</h3><p>입력값과 첨부 근거를 다시 확인하고 저장합니다. 저장 완료 알림을 확인한 뒤 다음 단계로 진행합니다.</p></div></div>
+      <div class="step"><span class="num">6</span><div><h3>조치 완료</h3><p>실제 현장 조치가 끝나고 결과가 확인된 경우에만 조치 완료로 변경합니다.</p></div></div>
+      <div class="step"><span class="num">7</span><div><h3>최종 승인</h3><p>승인 권한자가 분석과 조치를 검토한 뒤 승인합니다. 승인 완료 후 ERP 자동 등록 준비 상태가 됩니다.</p></div></div>
+      <div class="step"><span class="num">8</span><div><h3>ERP 등록 확인</h3><p>RPA 등록을 실행하고 성공 여부를 확인합니다. 성공하면 상태가 ERP 등록으로 자동 변경됩니다.</p></div></div>
+    </div>
+    <div class="note danger"><b>중요:</b> 조치 완료와 승인은 단순 진행 표시가 아닙니다. 실제 조치와 검증이 끝난 뒤 변경해야 하며, 승인 완료 후 되돌릴 때는 변경 사유를 남기세요.</div>
+  </section>
+
+  <section id="fields">
+    <span class="tag">04 · 분석 품질</span><h2>QC 입력 항목 작성 기준</h2>
+    <table><thead><tr><th>항목</th><th>작성 기준</th><th>확인할 근거</th></tr></thead><tbody>
+      <tr><td><b>불량 분류</b></td><td>외관·치수·기능·재료 등 실제 현상에 맞는 항목 선택</td><td>사진, 측정값, 검사 결과</td></tr>
+      <tr><td><b>원인 분석</b></td><td>현상 반복이 아니라 발생 원인과 유출 원인을 구분해 구체적으로 작성</td><td>작업 조건, 설비, 자재 LOT, 도면</td></tr>
+      <tr><td><b>조치 방향</b></td><td>업체 방문 수정, 생산팀 자체 수정, 반출 후 수정 입고 등 실제 방향 선택</td><td>담당 부서 합의, 일정</td></tr>
+      <tr><td><b>조치 결과</b></td><td>누가, 언제, 무엇을, 몇 개 처리했고 확인 결과가 어땠는지 작성</td><td>재검 결과, 완료 사진</td></tr>
+      <tr><td><b>시정·예방조치</b></td><td>재발 방지 활동의 필요 여부와 진행 상태 기록</td><td>표준서 변경, 교육, 설비 개선</td></tr>
+      <tr><td><b>부적합 제외</b></td><td>실제 부적합이 아니어서 ERP 등록 대상에서 제외할 때만 선택</td><td>제외 사유와 판정 근거</td></tr>
+    </tbody></table>
+    <div class="note ok"><b>좋은 조치 결과 예</b><br>“9월 16일 생산팀에서 대상 12EA 전수 재체결 완료. 토크렌치 85N·m 확인 후 마킹했으며 재검 결과 이상 없음.”</div>
+  </section>
+
+  <section id="status">
+    <span class="tag">05 · 상태 관리</span><h2>상태별 전환 기준</h2>
+    <table><thead><tr><th>현재 상태</th><th>다음 상태</th><th>전환 기준</th></tr></thead><tbody>
+      <tr><td>접수</td><td><b>검토 중</b></td><td>품질 담당자가 보고서를 확인하고 분석을 시작함</td></tr>
+      <tr><td>검토 중</td><td><b>협업 대기</b></td><td>다른 부서 또는 담당자의 확인·조치가 필요함</td></tr>
+      <tr><td>협업 대기</td><td><b>검토 중</b></td><td>협업 답변을 받고 품질 검토를 재개함</td></tr>
+      <tr><td>검토 중</td><td><b>조치 완료</b></td><td>원인 분석, 조치 실행과 결과 확인이 완료됨</td></tr>
+      <tr><td>조치 완료</td><td><b>승인 완료</b></td><td>승인 권한자가 분석과 조치의 적정성을 최종 확인함</td></tr>
+      <tr><td>승인 완료</td><td><b>ERP 등록</b></td><td>RPA가 ERP 등록에 성공하면 자동 전환됨</td></tr>
+    </tbody></table>
+    <ul><li>ERP 등록 상태는 수동으로 선택하지 않습니다.</li><li>동시에 여러 담당자가 같은 보고서를 수정하지 않도록 댓글이나 수산톡으로 담당자를 명확히 하세요.</li><li>반려 또는 상태 되돌림이 필요하면 사유를 댓글과 이력에 남기세요.</li></ul>
+  </section>
+
+  <section id="ledger">
+    <span class="tag">06 · 관리대장</span><h2>검색·상세·RPA 처리</h2>
+    <div class="grid">
+      <div class="card"><h3>검색과 필터</h3><p>NCR 번호, 품목명, 모델명으로 검색하고 상태·공장·공정 필터를 조합합니다.</p></div>
+      <div class="card"><h3>상세 패널</h3><p>접수 내용, 사진, QC 분석, 처리 상태와 댓글을 한 화면에서 확인합니다.</p></div>
+      <div class="card"><h3>협업 요청</h3><p>검토 담당자를 지정하고 요청 내용을 보내면 대상자에게 알림이 발송됩니다.</p></div>
+      <div class="card"><h3>RPA 등록</h3><p>승인 완료 보고서에서 RPA 등록을 실행하고 성공·대기·실패 상태를 확인합니다.</p></div>
+    </div>
+    <div class="note"><b>RPA 실패 시</b><br>바로 반복 실행하지 말고 오류 상태와 입력값을 확인합니다. 재시도 초기화가 필요한 경우 중복 ERP 등록 여부를 먼저 확인하세요.</div>
+  </section>
+
+  <section id="admin">
+    <span class="tag">07 · 관리자 기능</span><h2>계정과 기준정보 관리</h2>
+    <div class="steps">
+      <div class="step"><span class="num">1</span><div><h3>사용자 관리</h3><p>일반 등록자, QC·협업, 관리자, 비활성 계정을 구분해 확인하고 역할과 활성 상태를 관리합니다.</p></div></div>
+      <div class="step"><span class="num">2</span><div><h3>CSV 일괄 등록</h3><p>Outlook CSV를 선택해 신규·기존·제외 인원을 확인한 뒤 실행합니다. 신규 계정만 일반 등록자로 생성되며 기존 권한은 유지됩니다.</p></div></div>
+      <div class="step"><span class="num">3</span><div><h3>부서와 알림</h3><p>부서 코드와 수산톡 Webhook을 확인하고 테스트 전송으로 연결 상태를 검증합니다.</p></div></div>
+      <div class="step"><span class="num">4</span><div><h3>보고서 수정·삭제</h3><p>잘못된 접수 또는 상태를 수정할 수 있습니다. 삭제는 복구할 수 없으므로 NCR 번호와 사유를 다시 확인합니다.</p></div></div>
+    </div>
+    <div class="note danger"><b>계정 관리 주의:</b> 퇴사자는 삭제보다 비활성화를 우선 사용하세요. 기존 보고서의 등록자 이력을 유지할 수 있습니다.</div>
+  </section>
+
+  <section id="faq">
+    <span class="tag">08 · 문제 해결</span><h2>운영 중 자주 발생하는 상황</h2>
+    <div class="grid">
+      <div class="card"><h3>승인을 잘못 눌렀어요</h3><p>관리자 패널의 보고서 관리에서 상태를 수정하고, 변경 사유를 댓글 또는 감사 이력에 남깁니다.</p></div>
+      <div class="card"><h3>협업 알림이 가지 않아요</h3><p>담당자 계정의 활성 상태와 알림 설정, 부서 Webhook 설정을 확인한 뒤 테스트 전송합니다.</p></div>
+      <div class="card"><h3>피드백 메뉴가 401을 표시해요</h3><p>다시 로그인하고 브라우저를 새로고침합니다. 계속되면 최신 버전 게시 여부와 인증 토큰 만료를 확인합니다.</p></div>
+      <div class="card"><h3>화면이 이전 버전으로 보여요</h3><p>브라우저를 완전히 닫았다 열거나 Ctrl+Shift+R로 새로고침해 서비스 워커 캐시를 갱신합니다.</p></div>
+    </div>
+    <div class="note info"><b>문의 시 함께 전달할 정보</b><br>NCR 번호, 발생 시간, 사용 계정, 오류 문구, 화면 캡처를 함께 전달하면 확인이 빨라집니다. 비밀번호는 전달하지 마세요.</div>
+  </section>
+  <footer>수산세보틱스 · 공정 부적합 등록 및 관리 시스템</footer>
+</main>
+</body>
 </html>
