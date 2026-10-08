@@ -84,11 +84,11 @@ if "%NEED_INSTALL%"=="1" (
 
     echo.
     echo [2/3] pip 업데이트 중...
-    ".venv\Scripts\python.exe" -m pip install --upgrade pip
+    ".venv\Scripts\python.exe" -m pip install --default-timeout=180 --retries 10 --upgrade pip
 
     echo.
     echo [3/3] 패키지 설치 중 - 시간이 좀 걸립니다 ...
-    ".venv\Scripts\python.exe" -m pip install -r requirements.txt
+    ".venv\Scripts\python.exe" -m pip install --default-timeout=180 --retries 10 -r requirements.txt
     if errorlevel 1 (
         echo.
         echo [오류] 패키지 설치 실패
