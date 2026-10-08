@@ -1,0 +1,11 @@
+# 라인 종결자 정책
+# ===================================================================
+# Windows batch/cmd/ps1 는 반드시 CRLF 로 저장 (CMD 파서가 LF 만 있으면 깨짐).
+# 이게 없으면 autocrlf=true 환경에서 archive zip 다운로드 시 LF 로 서빙되어
+# Windows PC 에서 bat 실행 시 "'...' 은(는) 내부 또는 외부 명령..." 오류 다발.
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 기본값: git autocrlf 가 처리하도록 둠 (설정 없음)
