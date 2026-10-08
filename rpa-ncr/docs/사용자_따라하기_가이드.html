@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>처음부터 끝까지 따라하기</title>
+<link rel="stylesheet" href="_shared.css">
+</head>
+<body>
+<h1>처음부터 끝까지 따라하기<span class="role-badge role-operator">RPA 운영자</span></h1><div class="subtitle">설치 → 매일 사용 → 업데이트 → 트러블슈팅. 스크린샷으로 보는 완전 가이드.</div>
+<div class="doc-header">
+이 문서는 <strong>RPA 를 처음 쓰는 사람</strong> 이 보고 그대로 따라만 하면 끝까지 돌릴 수 있도록
+만든 매뉴얼입니다. 전제 지식 없음, 각 단계마다 <strong>지금 화면에 뭐가 보여야 하는지</strong> 와
+<strong>뭘 눌러야 하는지</strong> 를 그림과 함께 설명합니다.
+</div>
+
+<h2 id="30">이 프로그램이 하는 일 (30초 요약)</h2>
+<p>웹페이지에 등록된 <strong>부적합 보고(NCR)</strong> 를 <code>부적합판정등록(S)</code> UNIERP 메뉴에 <strong>자동으로 입력</strong> 합니다. 사람은 <strong>[입력 시작]</strong> 버튼만 누르면 되고, RPA 가 Tab 키를 눌러가며 25개 필드를 전부 채워넣고 저장까지 합니다. 입력 끝나면 사람이 결과를 <strong>눈으로 한 번 확인하고 [완료 확인]</strong> 만 눌러주면 끝.</p>
+<figure>
+<img src="images/guide_00_overview.png" alt="전체 흐름 다이어그램">
+<figcaption>[스크린샷 자리] 전체 흐름 — 웹 등록 → QC 승인 → RPA 자동입력 → 확인 → 완료</figcaption>
+</figure>
+
+<hr>
+<h2 id="1-1">1부. 처음 설치 (최초 1회만)</h2>
+<h3 id="1-1-python">1-1. Python 설치 확인</h3>
+<p><strong>해야 할 것</strong>:
+- 윈도우 키 → <code>cmd</code> → <strong>Enter</strong>
+- 검정 창에서 <code>python --version</code> 입력 → <strong>Enter</strong></p>
+<p><strong>정상 결과</strong>: <code>Python 3.11.x</code> 또는 <code>Python 3.12.x</code> 가 나오면 OK.</p>
+<p><strong>없거나 오류</strong>: <a href="https://www.python.org/downloads/windows/">python.org</a> 에서 다운로드 → 설치 중 <strong>"Add Python to PATH"</strong> 체크박스 반드시 체크.</p>
+<blockquote class="warn"><p><strong>Python 3.13 은 사용 금지</strong> — 일부 패키지(Jinja2 등) 호환 문제. 3.11 또는 3.12 설치할 것.</p>
+</blockquote>
+<h3 id="1-2">1-2. 프로그램 다운로드</h3>
+<p>브라우저에서 아래 주소 접속:</p>
+<pre><code>https://github.com/Zel-da/Code-Transformer/archive/refs/heads/main.zip
+</code></pre>
+<p><code>Code-Transformer-main.zip</code> 이 다운로드 됩니다. 압축을 풀면 안에 여러 폴더가 있는데, 그 중 <strong><code>rpa-ncr/</code></strong> 폴더만 필요합니다.</p>
+<p><strong>해야 할 것</strong>:
+1. zip 압축 풀기
+2. 안에 있는 <strong><code>rpa-ncr/</code> 폴더 통째로</strong> 복사해서 <code>C:\Users\&lt;내 계정&gt;\Documents\</code> 아래로 이동
+3. 결과: <code>C:\Users\&lt;내 계정&gt;\Documents\rpa-ncr\</code> 에 <code>시작.bat</code>, <code>main.py</code>, <code>src/</code>, <code>config/</code>, <code>docs/</code> 등이 보여야 함</p>
+<figure>
+<img src="images/guide_01_folder_structure.png" alt="rpa-ncr 폴더 구조">
+<figcaption>[스크린샷 자리] Documents\rpa-ncr 폴더 안 구조 — 시작.bat 이 보여야 정상</figcaption>
+</figure>
+
+<h3 id="1-3-privateapp_dbjson">1-3. PRIVATE/app_db.json 넣기 (중요)</h3>
+<p>이 파일은 <strong>DB 접속 정보</strong>가 들어있어서 깃에 올라가지 않습니다. <strong>IT 담당자(안예준)에게 USB 로 받아서</strong> 넣어야 합니다.</p>
+<p><strong>해야 할 것</strong>:
+1. <code>Documents\rpa-ncr\</code> 안에 <strong><code>PRIVATE</code></strong> 폴더 만들기 (대문자 주의)
+2. 받은 <code>app_db.json</code> 파일을 <strong><code>PRIVATE</code> 폴더 안</strong>에 복사
+3. 최종 경로: <code>Documents\rpa-ncr\PRIVATE\app_db.json</code></p>
+<figure>
+<img src="images/guide_02_private_folder.png" alt="PRIVATE 폴더에 app_db.json">
+<figcaption>[스크린샷 자리] PRIVATE 폴더 안에 app_db.json 하나 있는 모습</figcaption>
+</figure>
+
+<blockquote class="warn"><p><strong>PRIVATE 폴더는 절대 외부에 공유하거나 깃에 올리면 안 됩니다.</strong> DB 비밀번호가 노출됩니다.</p>
+</blockquote>
+<h3 id="1-4">1-4. 바탕화면 바로가기 만들기 (선택)</h3>
+<p><strong>해야 할 것</strong>:
+1. <code>Documents\rpa-ncr\바탕화면에 바로가기 만들기.bat</code> 더블클릭
+2. 바탕화면에 <strong><code>NCR RPA</code></strong> 아이콘이 생김 → 이걸 더블클릭하면 다음부터는 시작.bat 안 찾아도 됨</p>
+<hr>
+<h2 id="2">2부. 매일 사용하는 법</h2>
+<h3 id="2-1-unierp">2-1. UNIERP 미리 실행</h3>
+<p>RPA 가 UNIERP 창에 입력하려면 <strong>UNIERP 가 먼저 떠있어야</strong> 합니다.</p>
+<p><strong>해야 할 것</strong>:
+1. UNIERP 바로가기를 <strong>"관리자 권한으로 실행"</strong> 우클릭 (중요)
+2. 로그인 완료
+3. 메뉴는 아무거나 열어둬도 되고 안 열어도 됨 — RPA 가 알아서 메뉴 열고 판정등록으로 들어감</p>
+<blockquote class="info"><p><strong>왜 관리자 권한?</strong> UNIERP 가 관리자로 뜨면 RPA 도 관리자여야 창 조작 가능 (Windows 보안 정책). 아래 시작.bat 이 자동으로 관리자 승격 요청합니다.</p>
+</blockquote>
+<h3 id="2-2-bat">2-2. 시작.bat 더블클릭</h3>
+<p>바탕화면 <strong><code>NCR RPA</code></strong> 아이콘 또는 <code>Documents\rpa-ncr\시작.bat</code> 더블클릭.</p>
+<p><strong>정상 흐름</strong>:
+1. <strong>UAC 창</strong> 뜨면 <strong>[예]</strong> 클릭 (관리자 승격)
+2. 검정 CMD 창이 열리고 다음 메시지가 순서대로 뜸:
+   - <code>[first run] initial update check...</code> (첫 실행 때만)
+   - <code>.venv</code> 설치 (첫 실행 때 2~3분, 이후엔 즉시 패스)
+   - <code>main.py</code> 실행 → 브라우저가 <strong>자동으로 열림</strong> (<code>http://127.0.0.1:8010</code>)</p>
+<figure>
+<img src="images/guide_03_cmd_running.png" alt="시작.bat 실행 중 CMD 창">
+<figcaption>[스크린샷 자리] 시작.bat 실행 중 CMD 창 — 마지막에 "Uvicorn running" 메시지가 뜨면 정상</figcaption>
+</figure>
+
+<h3 id="2-3">2-3. 대시보드 둘러보기 — 상단 상태바</h3>
+<p>브라우저가 자동으로 열리고 <strong>대시보드</strong> 가 뜹니다. 먼저 <strong>상단바</strong> 를 봅시다:</p>
+<figure>
+<img src="images/guide_04_topbar.png" alt="상단바 — chip 과 설정 버튼">
+<figcaption>[스크린샷 자리] 상단바 — 왼쪽 "NCR UNIERP 자동 입력" 로고 + 가운데 chip 3개 + 오른쪽 설정 버튼</figcaption>
+</figure>
+
+<p><strong>가운데 chip 3개</strong>:
+- <code>소스: DB (Neon)</code> — 어느 데이터 소스에 연결됐는지 (DB 가 기본)
+- <code>ERP 미연결</code> → <strong>[ERP 창 확인]</strong> 눌러서 UNIERP 창 발견되면 <code>ERP 연결됨</code> 으로 바뀜
+- <code>큐 비어있음</code> → <strong>[PENDING 조회]</strong> 누르면 <code>큐 N/M 완료</code> 로 바뀜</p>
+<p><strong>우측 버튼</strong>:
+- <code>📥 새 업데이트</code> <strong>노란 깜빡이</strong> 배지 — 업데이트 있을 때만 뜸 (없으면 안 뜸)
+- <code>⚙ 설정</code> — 소스/ERP 설정 drawer 를 열고 닫음 (평상시 안 봄)</p>
+<h3 id="2-4-pending">2-4. [PENDING 조회] 클릭</h3>
+<p>본문 가장 위 <strong>실행 바</strong> 에서 <strong>[📥 PENDING 조회]</strong> 버튼 클릭.</p>
+<figure>
+<img src="images/guide_05_run_bar.png" alt="실행 바 — 조회·실행·일시정지·중지 버튼">
+<figcaption>[스크린샷 자리] 실행 바 — PENDING 조회, ERP 창 확인 (왼쪽) / 입력 시작, 일시정지, 중지 (오른쪽)</figcaption>
+</figure>
+
+<p><strong>정상 결과</strong>:
+- 하단 <strong>큐 테이블</strong> 에 QC 승인 완료된 보고 목록이 뜸
+- 상단 chip 이 <code>큐 0/N 완료</code> 로 바뀜
+- 로그에 <code>PENDING 보고 N건 조회됨</code> 메시지</p>
+<p><strong>0건 나오면</strong>: QC 담당자가 아직 승인 안 한 상태. 웹에서 QC 승인 받은 보고만 이 큐에 뜸.</p>
+<h3 id="2-5">2-5. 큐 테이블 읽는 법</h3>
+<figure>
+<img src="images/guide_06_queue_table.png" alt="큐 테이블 색상 pill">
+<figcaption>[스크린샷 자리] 큐 테이블 — 각 보고의 상태가 색상 pill 로 표시</figcaption>
+</figure>
+
+<table>
+<thead>
+<tr>
+<th>열</th>
+<th>의미</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>#</code></td>
+<td>큐 안 순서 (1부터)</td>
+</tr>
+<tr>
+<td><code>ID</code></td>
+<td>DB 상의 보고 번호</td>
+</tr>
+<tr>
+<td><code>NCR 번호</code></td>
+<td>NCR-25-xxxx 같은 사람이 보는 번호</td>
+</tr>
+<tr>
+<td><code>품목코드</code></td>
+<td>CL411xxxx 같은 품목 코드</td>
+</tr>
+<tr>
+<td><code>QC</code></td>
+<td>QC 승인 상태 (초록 "승인" 이어야 입력 대상)</td>
+</tr>
+<tr>
+<td><code>진행</code></td>
+<td>현재 작업 상태 (아래 색상 참고)</td>
+</tr>
+<tr>
+<td><code>재시도</code></td>
+<td>실패 재시도 횟수 (↻ N) — 평상시 "-"</td>
+</tr>
+</tbody>
+</table>
+<p><strong>진행 열 색상</strong>:
+- <span class="tag tag-pending">대기</span> 회색 — 아직 입력 안 함
+- <span class="tag tag-processing">입력중</span> 파랑 — RPA 가 지금 ERP 에 타이핑 중
+- <span class="tag tag-review">저장됨</span> 노랑 — ERP 저장 완료, 사용자 검토 대기
+- <span class="tag tag-completed">완료</span> 초록 — [완료 확인] 눌러서 끝
+- <span class="tag tag-failed">실패</span> 빨강 — 5회 재시도 모두 실패, 수동 조치 필요</p>
+<h3 id="2-6-erp">2-6. [ERP 창 확인]</h3>
+<p><strong>해야 할 것</strong>: 실행 바에서 <strong>[🔍 ERP 창 확인]</strong> 클릭.</p>
+<p><strong>정상 결과</strong>:
+- 상단 chip 이 <code>ERP 연결됨</code> (초록) 으로 바뀜
+- 로그: <code>✓ ERP 창 발견: UNIERP - SOOSAN CEBOTICS(Admin)</code></p>
+<p><strong>"ERP 미연결" 나오면</strong>:
+- UNIERP 가 안 떠있거나, 관리자 권한으로 안 떠있는 상태
+- UNIERP 창 켜고 다시 <strong>[🔍 ERP 창 확인]</strong> 눌러보기</p>
+<h3 id="2-7">2-7. [▶ 입력 시작]</h3>
+<p>여기부터는 <strong>RPA 가 ERP 를 직접 조작</strong> 합니다. 조작 중에는 <strong>마우스/키보드 건드리지 말 것</strong> (포커스가 이탈하면 중단됨).</p>
+<p><strong>해야 할 것</strong>:
+1. UNIERP 창을 최상위로 올려놓음 (최소화 해제, 화면 가득 차게)
+2. 대시보드에서 <strong>[▶ 입력 시작]</strong> 클릭</p>
+<p><strong>정상 흐름</strong> (큐에 10건이 있다고 가정):
+1. RPA 가 <code>F3</code> 눌러서 메뉴 검색창 열기
+2. <code>부적합판정등록(S)(QD231MA1_CKO063)</code> 복붙 + Enter
+3. 판정등록 폼 뜨면 <strong>Tab 10번</strong> 누르고 발행팀 입력
+4. 그 다음 Tab 치며 25개 필드 순서대로 입력
+5. <strong>Ctrl+S</strong> 로 저장 → <strong>Shift+Insert</strong> 로 새 폼 열기
+6. 다음 보고 반복 (총 10회)
+7. 전부 끝나면 하단에 <strong>배치 검토 패널</strong> 이 노란색으로 열림</p>
+<figure>
+<img src="images/guide_07_erp_typing.png" alt="UNIERP 자동 입력 중">
+<figcaption>[스크린샷 자리] UNIERP 판정등록 폼에 RPA 가 Tab 으로 필드를 채워가는 모습</figcaption>
+</figure>
+
+<p><strong>로그에 뜨는 메시지</strong>:
+- <code>[부적합판정등록] 입력 중: 보고 #123</code>
+- <code>✓ #123 [부적합판정등록] 입력+저장 완료</code>
+- 마지막에: <code>⏸ 전체 10건 입력 완료. 검토 패널에서 페이지별로 확인 후 [완료 확인]</code></p>
+<h3 id="2-8-ui">2-8. 배치 검토 UI</h3>
+<p>전체 입력이 끝나면 자동으로 <strong>배치 검토 패널</strong> (노란 테두리) 이 열립니다.</p>
+<figure>
+<img src="images/guide_08_review_panel.png" alt="배치 검토 패널">
+<figcaption>[스크린샷 자리] 배치 검토 패널 — 보고 1개가 1페이지, 좌우로 넘기면서 확인</figcaption>
+</figure>
+
+<p><strong>사용법</strong>:
+1. <strong>UNIERP 창</strong> 을 보면서 입력된 값이 맞는지 확인
+2. 틀린 필드가 있으면: 그 필드 <strong>옆에 있는 [재실행 #N]</strong> 버튼 (UNIERP 에서 해당 필드 클릭한 뒤 대시보드 버튼 누르면 그 자리에 다시 타이핑)
+3. 완전히 처음부터 다시 하고 싶으면: <strong>[처음부터]</strong> 버튼 (UNIERP 폼이 새로 열리고 25필드 전부 재입력)
+4. 이 보고 OK 면: <strong>[이 보고 완료]</strong> → 자동으로 다음 보고로 넘어감
+5. 전부 OK 면: <strong>[모두 확인]</strong> → 10건 전부 한꺼번에 완료 처리</p>
+<p><strong>좌우 넘기기</strong>: 아래 <strong>◀ 이전 / 다음 ▶</strong> 버튼으로 보고 간 이동.</p>
+<h3 id="2-9-db">2-9. 완료 — DB 반영 확인</h3>
+<p><strong>[완료 확인]</strong> 을 누른 보고는:
+- Neon DB 의 <code>sync_status = COMPLETED</code>
+- <code>qc_status = ERP_SYNCED</code> (웹 ledger/manage 에서 "ERP 등록 완료" 뱃지로 보임)
+- 다음 <strong>[PENDING 조회]</strong> 하면 이 보고는 더 이상 뜨지 않음</p>
+<p><strong>확인</strong>: Replit 웹 (<code>http://code-transformer.&lt;...&gt;.replit.app/manage</code>) 에서 그 보고 찾아보면 상태가 바뀌어 있어야 함.</p>
+<hr>
+<h2 id="3">3부. 업데이트 받는 법 (중요한 부분이 바뀌었습니다)</h2>
+<h3 id="3-1">3-1. 대시보드 상단에 노란 배지가 뜨면</h3>
+<figure>
+<img src="images/guide_09_update_badge.png" alt="새 업데이트 배지">
+<figcaption>[스크린샷 자리] 상단 우측 "📥 새 업데이트" 노란 배지 (깜빡임) — 클릭하면 모달 열림</figcaption>
+</figure>
+
+<p><strong>해야 할 것</strong>:
+1. 배지 클릭 → 업데이트 모달 열림
+2. 현재 버전과 원격 버전 SHA + 커밋 메시지 표시됨
+3. <strong>[지금 업데이트]</strong> 클릭
+4. 완료되면 "✓ 업데이트 완료 — 프로그램을 재시작하세요" 메시지
+5. 브라우저 창 닫고 → CMD 창 닫고 → 바탕화면 <strong><code>NCR RPA</code></strong> 다시 더블클릭</p>
+<figure>
+<img src="images/guide_10_update_modal.png" alt="업데이트 모달">
+<figcaption>[스크린샷 자리] 업데이트 모달 — 커밋 SHA 와 변경사항 메시지 확인 후 [지금 업데이트]</figcaption>
+</figure>
+
+<h3 id="3-2">3-2. 배지가 안 뜰 때</h3>
+<p>노란 배지는 <strong>새 버전이 있을 때만</strong> 뜹니다. 안 보이면 최신입니다. 수동 확인하려면:
+- 상단 <strong>⚙ 설정</strong> 열기 → 하단 설정 패널에서 "업데이트 다시 확인" (해당 버튼이 없으면 CMD 창에서 <code>python update.py --check</code>)</p>
+<h3 id="3-3">3-3. 업데이트가 실패했을 때</h3>
+<ul>
+<li><code>backup_before_&lt;SHA&gt;/</code> 폴더에 <strong>자동 백업</strong> → <strong>자동 복원</strong> 됨 → 원래 버전으로 계속 사용 가능</li>
+<li>네트워크 오류일 수 있으니 잠시 후 재시도</li>
+<li>계속 실패하면 IT 담당자(안예준) 에게 로그 (<code>logs/</code> 안 최신 .log 파일) 전달</li>
+</ul>
+<hr>
+<h2 id="4">4부. 자주 나오는 문제와 해결</h2>
+<h3 id="4-1-erp">4-1. "ERP 창을 찾을 수 없습니다"</h3>
+<p><strong>원인</strong>: UNIERP 가 안 떠있거나, 관리자 권한 차이</p>
+<p><strong>해결</strong>:
+1. UNIERP 를 <strong>관리자 권한</strong> 으로 다시 시작 (우클릭 → 관리자로 실행)
+2. 로그인
+3. 대시보드 <strong>[🔍 ERP 창 확인]</strong> 다시 클릭</p>
+<h3 id="4-2-tab">4-2. "Tab 순서가 어긋남" (엉뚱한 필드에 값이 들어감)</h3>
+<p><strong>원인</strong>: UNIERP 폼 레이아웃이 변경되거나 disabled 된 필드가 바뀜</p>
+<p><strong>해결</strong>: IT 담당자에게 문의. <code>config/forms/_defaults/부적합판정등록.json</code> 수정 필요.</p>
+<h3 id="4-3">4-3. 입력 도중 중단됨 — "다른 창이 활성화되어 입력을 중지했습니다"</h3>
+<p><strong>원인</strong>: 입력 중 다른 창 클릭하거나 알림창이 뜸</p>
+<p><strong>해결</strong>:
+1. UNIERP 창 최상위 유지
+2. 대시보드 <strong>[▶ 입력 시작]</strong> 재클릭 → 중단된 보고는 <code>PENDING</code> 복원됐으므로 재조회 하면 다시 뜸</p>
+<h3 id="4-4">4-4. "라디오 값(예/아니오)이 잘못 선택됨"</h3>
+<p><strong>원인</strong>: <code>claim_status</code> / <code>corrective_action_status</code> DB 값이 "예"/"Y"/"true" 외의 형태</p>
+<p><strong>해결</strong>: 웹 QC 페이지에서 해당 보고의 값을 확인 → "예" 또는 "아니오" 로 정확히 저장되도록 QC 담당자에게 요청</p>
+<h3 id="4-5">4-5. 큐에 보고가 아예 안 뜸</h3>
+<p><strong>원인</strong>:
+- 모든 보고가 QC 승인 안 됨 (<code>qc_status != APPROVED</code>)
+- 최근에 실패해서 재시도 대기 중 (<code>sync_next_retry_at</code> 이 미래)</p>
+<p><strong>해결</strong>: QC 담당자가 승인 완료했는지 확인. 그래도 안 뜨면 큐 테이블의 <strong>재시도 열(↻ N)</strong> 확인 → 숫자 있으면 백오프 중 (최대 60분 대기).</p>
+<h3 id="4-6">4-6. 실패한 보고가 반복 재시도 됨</h3>
+<p>5회까지 자동 재시도 (지수 백오프 2분 → 4 → 8 → 16 → 32분). 5회 지나면 <code>FAILED</code> 로 확정되고 더 이상 재시도 안 됨. IT 담당자가 Replit 웹에서 수동으로 상태 복원 가능.</p>
+<h3 id="4-7-bat">4-7. 시작.bat 실행하니 깨진 글씨 + 명령 오류 다발</h3>
+<p><strong>원인</strong>: 시작.bat 의 유니코드 특수문자(→, —) 가 코드페이지와 안 맞음</p>
+<p><strong>해결</strong>: GitHub 에서 최신 시작.bat 하나 다운로드해 교체:</p>
+<pre><code>https://github.com/Zel-da/Code-Transformer/raw/main/rpa-ncr/시작.bat
+</code></pre>
+<hr>
+<h2 id="5">5부. 체크리스트</h2>
+<h3 id="1">처음 설치 (최초 1회)</h3>
+<ul>
+<li>[ ] Python 3.11 또는 3.12 설치 (3.13 금지)</li>
+<li>[ ] <code>Code-Transformer-main.zip</code> 다운로드</li>
+<li>[ ] <code>rpa-ncr/</code> 폴더만 <code>Documents\</code> 아래로 이동</li>
+<li>[ ] IT 담당자에게 <code>PRIVATE/app_db.json</code> 받아서 <code>PRIVATE/</code> 안에 넣기</li>
+<li>[ ] <code>바탕화면에 바로가기 만들기.bat</code> 더블클릭 → 바탕화면 아이콘 생성</li>
+<li>[ ] 시작.bat 처음 실행 → 자동 설치 (2~3분)</li>
+<li>[ ] 브라우저 자동 열림 → 상단 chip 전부 확인</li>
+</ul>
+<h3 id="_1">매일 사용</h3>
+<ul>
+<li>[ ] UNIERP 를 관리자 권한으로 실행 + 로그인</li>
+<li>[ ] 바탕화면 <strong>NCR RPA</strong> 더블클릭 → UAC [예]</li>
+<li>[ ] 상단 chip 확인: <code>소스: DB</code> + <code>ERP 연결됨</code></li>
+<li>[ ] <strong>[📥 PENDING 조회]</strong> → 큐에 보고 뜨는지 확인</li>
+<li>[ ] <strong>[🔍 ERP 창 확인]</strong> → ERP 연결됨 확인</li>
+<li>[ ] <strong>[▶ 입력 시작]</strong> → UNIERP 자동 입력 지켜보기 (마우스/키보드 X)</li>
+<li>[ ] 배치 검토 패널에서 각 보고 눈으로 확인 → <strong>[이 보고 완료]</strong> 또는 <strong>[모두 확인]</strong></li>
+<li>[ ] 큐 전부 <strong>완료</strong> (초록 pill) 되면 끝</li>
+</ul>
+<h3 id="1_1">주 1회</h3>
+<ul>
+<li>[ ] 상단에 노란 <strong>새 업데이트</strong> 배지 있는지 확인 → 있으면 모달 → <strong>[지금 업데이트]</strong> → 재시작</li>
+</ul>
+<hr>
+<h2 id="_2">부록: 도움 필요할 때 연락</h2>
+<table>
+<thead>
+<tr>
+<th>상황</th>
+<th>연락</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>프로그램 오류, 설치 문제</td>
+<td>IT 담당자 (안예준) — yj.an1@soosan.co.kr</td>
+</tr>
+<tr>
+<td>QC 승인 안 됨, 보고 내용 문제</td>
+<td>QC 담당자</td>
+</tr>
+<tr>
+<td>UNIERP 자체 오류</td>
+<td>ERP 운영팀</td>
+</tr>
+</tbody>
+</table>
+<p>로그는 <code>Documents\rpa-ncr\logs\</code> 안 최신 <code>.log</code> 파일 — 메일 첨부해서 보내면 분석 가능.</p>
+<div class="doc-footer"><a href="INDEX.html">← 문서 목차로</a></div>
+</body>
+</html>
