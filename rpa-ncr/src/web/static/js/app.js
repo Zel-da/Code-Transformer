@@ -255,6 +255,62 @@ function selectedSource() {
     return r ? r.value : "api";
 }
 
+// ───── 담당 공장 필터 ─────
+async function loadPlantFilter() {
+    try {
+        const d = await api("GET", "/api/filter");
+        const sel = new Set(d.plant_filter || []);
+        // 체크박스 생성
+        const cont = $("plantCheckboxes");
+        if (cont) {
+            cont.innerHTML = "";
+            (d.known_plants || []).forEach(p => {
+                const checked = sel.has(p.code) ? "checked" : "";
+                cont.insertAdjacentHTML("beforeend",
+                    `<label><input type="checkbox" data-plant="${esc(p.code)}" ${checked}> ${esc(p.label)} (${esc(p.code)})</label>`);
+            });
+        }
+        // null 포함 토글
+        const nullCb = $("includeNullPlant");
+        if (nullCb) nullCb.checked = !!d.include_null_plant;
+        // 상단 chip 갱신
+        updatePlantChip(d.plant_filter || [], d.known_plants || []);
+    } catch (e) {
+        logLine("공장 필터 로드 실패: " + e.message, "err");
+    }
+}
+
+function updatePlantChip(selected, known) {
+    const labels = selected.map(code => {
+        const p = (known || []).find(k => k.code === code);
+        return p ? p.label.replace("공장", "") : code;
+    });
+    if (labels.length === 0) {
+        setChip("chipPlant", "공장: 전체", "warn");
+    } else if (labels.length === 1) {
+        setChip("chipPlant", "공장: " + labels[0], "ok");
+    } else {
+        setChip("chipPlant", "공장: " + labels.join("·"), "ok");
+    }
+}
+
+async function savePlantFilter() {
+    const cont = $("plantCheckboxes");
+    const checked = [...(cont ? cont.querySelectorAll('input[type=checkbox][data-plant]:checked') : [])]
+        .map(el => el.dataset.plant);
+    const includeNull = !!($("includeNullPlant") && $("includeNullPlant").checked);
+    try {
+        const d = await api("PUT", "/api/filter", {
+            plant_filter: checked,
+            include_null_plant: includeNull,
+        });
+        setResult("plantFilterResult", d.message, true);
+        loadPlantFilter();  // chip 재갱신
+    } catch (e) {
+        setResult("plantFilterResult", e.message, false);
+    }
+}
+
 async function loadErpSettings() {
     const d = await api("GET", "/api/erp/settings");
     $("erpWindowTitle").value = d.window_title || "";
@@ -532,6 +588,10 @@ function bind() {
     $("btnOpenSettings").onclick = openDrawer;
     $("btnCloseSettings").onclick = closeDrawer;
 
+    // 공장 필터
+    const btnPlant = $("btnPlantFilterSave");
+    if (btnPlant) btnPlant.onclick = savePlantFilter;
+
     // Update modal
     $("btnUpdateOpen").onclick = () => { openModal("updateModal"); Updater.check(false); };
     $("btnUpdateRecheck").onclick = () => Updater.check(false);
@@ -564,6 +624,7 @@ window.addEventListener("DOMContentLoaded", () => {
     connectWS("/ws/progress", handleProgress);
     connectWS("/ws/erp-log", handleErp);
     loadSource().catch((e) => logLine("소스 로드 실패: " + e.message, "err"));
+    loadPlantFilter().catch((e) => logLine("공장 필터 로드 실패: " + e.message, "err"));
     loadErpSettings().catch((e) => logLine("ERP 설정 로드 실패: " + e.message, "err"));
     loadSetupCheck().catch(() => {});
     restoreReviewState().catch(() => {});

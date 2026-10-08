@@ -14,6 +14,7 @@
         </div>
         <div class="topbar-status" id="topStatus">
             <span class="chip chip-neutral" id="chipSource" title="데이터 소스">—</span>
+            <span class="chip chip-neutral" id="chipPlant" title="담당 공장 (설정 → 변경)">공장: —</span>
             <span class="chip chip-neutral" id="chipErp" title="ERP 연결">ERP 미연결</span>
             <span class="chip chip-neutral" id="chipQueue" title="큐 상태">큐 0건</span>
         </div>
@@ -52,6 +53,25 @@
                     <button id="btnSourceTest" class="btn btn-secondary">연결 테스트</button>
                 </div>
                 <div id="sourceTestResult" class="result"></div>
+            </section>
+
+            <!-- 담당 공장 (중요) -->
+            <section class="card">
+                <h3>담당 공장 (중요)</h3>
+                <p class="muted" style="margin:0 0 10px">
+                    자기 담당 공장만 체크. 체크 안 하면 전체 공장이 큐에 뜸.
+                    다른 공장 보고를 실수로 ERP 에 입력하는 사고를 막아줌.
+                </p>
+                <div id="plantCheckboxes" class="row" style="flex-direction:column; align-items:stretch; gap:4px;">
+                    <!-- JS 가 known_plants 받아서 체크박스 생성 -->
+                </div>
+                <div class="row" style="margin-top:8px">
+                    <label><input type="checkbox" id="includeNullPlant"> plant_cd 미지정 보고도 포함</label>
+                </div>
+                <div class="row">
+                    <button id="btnPlantFilterSave" class="btn btn-primary">공장 필터 저장</button>
+                </div>
+                <div id="plantFilterResult" class="result"></div>
             </section>
 
             <!-- ERP 설정 -->

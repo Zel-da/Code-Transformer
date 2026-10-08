@@ -125,6 +125,12 @@ class DbSource(DataSource):
         self._query_parts: tuple[str, str] | None = None
         # 신규 컬럼 존재 여부 캐시 (fetch_pending / mark_* 에서 참조)
         self._existing_cols: set[str] = set()
+        # 담당 공장 필터 (SA00=아산, SH00=화성 등). 빈 리스트면 전체 조회.
+        raw_filter = cfg.get("plant_filter") or []
+        if isinstance(raw_filter, str):
+            raw_filter = [raw_filter]
+        self._plant_filter: list[str] = [str(p).strip() for p in raw_filter if str(p).strip()]
+        self._include_null_plant: bool = bool(cfg.get("include_null_plant", False))
         # PROCESSING 갇힘 자동 회수 임계값 (분). RPA 정상 처리는 초~수분이라
         # 5시간이면 실 처리와 절대 겹치지 않는 안전 여백.
         stale_minutes = cfg.get("stale_processing_minutes", 300)
@@ -282,6 +288,15 @@ class DbSource(DataSource):
                         "(r.sync_next_retry_at IS NULL OR r.sync_next_retry_at <= now())"
                     )
 
+                # 담당 공장 필터 (plant_cd 기준). 리스트 비어있으면 전체.
+                if self._plant_filter:
+                    placeholders = ",".join(["%s"] * len(self._plant_filter))
+                    if self._include_null_plant:
+                        where_parts.append(f"(r.plant_cd IN ({placeholders}) OR r.plant_cd IS NULL)")
+                    else:
+                        where_parts.append(f"r.plant_cd IN ({placeholders})")
+                    params.extend(self._plant_filter)
+
                 sql = (
                     f"SELECT {select_clause} FROM {from_clause} "
                     f"WHERE {' AND '.join(where_parts)} ORDER BY r.created_at"
@@ -289,7 +304,12 @@ class DbSource(DataSource):
                 cur.execute(sql, params)
                 rows = cur.fetchall()
         reports = [NcrReport.from_db_row(dict(r)) for r in rows]
-        logger.info("PENDING(QC승인) 보고 %d건 조회 (DB)", len(reports))
+        if self._plant_filter:
+            null_tag = "+NULL" if self._include_null_plant else ""
+            filter_desc = ",".join(self._plant_filter) + null_tag
+            logger.info("PENDING(QC승인) 보고 %d건 조회 (DB, plant=%s)", len(reports), filter_desc)
+        else:
+            logger.info("PENDING(QC승인) 보고 %d건 조회 (DB, 전체 공장)", len(reports))
         return reports
 
     def get_report(self, report_id: int) -> NcrReport | None:

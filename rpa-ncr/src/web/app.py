@@ -882,6 +882,43 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
         except Exception as e:
             return JSONResponse({"error": f"ERP 윈도우에 연결할 수 없습니다: {e}"}, status_code=500)
 
+    # ── 담당 공장 필터 ──
+
+    @app.get("/api/filter")
+    async def filter_get():
+        """현재 공장 필터 설정."""
+        db_cfg = settings.get("db", {})
+        return {
+            "plant_filter": db_cfg.get("plant_filter") or [],
+            "include_null_plant": bool(db_cfg.get("include_null_plant", False)),
+            "known_plants": [
+                {"code": "SA00", "label": "아산공장"},
+                {"code": "SH00", "label": "화성공장"},
+            ],
+        }
+
+    class _FilterUpdate(BaseModel):
+        plant_filter: list[str] = []
+        include_null_plant: bool = False
+
+    @app.put("/api/filter")
+    async def filter_set(body: _FilterUpdate):
+        """공장 필터 저장. 빈 리스트면 전체 조회."""
+        db_cfg = settings.setdefault("db", {})
+        # 유효한 공장 코드만 저장 (영숫자 10자 이하)
+        cleaned = []
+        for p in body.plant_filter:
+            p = (p or "").strip().upper()
+            if p and len(p) <= 10 and p.replace("_", "").isalnum():
+                cleaned.append(p)
+        db_cfg["plant_filter"] = cleaned
+        db_cfg["include_null_plant"] = bool(body.include_null_plant)
+        try:
+            _save_settings()
+            return MessageResponse(message=f"공장 필터 저장: {cleaned or '전체'}")
+        except Exception as e:
+            return JSONResponse({"error": f"저장 실패: {e}"}, status_code=500)
+
     # ── 업데이트 (OCR_EU 스타일) ──
 
     @app.get("/api/update/check")
