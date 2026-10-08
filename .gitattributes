@@ -1,11 +1,13 @@
 # 라인 종결자 정책
 # ===================================================================
 # Windows batch/cmd/ps1 는 반드시 CRLF 로 저장 (CMD 파서가 LF 만 있으면 깨짐).
-# 이게 없으면 autocrlf=true 환경에서 archive zip 다운로드 시 LF 로 서빙되어
-# Windows PC 에서 bat 실행 시 "'...' 은(는) 내부 또는 외부 명령..." 오류 다발.
+# `text eol=crlf` 는 저장소에 LF 로 저장되고 체크아웃 시만 CRLF 로 변환되어,
+# archive zip 다운로드 시엔 여전히 LF 로 서빙됨 -> 윈도우에서 bat 깨짐.
+# 그래서 `-text` 로 지정해 git 이 변환 전혀 하지 않도록 (= 저장소에도 CRLF 유지).
+#
+# 영향: GitHub archive zip 받을 때 bat 가 CRLF 상태로 받아져서 Windows CMD 가
+#       정상 파싱. 사내망 등 archive 로 설치하는 환경에서 필수.
 
-*.bat text eol=crlf
-*.cmd text eol=crlf
-*.ps1 text eol=crlf
-
-# 기본값: git autocrlf 가 처리하도록 둠 (설정 없음)
+*.bat -text
+*.cmd -text
+*.ps1 -text
