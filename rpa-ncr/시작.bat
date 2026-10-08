@@ -39,27 +39,25 @@ if errorlevel 1 (
 
 REM ===========================================
 REM ===========================================
-REM Step 0.5: 첫 실행 시에만 자동 업데이트 (.venv 없거나 .version 없으면 첫 실행)
-REM            이후엔 웹 UI 상단 "새 업데이트" 배지 → 모달 → [지금 업데이트] 로 수행
+REM Step 0.5: Auto-update on first install only
+REM Use the Update button on web UI topbar afterwards
 REM ===========================================
 set FIRST_RUN=0
 if not exist ".venv\Scripts\python.exe" set FIRST_RUN=1
 if not exist ".version" set FIRST_RUN=1
+if exist ".no_auto_update" set FIRST_RUN=0
+if not exist "update.py" set FIRST_RUN=0
 
 if "%FIRST_RUN%"=="1" (
-    if not exist ".no_auto_update" (
-        if exist "update.py" (
-            echo.
-            echo [첫 실행 감지] 초기 업데이트 확인 중...
-            python update.py
-        )
-    )
+    echo.
+    echo [first run] initial update check...
+    python update.py
 ) else (
-    echo [안내] 업데이트는 웹 화면 상단의 "새 업데이트" 버튼을 사용하세요.
+    echo [info] For updates, use the Update button on the web dashboard.
 )
 
 REM Step 1: 첫 실행이면 자동 설치 (원자성)
-REM   .venv 만 있고 .install_ok 마커가 없으면 이전 pip 실패 잔재 →
+REM   .venv 만 있고 .install_ok 마커가 없으면 이전 pip 실패 잔재 ->
 REM   자동 재설치. 마커는 pip 성공 직후에만 생성된다.
 REM ===========================================
 set NEED_INSTALL=0
