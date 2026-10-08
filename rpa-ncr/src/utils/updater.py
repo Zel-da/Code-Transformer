@@ -465,6 +465,45 @@ def apply_update(root: Path, sha: str, mode: str) -> dict[str, Any]:
     return result
 
 
+def force_redownload(root: Path, branch: str = DEFAULT_BRANCH,
+                     owner: str = DEFAULT_OWNER, repo: str = DEFAULT_REPO) -> dict[str, Any]:
+    """원격 SHA 조회를 우회하고 main branch archive 를 강제로 재다운.
+
+    사내망에서 api.github.com DNS 가 막혀 remote SHA 조회가 실패하는 환경 대응.
+    github.com/archive 는 되는데 api.github.com 이 안 되는 환경 (대부분 사내망)에서
+    "일단 최신으로 받아놓기" 를 가능하게 한다.
+
+    주의: SHA 를 모르는 상태로 받으므로 .version 에는 "latest-{timestamp}" 를 기록.
+    다음 체크에서 remote SHA 와 비교 불가 → 사용자가 수동으로 매번 force 해야 할 수도.
+    """
+    import datetime
+
+    # archive URL 에 branch 이름 직접 사용 가능 (예: /archive/main.zip)
+    # _perform_zip_update 의 로직 재사용하되 sha 자리에 branch 이름 넣기
+    result = _perform_zip_update(root, branch, owner=owner, repo=repo)
+
+    if result.get("success"):
+        # .version 에 force 라벨 + 시각 기록
+        try:
+            now = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+            marker = f"latest-{now}"
+            (root / VERSION_FILE).write_text(marker, encoding="utf-8")
+            _log(f".version 갱신: {marker} (force 모드 — SHA 미기록)")
+        except Exception as e:
+            _log(f".version 저장 실패: {e}", "warning")
+
+        if result.get("requirements_changed"):
+            install_ok = root / INSTALL_OK_MARKER
+            if install_ok.exists():
+                try:
+                    install_ok.unlink()
+                    _log("requirements.txt 변경 감지 → .install_ok 삭제")
+                except Exception:
+                    pass
+
+    return result
+
+
 # ─────────────────────────────────────────────────────────────
 # 헬퍼
 # ─────────────────────────────────────────────────────────────

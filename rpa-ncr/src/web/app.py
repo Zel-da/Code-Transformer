@@ -910,6 +910,29 @@ def create_app(settings: dict[str, Any]) -> FastAPI:
             logger.error("업데이트 확인 실패: %s", e, exc_info=True)
             return JSONResponse({"error": str(e)}, status_code=500)
 
+    @app.post("/api/update/force")
+    async def update_force():
+        """원격 SHA 조회를 우회하고 main branch archive 를 강제 재다운.
+
+        사내망에서 api.github.com DNS 가 막혀 /api/update/check 가 실패하는 환경 대응.
+        "지금 PC 가 최신인지 확인 못 하지만 일단 최신으로 받고 싶다" 시나리오.
+        """
+        from src.utils.file_utils import get_project_root
+        from src.utils.updater import force_redownload
+        try:
+            root = get_project_root()
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, force_redownload, root)
+            return {
+                "success": bool(result.get("success")),
+                "message": result.get("message") or "",
+                "requirements_changed": bool(result.get("requirements_changed")),
+                "mode": "force-zip",
+            }
+        except Exception as e:
+            logger.error("강제 재다운 실패: %s", e, exc_info=True)
+            return JSONResponse({"error": str(e)}, status_code=500)
+
     @app.post("/api/update/apply")
     async def update_apply():
         """현재 체크된 원격 커밋으로 업데이트 수행.

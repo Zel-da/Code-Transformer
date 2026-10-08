@@ -99,12 +99,26 @@ body {
 .btn-chip:hover { background: rgba(255,255,255,0.18); }
 .btn-chip.hidden { display: none; }
 
-#btnUpdateOpen {
+/* 업데이트 배지 — 상태별 색상 */
+#btnUpdateOpen.update-new {
     background: rgba(245,158,11,0.25);
     color: #fef3c7;
     border-color: rgba(245,158,11,0.5);
 }
-#btnUpdateOpen:hover { background: rgba(245,158,11,0.4); }
+#btnUpdateOpen.update-new:hover { background: rgba(245,158,11,0.4); }
+#btnUpdateOpen.update-ok {
+    background: rgba(255,255,255,0.06);
+    color: #cbd5e1;
+    border-color: rgba(255,255,255,0.1);
+}
+#btnUpdateOpen.update-ok:hover { background: rgba(255,255,255,0.12); }
+#btnUpdateOpen.update-offline {
+    background: rgba(100,116,139,0.2);
+    color: #94a3b8;
+    border-color: rgba(100,116,139,0.3);
+    font-style: italic;
+}
+#btnUpdateOpen.update-offline:hover { background: rgba(100,116,139,0.3); }
 .update-dot {
     width: 8px;
     height: 8px;

@@ -18,9 +18,9 @@
             <span class="chip chip-neutral" id="chipQueue" title="큐 상태">큐 0건</span>
         </div>
         <div class="topbar-actions">
-            <button id="btnUpdateOpen" class="btn-chip hidden" title="업데이트 가능">
-                <span class="update-dot"></span>
-                <span id="updateBtnLabel">업데이트</span>
+            <button id="btnUpdateOpen" class="btn-chip" title="업데이트 상태 확인">
+                <span class="update-dot" id="updateDot"></span>
+                <span id="updateBtnLabel">⬆ 업데이트</span>
             </button>
             <button id="btnOpenSettings" class="btn-chip" title="설정 열기">⚙ 설정</button>
         </div>
@@ -83,6 +83,9 @@
             </div>
             <div class="modal-foot">
                 <button id="btnUpdateRecheck" class="btn btn-secondary">다시 확인</button>
+                <button id="btnUpdateForce" class="btn btn-secondary" title="원격 조회 없이 main 최신 archive 를 바로 받음 (사내망 DNS 차단 환경용)">
+                    🔄 최신 강제 재다운
+                </button>
                 <button id="btnUpdateApply" class="btn btn-primary hidden">지금 업데이트</button>
                 <button class="btn" data-close-modal>닫기</button>
             </div>

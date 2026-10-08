@@ -333,14 +333,35 @@ const Updater = {
     },
 
     _renderBadge(data) {
+        // 배지는 항상 보임 — 상태만 다름 (사내망에서 원격 조회 실패해도 사용자가 버튼 발견 가능).
         const btn = $("btnUpdateOpen");
         const lbl = $("updateBtnLabel");
+        const dot = $("updateDot");
         if (!btn) return;
-        if (data && data.update_available) {
-            btn.classList.remove("hidden");
-            if (lbl) lbl.textContent = "새 업데이트";
+        btn.classList.remove("hidden");
+
+        // 상태별 라벨 + 색상
+        btn.classList.remove("update-new", "update-ok", "update-offline");
+        if (!data) {
+            if (lbl) lbl.textContent = "⬆ 업데이트";
+            if (dot) dot.style.visibility = "hidden";
+            return;
+        }
+        if (data.update_available) {
+            // 새 버전 있음 — 깜빡이 강조
+            btn.classList.add("update-new");
+            if (lbl) lbl.textContent = "⬆ 새 업데이트";
+            if (dot) dot.style.visibility = "visible";
+        } else if (data.reason && /원격|조회|네트워크/i.test(data.reason)) {
+            // 원격 조회 실패 (사내망 DNS 차단 등)
+            btn.classList.add("update-offline");
+            if (lbl) lbl.textContent = "⬆ 업데이트 (오프라인)";
+            if (dot) dot.style.visibility = "hidden";
         } else {
-            btn.classList.add("hidden");
+            // 최신 상태
+            btn.classList.add("update-ok");
+            if (lbl) lbl.textContent = "⬆ 업데이트";
+            if (dot) dot.style.visibility = "hidden";
         }
     },
 
@@ -392,6 +413,28 @@ const Updater = {
             const body = $("updateModalBody");
             if (body) body.innerHTML = `<div class="result err">업데이트 오류: ${esc(e.message)}</div>`;
             if (btnApply) { btnApply.disabled = false; btnApply.textContent = "지금 업데이트"; }
+        }
+    },
+
+    async applyForce() {
+        const btnForce = $("btnUpdateForce");
+        if (!confirm("원격 조회 없이 main branch 를 바로 받아 전체 교체합니다.\n(사내망에서 DNS 로 remote SHA 조회가 안 될 때 사용)\n계속할까요?")) return;
+        if (btnForce) { btnForce.disabled = true; btnForce.textContent = "강제 재다운 중..."; }
+        try {
+            const data = await api("POST", "/api/update/force", {});
+            const body = $("updateModalBody");
+            if (data.success) {
+                if (body) body.innerHTML = `<div class="result ok">✓ 강제 재다운 완료 — 프로그램을 재시작하세요.</div>
+                    <div class="muted" style="margin-top:8px">${esc(data.message || "")}</div>
+                    <div class="muted" style="margin-top:4px">※ SHA 추적 불가 — 다음 체크 때 "오프라인" 표시 가능</div>`;
+            } else {
+                if (body) body.innerHTML = `<div class="result err">강제 재다운 실패: ${esc(data.message || "")}</div>`;
+            }
+        } catch (e) {
+            const body = $("updateModalBody");
+            if (body) body.innerHTML = `<div class="result err">강제 재다운 오류: ${esc(e.message)}</div>`;
+        } finally {
+            if (btnForce) { btnForce.disabled = false; btnForce.textContent = "🔄 최신 강제 재다운"; }
         }
     },
 };
@@ -493,6 +536,7 @@ function bind() {
     $("btnUpdateOpen").onclick = () => { openModal("updateModal"); Updater.check(false); };
     $("btnUpdateRecheck").onclick = () => Updater.check(false);
     $("btnUpdateApply").onclick = () => Updater.apply();
+    $("btnUpdateForce").onclick = () => Updater.applyForce();
     document.querySelectorAll("[data-close-modal]").forEach(el => {
         el.onclick = () => closeModal("updateModal");
     });
