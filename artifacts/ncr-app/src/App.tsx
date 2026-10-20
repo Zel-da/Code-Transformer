@@ -43,7 +43,10 @@ function Router() {
   return (
     <Switch>
       <Route path="/login">
-        {user ? <Redirect to="/ledger" /> : <LoginPage />}
+        {user ? <Redirect to={(() => {
+          const next = new URLSearchParams(window.location.search).get("redirect");
+          return next && /^\/(?:ledger|submit|manage|guide|feedback|qc(?:\/\d+)?|report)$/.test(next) ? next : "/ledger";
+        })()} /> : <LoginPage />}
       </Route>
       <Route path="/">
         {user ? <Redirect to="/ledger" /> : <Redirect to="/login" />}

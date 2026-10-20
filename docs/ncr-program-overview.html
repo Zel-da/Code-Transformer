@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NCR 프로그램 소개 및 SSO 접속 안내</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f7fa;color:#1b2636;font:15px/1.75 "Apple SD Gothic Neo","Malgun Gothic",sans-serif;word-break:keep-all}main{max-width:940px;margin:26px auto;padding:0 18px}header{padding:32px;color:white;background:#173c61;border-radius:18px}h1{font-size:29px;margin:5px 0}header p{color:#d9e8f7;margin:0}section{margin:16px 0;padding:26px;border:1px solid #e1e7ed;border-radius:16px;background:white}h2{font-size:21px;margin:0 0 10px}h3{font-size:16px;margin:0 0 5px}p{margin:8px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.card{background:#f3f6f9;border-radius:12px;padding:16px}table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;padding:11px 8px;border-bottom:1px solid #e1e7ed}th{background:#f3f6f9}.note{padding:15px;border-radius:10px;background:#fff4dc;color:#735315;margin:14px 0}a{color:#205f9c;overflow-wrap:anywhere}code{font-family:inherit;background:#edf2f6;padding:2px 5px;border-radius:4px}.flow{padding:15px;border-radius:10px;background:#edf6f1;color:#245b41;font-weight:bold}li{margin:6px 0}footer{text-align:center;color:#718192;font-size:12px;padding:25px}@media(max-width:600px){header,section{padding:20px}.grid{grid-template-columns:1fr}h1{font-size:24px}table{font-size:12px}}@media print{body{background:white}main{margin:0;max-width:none}section{break-inside:avoid}}
+</style>
+<main>
+<header><small>SOOSAN · NON-CONFORMITY REPORT</small><h1>공정 부적합 등록 및 관리 시스템</h1><p>NCR 프로그램 소개 · 접속 대상 · DX Dashboard Hub SSO 연동 안내</p></header>
+<section><h2>1. 어떤 프로그램인가요?</h2><p>제조 현장에서 발견한 부적합을 사진과 함께 접수하고, 품질 담당자가 원인 분석·협업·조치·승인을 수행한 뒤 ERP 등록까지 추적하는 사내 품질 관리 웹 시스템입니다.</p><p>현장 접수 내용과 품질 판정을 하나의 NCR 보고서로 관리하여 누락과 중복 전달을 줄이고, 공장·공정·품목별 처리 현황을 확인할 수 있습니다.</p><p><b>운영 주소:</b> <a href="https://code-transformer.replit.app">https://code-transformer.replit.app</a></p><div class="flow">현장 부적합 접수 → 품질 검토 → 필요 부서 협업 → 조치 완료 → 최종 승인 → ERP 등록</div></section>
+<section><h2>2. 주요 기능</h2><div class="grid">
+<div class="card"><h3>부적합 등록</h3>공장·공정·제품품번·수량·발생일·현상을 기록하고 현장 사진을 첨부합니다.</div>
+<div class="card"><h3>관리대장</h3>보고서 검색과 필터, 상세 확인, 처리 상태와 경과일 확인으로 미처리 항목을 추적합니다.</div>
+<div class="card"><h3>품질 분석 및 승인</h3>원인과 조치 결과를 입력하고 역할에 따라 검토·협업 요청·완료·승인을 수행합니다.</div>
+<div class="card"><h3>ERP 연계</h3>승인된 보고서를 RPA로 ERP에 등록하고 처리 성공·대기·실패 상태를 확인합니다.</div>
+<div class="card"><h3>수산톡 연계</h3>설정된 대상자와 부서에 접수·협업·처리 관련 알림을 전달합니다. 알림 유무만으로 보고서 저장 성공을 판단하지 마세요.</div>
+<div class="card"><h3>운영 관리</h3>관리자가 계정·역할·부서·알림과 보고서를 관리하며, CSV 일괄 등록과 감사 기록을 사용할 수 있습니다.</div>
+</div></section>
+<section><h2>3. 접속 및 사용 가능한 계정</h2><p>이번 운영 DB 조회 기준으로 활성 계정은 총 <b>370개</b>이며, 비활성 계정은 없습니다. 사람 수가 아니라 계정 수이며 공용 관리자 계정 1개가 포함됩니다.</p>
+<table><thead><tr><th>구분</th><th>계정 수</th><th>업무 범위</th></tr></thead><tbody>
+<tr><td>일반 등록자 (worker)</td><td>354</td><td>부적합 등록, 관리대장 조회, 관련 내용 확인</td></tr>
+<tr><td>품질 검토자 (reviewer)</td><td>10</td><td>품질 분석, 검토·협업·조치 등 허용된 단계 처리</td></tr>
+<tr><td>품질 승인자 (approver)</td><td>2</td><td>품질 분석 검토 및 최종 승인 등 허용된 단계 처리</td></tr>
+<tr><td>관리자 (admin)</td><td>4</td><td>보고서 및 사용자·기준정보·시스템 운영 관리</td></tr>
+<tr><th>합계</th><th>370</th><td>계정별 기존 NCR 역할 유지</td></tr>
+</tbody></table>
+<div class="note"><b>SSO 후보는 369개 계정입니다.</b> 이메일이 없는 <code>admin</code> 1개는 내부 로그인 전용입니다. 후보 369개 모두가 중앙 SSO에 등록됐다는 의미는 아닙니다. 실제 접속에는 중앙에도 동일 이메일의 활성 계정이 있어야 하며, 중앙 계정 명단은 이번 조회에 포함되지 않았습니다.</div>
+<p>전체 이름·이메일·부서·권한 명단은 별도 사내용 HTML/CSV 파일에서 확인하세요. 이 수치는 접속 권한에 관한 것으로, 동시 접속 가능 인원이나 성능 보장 수치는 아닙니다.</p></section>
+<section><h2>4. SSO로 어떻게 접속하나요?</h2><ol>
+<li>NCR 로그인 화면에서 <b>DX Dashboard Hub SSO 로그인</b>을 선택합니다.</li>
+<li>중앙 대시보드 인증 화면에서 회사 계정으로 로그인합니다. 이미 중앙 로그인 상태라면 인증 화면이 생략될 수 있습니다.</li>
+<li>인증 후 NCR로 돌아오면 기존에 부여된 NCR 역할로 사용합니다.</li>
+<li>세션이 만료되면 SSO 로그인을 다시 시작합니다. NCR 로그아웃은 중앙 대시보드 전체의 로그아웃을 뜻하지 않습니다.</li>
+</ol><div class="note"><b>현재 상태: 연동 코드 준비, 실제 연결 설정 대기.</b><br>중앙 관리자가 NCR 클라이언트를 등록하고 Client ID/Secret을 서버에 설정한 뒤 수정본을 게시해야 합니다. 실제 중앙 인증 성공은 아직 검증하지 않았습니다. 설정 전에는 SSO 버튼이 비활성화되며 기존 이메일·관리자 로그인은 유지됩니다.</div></section>
+<section><h2>5. 중앙 관리자에게 전달할 등록 정보</h2><table><tbody>
+<tr><th>앱 이름</th><td>공정 부적합 등록 및 관리 (NCR)</td></tr>
+<tr><th>앱 주소</th><td>https://code-transformer.replit.app</td></tr>
+<tr><th>Redirect URI</th><td>https://code-transformer.replit.app/api/auth/sso/callback</td></tr>
+<tr><th>로그인 시작</th><td>https://code-transformer.replit.app/api/auth/sso/login</td></tr>
+<tr><th>중앙 클라이언트 관리</th><td>https://SSC-DashboardHub.replit.app/admin/sso-clients</td></tr>
+<tr><th>허용 정책</th><td>중앙 인증 성공 + 기존 NCR 활성 계정 매핑. 미등록자는 자동 가입하지 않음</td></tr>
+</tbody></table><p>앱 전용 Client Secret은 서버 Secrets에만 보관합니다. 채팅·이메일 문서·HTML·프런트엔드에 비밀값을 넣지 마세요.</p></section>
+<section><h2>6. 권한 및 보안 원칙</h2><ul>
+<li>중앙 대시보드 관리자라고 해서 NCR 관리자가 되는 것은 아닙니다.</li>
+<li>첫 연결은 확인된 이메일로 기존 NCR 활성 계정을 찾고, 이후에는 중앙의 고유 식별자로 연결을 유지합니다.</li>
+<li>중앙 토큰은 서버에만 암호화 보관하며, 브라우저에는 HttpOnly 세션 쿠키를 사용합니다.</li>
+<li>SSO 보호 요청마다 중앙 활성 상태와 현재 NCR 권한을 확인합니다. 중앙 장애 시 SSO 인증을 우회 허용하지 않습니다.</li>
+<li>기존 이메일·내부 로그인은 유지되므로 퇴사자 등 전체 접속 차단은 NCR 계정도 비활성화해야 합니다.</li>
+<li>이번 SSO 구현은 웹용입니다. Expo 네이티브 앱의 SSO 로그인 화면·딥링크 연동은 포함하지 않습니다.</li>
+</ul></section>
+<footer>수산세보틱스 · NCR 프로그램 설명 및 접속 안내</footer>
+</main>
+</html>

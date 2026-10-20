@@ -2,12 +2,13 @@ import { Request, Response, NextFunction } from "express";
 import jwt, { type SignOptions } from "jsonwebtoken";
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
+import { authenticateSso, cookie, SESSION_COOKIE, SsoError } from "../lib/sso";
 
-const JWT_SECRET = process.env.JWT_SECRET ?? process.env.SESSION_SECRET;
-
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET 또는 SESSION_SECRET 환경 변수가 필요합니다.");
-}
+const JWT_SECRET: string = (() => {
+  const value = process.env.JWT_SECRET ?? process.env.SESSION_SECRET;
+  if (!value) throw new Error("JWT_SECRET 또는 SESSION_SECRET 환경 변수가 필요합니다.");
+  return value;
+})();
 
 export type UserRole = "admin" | "worker" | "reviewer" | "approver" | "collaborator";
 
@@ -27,20 +28,32 @@ declare global {
   }
 }
 
-function authorize(req: Request, res: Response, next: NextFunction, allowTemporary: boolean): void {
+async function authorize(req: Request, res: Response, next: NextFunction, allowTemporary: boolean): Promise<void> {
+  res.set("Cache-Control", "no-store");
   const header = req.headers.authorization;
-  if (!header?.startsWith("Bearer ")) {
-    res.status(401).json({ error: "인증이 필요합니다" });
-    return;
-  }
-  const token = header.slice(7);
-
   let payload: AuthPayload;
-  try {
-    payload = jwt.verify(token, JWT_SECRET) as AuthPayload;
-  } catch {
-    res.status(401).json({ error: "유효하지 않은 토큰입니다" });
-    return;
+  if (!header?.startsWith("Bearer ") && cookie(req, SESSION_COOKIE)) {
+    try {
+      const userId = await authenticateSso(req, res);
+      payload = { userId, username: "", role: "worker", authMethod: "internal" };
+    } catch (err) {
+      res.status(err instanceof SsoError ? err.status : 503).json({
+        error: err instanceof SsoError && err.status === 401
+          ? "SSO 로그인이 만료되었습니다. 다시 로그인해주세요." : "SSO 인증을 확인할 수 없습니다.",
+      });
+      return;
+    }
+  } else {
+    if (!header?.startsWith("Bearer ")) {
+      res.status(401).json({ error: "인증이 필요합니다" });
+      return;
+    }
+    try {
+      payload = jwt.verify(header.slice(7), JWT_SECRET) as AuthPayload;
+    } catch {
+      res.status(401).json({ error: "유효하지 않은 토큰입니다" });
+      return;
+    }
   }
 
   if (!["groupware", "internal", "temporary"].includes(payload.authMethod)) {
@@ -52,6 +65,8 @@ function authorize(req: Request, res: Response, next: NextFunction, allowTempora
     isActive: usersTable.isActive,
     tempPasswordHash: usersTable.tempPasswordHash,
     tempPasswordVersion: usersTable.tempPasswordVersion,
+    role: usersTable.role,
+    username: usersTable.username,
   })
     .from(usersTable)
     .where(eq(usersTable.id, payload.userId))
@@ -75,7 +90,8 @@ function authorize(req: Request, res: Response, next: NextFunction, allowTempora
         res.status(401).json({ error: "임시 로그인 정보가 만료되었습니다. 다시 로그인해주세요." });
         return;
       }
-      req.auth = payload;
+      // Authorize from current local roles, never from central SSO roles or stale JWT claims.
+      req.auth = { ...payload, username: user.username, role: user.role as UserRole };
       next();
     })
     .catch(() => {

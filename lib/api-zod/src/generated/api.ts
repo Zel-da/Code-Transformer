@@ -8,6 +8,35 @@
 import * as zod from "zod";
 
 /**
+ * @summary Whether the server-side DX SSO configuration is ready
+ */
+export const GetSsoConfigurationResponse = zod.object({
+  enabled: zod.boolean(),
+});
+
+/**
+ * @summary Top-level browser redirect to DX Dashboard Hub
+ */
+export const StartSsoLoginQueryParams = zod.object({
+  next: zod.coerce.string().optional(),
+});
+
+/**
+ * @summary Server-only code exchange and creation of an HttpOnly local session
+ */
+export const CompleteSsoLoginQueryParams = zod.object({
+  code: zod.coerce.string(),
+  state: zod.coerce.string(),
+});
+
+/**
+ * @summary Destroy this app's SSO session; requires a same-origin Origin header
+ */
+export const EndSsoSessionResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
  * Returns server health status
  * @summary Health check
  */

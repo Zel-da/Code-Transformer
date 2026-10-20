@@ -23,7 +23,7 @@ logical_id = "38a7930e-5b7f-427f-8755-553c9727e257"
 [[outputs]]
 id = "EWvOKBvxxFYoeGkVh9LcZ"
 uri = "file://docs/ncr-user-guide.html"
-type = "text"
+type = "html"
 title = "NCR 사용자 가이드"
 description = "그룹웨어·관리자 로그인 방법과 부적합 보고서 등록 절차를 담은 간단한 HTML 안내서입니다."
 logical_id = "595c0804-b61b-47c7-af77-4c50827bf351"
@@ -37,7 +37,7 @@ content_type = "text/html"
 [[outputs]]
 id = "8BfY9kGlg1bn28mC_w93v"
 uri = "file://docs/ncr-guide-general-user.html"
-type = "text"
+type = "html"
 title = "NCR 일반 사용자 가이드"
 description = "회사 계정 로그인, 부적합 등록, 사진 첨부, 관리대장 조회, 상태 확인과 문제 해결을 담은 상세 HTML 가이드입니다."
 logical_id = "861526ed-0284-4245-92da-bca96784446f"
@@ -51,7 +51,7 @@ content_type = "text/html"
 [[outputs]]
 id = "7kCpTbDbkj2koh4ChecJD"
 uri = "file://docs/ncr-guide-quality-manager.html"
-type = "text"
+type = "html"
 title = "NCR 품질 관리자 가이드"
 description = "일일 확인, QC 분석, 협업 요청, 상태 전환, 승인, ERP 연동과 관리자 기능을 담은 상세 HTML 가이드입니다."
 logical_id = "1e9cefa7-db4f-4a51-92b3-21940246b62f"
@@ -60,4 +60,46 @@ size = 14936
 mtime_ms = 1789544212398
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:51661f33-a702-47d1-acb4-5ed7f22588b6/1e9cefa7-db4f-4a51-92b3-21940246b62f/aebc8cb7-bbb5-4e59-adcc-40d54f779c3a"
 storage_version_token = "1789544244912073"
+content_type = "text/html"
+
+[[outputs]]
+id = "p51qiwGn5_9HGg_CZq7oQ"
+uri = "file://generated-artifacts/ncr-access-users.html"
+type = "html"
+title = "NCR 접속 가능 계정 명단 (HTML)"
+description = "370개 계정의 이름·부서·역할 검색. SSO 후보 369개와 내부 로그인 전용 1개를 구분한 사내용 명단입니다."
+logical_id = "0441622d-6f14-41f1-8211-92aa2956d5d8"
+content_hash = "sha256:919a9b3a9ab51ca4329b5d1cc69cad493e15f0d316e1dd854825933f42747008"
+size = 64418
+mtime_ms = 1792452817261
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:51661f33-a702-47d1-acb4-5ed7f22588b6/0441622d-6f14-41f1-8211-92aa2956d5d8/152e9404-4ab8-45e0-8f5a-79e2526bacce"
+storage_version_token = "1792452912701987"
+content_type = "text/html"
+
+[[outputs]]
+id = "OJK85uUUilYmJSalgWvDA"
+uri = "file://generated-artifacts/ncr-access-users.csv"
+type = "table"
+title = "NCR 계정 및 권한 명단 (CSV)"
+description = "엑셀용 UTF-8 명단. 이름·아이디·이메일·부서·역할·SSO 후보 여부를 포함합니다."
+logical_id = "9565af62-2b4b-4ccc-8071-6b9faeaa4066"
+content_hash = "sha256:f08d33956ac8b05dc2345db312bf3133f03332cf7e96e5b5f96bc58855625f99"
+size = 55143
+mtime_ms = 1792452817257
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:51661f33-a702-47d1-acb4-5ed7f22588b6/9565af62-2b4b-4ccc-8071-6b9faeaa4066/7313c9bc-7b9d-4c69-b120-5762279ba3f9"
+storage_version_token = "1792452914259279"
+content_type = "text/csv"
+
+[[outputs]]
+id = "luSHbSPSrfMc6bc0Lp7HS"
+uri = "file://docs/ncr-program-overview.html"
+type = "html"
+title = "NCR 프로그램 설명 및 SSO 접속 안내"
+description = "주요 기능·사용 대상·권한·로그인 방법·중앙 등록 정보를 정리한 HTML 문서입니다."
+logical_id = "d793cbaf-7040-472d-ab1f-c155649bd2d9"
+content_hash = "sha256:c99e6706c61393ff28af2a847ea59af949d5873da14c98c42861dd8dd1b507f7"
+size = 8078
+mtime_ms = 1792452786145
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:51661f33-a702-47d1-acb4-5ed7f22588b6/d793cbaf-7040-472d-ab1f-c155649bd2d9/cea02bd6-d05a-46d7-962a-1ecaf90c1129"
+storage_version_token = "1792452915518368"
 content_type = "text/html"

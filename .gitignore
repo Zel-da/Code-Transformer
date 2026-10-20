@@ -58,3 +58,4 @@ PRIVATE/
 *.env
 !*.env.example
 .venv/
+/generated-artifacts/

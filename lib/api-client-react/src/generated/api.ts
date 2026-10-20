@@ -20,14 +20,17 @@ import type {
   AuditLog,
   CloseMonthBody,
   CloseMonthResult,
+  CompleteSsoLoginParams,
   CreateCommentBody,
   CreateReportBody,
   CreateUserBody,
   DepartmentItem,
+  EndSsoSession200,
   ErrorEnvelope,
   ExportReportsXlsxParams,
   FlawTypeItem,
   GetReportSummaryParams,
+  GetSsoConfiguration200,
   HealthStatus,
   Item,
   ListDepartmentsParams,
@@ -50,6 +53,7 @@ import type {
   ResetUserPasswordBody,
   RpaRunResult,
   SetUserActiveBody,
+  StartSsoLoginParams,
   UpdateCommentBody,
   UpdateDepartmentBody,
   UpdateReportBody,
@@ -70,6 +74,353 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary Whether the server-side DX SSO configuration is ready
+ */
+export const getGetSsoConfigurationUrl = () => {
+  return `/api/auth/sso/config`;
+};
+
+export const getSsoConfiguration = async (
+  options?: RequestInit,
+): Promise<GetSsoConfiguration200> => {
+  return customFetch<GetSsoConfiguration200>(getGetSsoConfigurationUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSsoConfigurationQueryKey = () => {
+  return [`/api/auth/sso/config`] as const;
+};
+
+export const getGetSsoConfigurationQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSsoConfiguration>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSsoConfiguration>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSsoConfigurationQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSsoConfiguration>>
+  > = ({ signal }) => getSsoConfiguration({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSsoConfiguration>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSsoConfigurationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSsoConfiguration>>
+>;
+export type GetSsoConfigurationQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Whether the server-side DX SSO configuration is ready
+ */
+
+export function useGetSsoConfiguration<
+  TData = Awaited<ReturnType<typeof getSsoConfiguration>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSsoConfiguration>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSsoConfigurationQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Top-level browser redirect to DX Dashboard Hub
+ */
+export const getStartSsoLoginUrl = (params?: StartSsoLoginParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/auth/sso/login?${stringifiedParams}`
+    : `/api/auth/sso/login`;
+};
+
+export const startSsoLogin = async (
+  params?: StartSsoLoginParams,
+  options?: RequestInit,
+): Promise<unknown> => {
+  return customFetch<unknown>(getStartSsoLoginUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getStartSsoLoginQueryKey = (params?: StartSsoLoginParams) => {
+  return [`/api/auth/sso/login`, ...(params ? [params] : [])] as const;
+};
+
+export const getStartSsoLoginQueryOptions = <
+  TData = Awaited<ReturnType<typeof startSsoLogin>>,
+  TError = ErrorType<void>,
+>(
+  params?: StartSsoLoginParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof startSsoLogin>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getStartSsoLoginQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof startSsoLogin>>> = ({
+    signal,
+  }) => startSsoLogin(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof startSsoLogin>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type StartSsoLoginQueryResult = NonNullable<
+  Awaited<ReturnType<typeof startSsoLogin>>
+>;
+export type StartSsoLoginQueryError = ErrorType<void>;
+
+/**
+ * @summary Top-level browser redirect to DX Dashboard Hub
+ */
+
+export function useStartSsoLogin<
+  TData = Awaited<ReturnType<typeof startSsoLogin>>,
+  TError = ErrorType<void>,
+>(
+  params?: StartSsoLoginParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof startSsoLogin>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getStartSsoLoginQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Server-only code exchange and creation of an HttpOnly local session
+ */
+export const getCompleteSsoLoginUrl = (params: CompleteSsoLoginParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/auth/sso/callback?${stringifiedParams}`
+    : `/api/auth/sso/callback`;
+};
+
+export const completeSsoLogin = async (
+  params: CompleteSsoLoginParams,
+  options?: RequestInit,
+): Promise<unknown> => {
+  return customFetch<unknown>(getCompleteSsoLoginUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getCompleteSsoLoginQueryKey = (
+  params?: CompleteSsoLoginParams,
+) => {
+  return [`/api/auth/sso/callback`, ...(params ? [params] : [])] as const;
+};
+
+export const getCompleteSsoLoginQueryOptions = <
+  TData = Awaited<ReturnType<typeof completeSsoLogin>>,
+  TError = ErrorType<void>,
+>(
+  params: CompleteSsoLoginParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof completeSsoLogin>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getCompleteSsoLoginQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof completeSsoLogin>>
+  > = ({ signal }) => completeSsoLogin(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof completeSsoLogin>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type CompleteSsoLoginQueryResult = NonNullable<
+  Awaited<ReturnType<typeof completeSsoLogin>>
+>;
+export type CompleteSsoLoginQueryError = ErrorType<void>;
+
+/**
+ * @summary Server-only code exchange and creation of an HttpOnly local session
+ */
+
+export function useCompleteSsoLogin<
+  TData = Awaited<ReturnType<typeof completeSsoLogin>>,
+  TError = ErrorType<void>,
+>(
+  params: CompleteSsoLoginParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof completeSsoLogin>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getCompleteSsoLoginQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Destroy this app's SSO session; requires a same-origin Origin header
+ */
+export const getEndSsoSessionUrl = () => {
+  return `/api/auth/sso/logout`;
+};
+
+export const endSsoSession = async (
+  options?: RequestInit,
+): Promise<EndSsoSession200> => {
+  return customFetch<EndSsoSession200>(getEndSsoSessionUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getEndSsoSessionMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof endSsoSession>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof endSsoSession>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["endSsoSession"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof endSsoSession>>,
+    void
+  > = () => {
+    return endSsoSession(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type EndSsoSessionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof endSsoSession>>
+>;
+
+export type EndSsoSessionMutationError = ErrorType<void>;
+
+/**
+ * @summary Destroy this app's SSO session; requires a same-origin Origin header
+ */
+export const useEndSsoSession = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof endSsoSession>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof endSsoSession>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getEndSsoSessionMutationOptions(options));
+};
 
 /**
  * Returns server health status

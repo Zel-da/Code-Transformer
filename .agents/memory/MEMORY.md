@@ -1,0 +1,1 @@
+- [SSO 접근 정책](sso-access-policy.md) — 중앙 인증은 기존 NCR 활성 계정에만 연결하며, 중앙 역할로 NCR 권한을 승격하지 않음.

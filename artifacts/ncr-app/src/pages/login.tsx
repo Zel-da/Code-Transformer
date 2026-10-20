@@ -1,4 +1,4 @@
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { useSearch } from "wouter";
 import { ClipboardList, Loader2, Eye, EyeOff } from "lucide-react";
 
@@ -20,6 +20,14 @@ export default function LoginPage() {
   const [fallbackPassword, setFallbackPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [setupError, setSetupError] = useState<string | null>(null);
+  const [ssoEnabled, setSsoEnabled] = useState(false);
+
+  useEffect(() => {
+    void fetch(`${API}/auth/sso/config`, { cache: "no-store" })
+      .then(res => res.ok ? res.json() : { enabled: false })
+      .then(data => setSsoEnabled(data.enabled === true))
+      .catch(() => setSsoEnabled(false));
+  }, []);
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -197,6 +205,20 @@ export default function LoginPage() {
 
         {/* Form */}
         <form onSubmit={handleLogin} className="bg-white rounded-3xl border border-[#F2F4F6] shadow-sm p-6 flex flex-col gap-4">
+          <button
+            type="button"
+            disabled={!ssoEnabled || loading}
+            onClick={() => {
+              window.location.assign(`${API}/auth/sso/login?next=${encodeURIComponent(redirectTo)}`);
+            }}
+            className="w-full min-h-12 rounded-2xl bg-[#176B4D] px-3 py-3 text-white font-bold text-[14px] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#12553D]"
+          >
+            DX Dashboard Hub SSO 로그인
+          </button>
+          <p className="text-[12px] text-[#8B95A1] text-center">
+            {ssoEnabled ? "중앙 로그인 후 기존 NCR 권한으로 접속합니다." : "SSO 연결 준비 중 · 아래 기존 로그인은 계속 사용할 수 있습니다."}
+          </p>
+          <div className="border-t border-[#F2F4F6] pt-3 text-[12px] text-center text-[#8B95A1]">또는 기존 계정으로 로그인</div>
           <div>
             <label className="text-[13px] font-semibold text-[#191F28] mb-2 block">사내 이메일 또는 관리자 아이디</label>
             <input

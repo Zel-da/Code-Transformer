@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from "react";
 import { setAuthTokenGetter, setUnauthorizedHandler } from "@workspace/api-client-react";
+import { toast } from "@/hooks/use-toast";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const API = `${BASE}/api`;
@@ -54,10 +55,14 @@ setUnauthorizedHandler(() => _logoutRef.current());
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>(() => {
     try {
+      if (new URLSearchParams(window.location.search).get("sso") === "complete") {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+      }
       const token = localStorage.getItem(TOKEN_KEY);
       const userRaw = localStorage.getItem(USER_KEY);
       const user = userRaw ? (JSON.parse(userRaw) as UserProfile) : null;
-      return { user, token, loading: !!token && !user };
+      return { user, token, loading: true };
     } catch {
       return { user: null, token: null, loading: false };
     }
@@ -70,9 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (state.token && !state.user) {
-      refreshUser();
-    }
+    // SSO uses an HttpOnly cookie; no token needs to be read by JavaScript.
+    refreshUser();
   }, []);
 
   const login = async (username: string, password: string) => {
@@ -91,34 +95,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user: data.user, token: data.token, loading: false });
   };
 
-  const logout = () => {
+  const clearLocalAuth = () => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     setState({ user: null, token: null, loading: false });
   };
 
+  const logout = async () => {
+    try {
+      const response = await fetch(`${API}/auth/sso/logout`, { method: "POST", credentials: "same-origin" });
+      if (!response.ok) throw new Error("logout_failed");
+      clearLocalAuth();
+    } catch {
+      toast({ title: "로그아웃을 완료하지 못했습니다", description: "연결을 확인한 후 다시 시도해주세요.", variant: "destructive" });
+    }
+  };
+
   logoutRef.current = logout;
-  _logoutRef.current = logout;
+  // An already-rejected session must not leave a cached authenticated UI visible.
+  _logoutRef.current = clearLocalAuth;
 
   const refreshUser = async () => {
     const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return;
     try {
       const res = await fetch(`${API}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: "same-origin",
+        cache: "no-store",
       });
-      if (res.status === 401) { logout(); return; }
+      if (res.status === 401) { clearLocalAuth(); return; }
       if (!res.ok) {
-        const cached = localStorage.getItem(USER_KEY);
-        if (cached) setState({ user: JSON.parse(cached) as UserProfile, token, loading: false });
+        // Never show a cached SSO identity when central validation fails.
+        setState({ user: null, token, loading: false });
         return;
       }
       const user = (await res.json()) as UserProfile;
       localStorage.setItem(USER_KEY, JSON.stringify(user));
       setState({ user, token, loading: false });
     } catch {
-      const cached = localStorage.getItem(USER_KEY);
-      if (cached) setState({ user: JSON.parse(cached) as UserProfile, token, loading: false });
+      setState({ user: null, token, loading: false });
     }
   };
 

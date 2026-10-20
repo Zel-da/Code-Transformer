@@ -1082,6 +1082,23 @@ export interface ReportSummary {
   longPendingList: ReportSummaryLongPendingListItem[];
 }
 
+export type GetSsoConfiguration200 = {
+  enabled: boolean;
+};
+
+export type StartSsoLoginParams = {
+  next?: string;
+};
+
+export type CompleteSsoLoginParams = {
+  code: string;
+  state: string;
+};
+
+export type EndSsoSession200 = {
+  ok: boolean;
+};
+
 export type ListItemsParams = {
   search?: string;
   limit?: number;

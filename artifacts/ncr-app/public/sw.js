@@ -1,4 +1,4 @@
-const CACHE_NAME = "ncr-v2";
+const CACHE_NAME = "ncr-v3";
 
 self.addEventListener("install", (e) => {
   self.skipWaiting();
@@ -18,7 +18,7 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   if (!["http:", "https:"].includes(url.protocol)) return;
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith("/api/")) return;
+  if (url.pathname.startsWith("/api/") || url.searchParams.has("sso")) return;
 
   e.respondWith(
     (async () => {

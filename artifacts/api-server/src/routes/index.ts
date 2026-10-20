@@ -13,12 +13,14 @@ import commentsRouter from "./comments";
 import webhooksRouter from "./webhooks";
 import devRouter from "./dev";
 import feedbackRouter from "./feedback";
+import ssoRouter from "./sso";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(storageRouter);
 router.use(authRouter);
+router.use(ssoRouter);
 router.use(usersRouter);
 router.use(reportsRouter);
 router.use(itemsRouter);

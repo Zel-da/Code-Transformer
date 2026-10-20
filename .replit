@@ -58,3 +58,5 @@ IMAP_PORT = "465"
 
 [userenv.production]
 SEED_TOKEN = "Sq9c79cMeqZ5_rgZabgIO1RWeVCABTQ2"
+APP_BASE_URL = "https://code-transformer.replit.app"
+SSO_BASE_URL = "https://SSC-DashboardHub.replit.app"

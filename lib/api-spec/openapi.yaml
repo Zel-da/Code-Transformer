@@ -21,6 +21,84 @@ tags:
   - name: users
     description: User account management (admin only)
 paths:
+  /auth/sso/config:
+    get:
+      operationId: getSsoConfiguration
+      tags: [users]
+      summary: Whether the server-side DX SSO configuration is ready
+      responses:
+        "200":
+          description: Public readiness only; no credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [enabled]
+                properties:
+                  enabled:
+                    type: boolean
+  /auth/sso/login:
+    get:
+      operationId: startSsoLogin
+      tags: [users]
+      summary: Top-level browser redirect to DX Dashboard Hub
+      parameters:
+        - name: next
+          in: query
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to the provider with a five-minute one-use state cookie
+        "503":
+          description: SSO configuration unavailable
+  /auth/sso/callback:
+    get:
+      operationId: completeSsoLogin
+      tags: [users]
+      summary: Server-only code exchange and creation of an HttpOnly local session
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "303":
+          description: Login completed; provider tokens never enter the browser
+        "400":
+          description: Missing, expired or consumed state
+        "401":
+          description: Provider identity rejected
+        "403":
+          description: No matching active local user or identity already bound
+        "502":
+          description: Invalid provider response
+        "503":
+          description: Provider or configuration unavailable
+  /auth/sso/logout:
+    post:
+      operationId: endSsoSession
+      tags: [users]
+      summary: Destroy this app's SSO session; requires a same-origin Origin header
+      responses:
+        "200":
+          description: Local session and cookies deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+        "403":
+          description: Invalid origin
   /healthz:
     get:
       operationId: healthCheck
