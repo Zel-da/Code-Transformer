@@ -1307,7 +1307,7 @@ export const useUpdateReport = <
 };
 
 /**
- * @summary Delete a non-conformity report
+ * @summary Delete an unlocked IN_REVIEW report (admin, reviewer, approver only; ERP status PENDING or REVIEW)
  */
 export const getDeleteReportUrl = (id: number) => {
   return `/api/reports/${id}`;
@@ -1324,7 +1324,7 @@ export const deleteReport = async (
 };
 
 export const getDeleteReportMutationOptions = <
-  TError = ErrorType<ErrorEnvelope>,
+  TError = ErrorType<void | ErrorEnvelope>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1365,13 +1365,13 @@ export type DeleteReportMutationResult = NonNullable<
   Awaited<ReturnType<typeof deleteReport>>
 >;
 
-export type DeleteReportMutationError = ErrorType<ErrorEnvelope>;
+export type DeleteReportMutationError = ErrorType<void | ErrorEnvelope>;
 
 /**
- * @summary Delete a non-conformity report
+ * @summary Delete an unlocked IN_REVIEW report (admin, reviewer, approver only; ERP status PENDING or REVIEW)
  */
 export const useDeleteReport = <
-  TError = ErrorType<ErrorEnvelope>,
+  TError = ErrorType<void | ErrorEnvelope>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<

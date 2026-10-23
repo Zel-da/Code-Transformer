@@ -50,7 +50,7 @@ export function Layout({ children }: { children: ReactNode }) {
     ? [
         { href: "/ledger", label: "관리대장" },
         { href: "/submit", label: "부적합 등록" },
-        { href: "/qc", label: "QC 등록" },
+        { href: "/qc", label: "QC 분석 목록" },
         { href: "/manage", label: "관리자 패널" },
         { href: "/feedback", label: "피드백" },
         { href: "/guide", label: "도움말" },
@@ -58,6 +58,7 @@ export function Layout({ children }: { children: ReactNode }) {
     : [
         { href: "/ledger", label: "관리대장" },
         { href: "/submit", label: "부적합 등록" },
+        ...(["reviewer", "approver"].includes(user?.role ?? "") ? [{ href: "/qc", label: "QC 분석 목록" }] : []),
         { href: "/feedback", label: "피드백" },
         { href: "/guide", label: "도움말" },
       ];
@@ -66,7 +67,7 @@ export function Layout({ children }: { children: ReactNode }) {
     ? [
         { href: "/ledger", label: "관리대장", Icon: BookOpen },
         { href: "/submit", label: "부적합 등록", Icon: FileWarning },
-        { href: "/qc", label: "QC 등록", Icon: FlaskConical },
+        { href: "/qc", label: "QC 분석 목록", Icon: FlaskConical },
         { href: "/manage", label: "관리자", Icon: Settings2 },
         { href: "/feedback", label: "피드백", Icon: MessageSquare },
         { href: "/guide", label: "도움말", Icon: HelpCircle },
@@ -74,6 +75,7 @@ export function Layout({ children }: { children: ReactNode }) {
     : [
         { href: "/ledger", label: "관리대장", Icon: BookOpen },
         { href: "/submit", label: "부적합 등록", Icon: FileWarning },
+        ...(["reviewer", "approver"].includes(user?.role ?? "") ? [{ href: "/qc", label: "QC 분석 목록", Icon: FlaskConical }] : []),
         { href: "/feedback", label: "피드백", Icon: MessageSquare },
         { href: "/guide", label: "도움말", Icon: HelpCircle },
       ];

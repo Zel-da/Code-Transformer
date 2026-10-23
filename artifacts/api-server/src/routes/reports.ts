@@ -916,7 +916,7 @@ router.patch("/reports/:id/status", requireAuth, async (req, res): Promise<void>
   })();
 });
 
-router.delete("/reports/:id", async (req, res): Promise<void> => {
+router.delete("/reports/:id", requireRole(["admin", "reviewer", "approver"]), async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = DeleteReportParams.safeParse({ id: raw });
   if (!params.success) {
@@ -924,17 +924,30 @@ router.delete("/reports/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const [deleted] = await db
-    .delete(nonConformityReportsTable)
-    .where(eq(nonConformityReportsTable.id, params.data.id))
-    .returning();
-
-  if (!deleted) {
+  // Lock the row so state changes cannot race the eligibility check and deletion.
+  const result = await db.transaction(async (tx) => {
+    const [report] = await tx.select().from(nonConformityReportsTable)
+      .where(eq(nonConformityReportsTable.id, params.data.id)).for("update");
+    if (!report) return "missing";
+    if (report.qcStatus !== "IN_REVIEW" || report.isLocked || report.syncAttemptCount > 0 ||
+        !["PENDING", "REVIEW"].includes(report.syncStatus)) return "blocked";
+    await tx.insert(auditLogsTable).values({
+      actorId: req.auth!.userId, actorName: req.auth!.username,
+      action: "delete_report", targetType: "report", targetId: report.id,
+      detail: "QC 검토 중 보고서 삭제", beforeVal: report, afterVal: null,
+    });
+    await tx.delete(nonConformityReportsTable).where(eq(nonConformityReportsTable.id, report.id));
+    return "deleted";
+  });
+  if (result === "missing") {
     res.status(404).json({ error: "Report not found" });
     return;
   }
-
-  req.log.info({ reportId: params.data.id }, "Report deleted");
+  if (result === "blocked") {
+    res.status(409).json({ error: "검토 중인 보고서만 삭제할 수 있습니다. 잠금 상태이거나 ERP 처리 중·완료·실패한 보고서는 삭제할 수 없습니다." });
+    return;
+  }
+  req.log.info({ reportId: params.data.id, actorId: req.auth!.userId }, "Report deleted");
   res.status(204).send();
 });
 

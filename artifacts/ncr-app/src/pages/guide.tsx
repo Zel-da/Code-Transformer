@@ -556,7 +556,7 @@ export default function GuidePage() {
                       <div className="p-4 space-y-2.5">
                         <Step number={1} title="전체 보고서 목록" description="모든 보고서를 검색·필터링해 확인합니다." />
                         <Step number={2} title="보고서 수정" description="보고서 내용·상태를 직접 수정합니다. (잘못된 접수 수정, 상태 되돌리기 등)" highlight />
-                        <Step number={3} title="보고서 삭제" description="잘못 등록된 보고서를 삭제합니다. 삭제된 데이터는 복구되지 않으니 주의하세요." />
+                        <Step number={3} title="보고서 삭제" description="관리자·QC 검토자·승인자가 검토 중이며 잠금·ERP 처리 이력이 없는 보고서만 삭제할 수 있습니다. QC 분석 목록에서 보고서를 열어 삭제하며, 삭제 기록은 남지만 보고서는 복구되지 않습니다." />
                       </div>
                     </div>
                   </div>

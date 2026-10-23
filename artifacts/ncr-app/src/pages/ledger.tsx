@@ -402,7 +402,7 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
             className="w-full bg-[#1A1A1A] text-white font-semibold text-[14px] rounded-2xl py-3.5 flex items-center justify-center gap-2"
           >
             <ClipboardCheck className="h-4 w-4" />
-            QC 분석 입력
+            보고서 · QC 분석 수정
           </button>
         </div>
       )}

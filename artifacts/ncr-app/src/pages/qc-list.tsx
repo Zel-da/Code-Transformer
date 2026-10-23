@@ -94,8 +94,8 @@ export default function QcListPage() {
             <FlaskConical className="h-4 w-4 text-[#4E5968]" />
           </div>
           <div>
-            <h1 className="text-[20px] font-bold text-[#191F28]">QC 분석</h1>
-            <p className="text-[13px] text-[#8B95A1] mt-0.5">보고서를 선택해 QC 분석 내용을 입력하세요</p>
+            <h1 className="text-[20px] font-bold text-[#191F28]">QC 분석 목록</h1>
+            <p className="text-[13px] text-[#8B95A1] mt-0.5">기존 보고서를 선택해 등록 내용과 QC 분석을 수정하세요</p>
           </div>
         </div>
 

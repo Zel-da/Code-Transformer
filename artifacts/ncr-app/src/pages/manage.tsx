@@ -657,7 +657,7 @@ export default function ManagePage() {
       setDeletingId(null);
       toast({ title: "삭제 완료", description: "보고서가 삭제되었습니다." });
     } catch {
-      toast({ title: "삭제 실패", description: "다시 시도해주세요.", variant: "destructive" });
+      toast({ title: "삭제 실패", description: "검토 중이며 잠금·ERP 처리 이력이 없는 보고서만 삭제할 수 있습니다.", variant: "destructive" });
     }
   };
 

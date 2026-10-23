@@ -432,7 +432,7 @@ paths:
     delete:
       operationId: deleteReport
       tags: [reports]
-      summary: Delete a non-conformity report
+      summary: Delete an unlocked IN_REVIEW report (admin, reviewer, approver only; ERP status PENDING or REVIEW)
       parameters:
         - name: id
           in: path
@@ -442,6 +442,16 @@ paths:
       responses:
         "204":
           description: Report deleted
+        "401":
+          description: Authentication required
+        "403":
+          description: QC role required
+        "409":
+          description: Report is not in review, is locked, or has entered ERP processing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
         "404":
           description: Report not found
           content:

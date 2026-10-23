@@ -10,6 +10,7 @@ import { DraftBanner } from "@/components/draft-banner";
 import { DraftPreviewModal, DraftEntry } from "@/components/draft-preview-modal";
 import {
   useGetReport,
+  useDeleteReport,
   useUpdateReportQc,
   useUpdateReportStatus,
   useListFlawTypes,
@@ -66,6 +67,7 @@ const FACTORY_TO_PLANT_CD: Record<string, string> = { 아산: "SA00", 화성: "S
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -258,6 +260,8 @@ export default function QcPage() {
   const { data: plants = [] } = useListPlants();
   const { user } = useAuth();
   const updateQc = useUpdateReportQc();
+  const deleteReport = useDeleteReport();
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const updateStatus = useUpdateReportStatus();
   const createComment = useCreateReportComment();
   const { data: allUsers = [] } = useListUsers();
@@ -602,8 +606,46 @@ export default function QcPage() {
   const canGoBackQc = !!(prevQcStatus && availableTransitions.includes(prevQcStatus as QcStatus));
   const forwardQcTransitions = availableTransitions.filter((to) => to !== prevQcStatus);
 
+  const canDelete = !!report && ["admin", "reviewer", "approver"].includes(user?.role ?? "") &&
+    report.qcStatus === "IN_REVIEW" && !report.isLocked && !(report.syncAttemptCount > 0) &&
+    ["PENDING", "REVIEW"].includes(report.syncStatus);
+  const handleDelete = async () => {
+    try {
+      await deleteReport.mutateAsync({ id });
+      clearDraft();
+      queryClient.removeQueries({ queryKey: getGetReportQueryKey(id) });
+      await queryClient.invalidateQueries({ queryKey: ["/api/reports"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/reports/summary"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/reports/stats"] });
+      setDeleteOpen(false);
+      toast({ title: "보고서가 삭제되었습니다" });
+      navigate("/qc");
+    } catch (error: unknown) {
+      const failure = error as { data?: { error?: string } };
+      toast({ title: "삭제할 수 없습니다", description: failure.data?.error ?? "보고서 상태나 권한이 변경되었을 수 있습니다. 새로고침 후 확인해주세요.", variant: "destructive" });
+      void queryClient.invalidateQueries({ queryKey: getGetReportQueryKey(id) });
+    }
+  };
+
   return (
     <Layout>
+      <AlertDialog open={deleteOpen} onOpenChange={open => { if (!deleteReport.isPending) setDeleteOpen(open); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>검토 중 보고서를 삭제할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              보고서 #{report.id}{report.ncrNumber ? ` (${report.ncrNumber})` : ""}와 연결된 의견 등이 삭제됩니다.
+              이 작업은 되돌릴 수 없습니다. 삭제 기록은 감사 이력에 보관됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteReport.isPending}>취소</AlertDialogCancel>
+            <AlertDialogAction disabled={deleteReport.isPending} onClick={event => { event.preventDefault(); void handleDelete(); }} className="bg-red-600 hover:bg-red-700">
+              {deleteReport.isPending ? "삭제 중..." : "보고서 삭제"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {/* SLA 7일 제한 팝업 모달 */}
       <AlertDialog open={slaBlockedOpen} onOpenChange={setSlaBlockedOpen}>
         <AlertDialogContent>
@@ -627,16 +669,16 @@ export default function QcPage() {
 
       <div className="max-w-5xl mx-auto px-5 py-5 md:px-8 md:py-6">
         {/* 헤더 */}
-        <div className="flex items-center justify-between gap-3 mb-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-3 min-w-0">
             <button
-              onClick={() => navigate("/ledger")}
+              onClick={() => navigate("/qc")}
               className="h-8 w-8 rounded-xl bg-[#F2F4F6] flex items-center justify-center text-[#4E5968] hover:bg-[#E5E8EB] transition-colors shrink-0"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <div className="min-w-0">
-              <h1 className="text-[18px] font-bold text-[#191F28]">QC 분석 입력</h1>
+              <h1 className="text-[18px] font-bold text-[#191F28]">기존 보고서 · QC 분석 수정</h1>
               <p className="text-[12px] text-[#8B95A1] truncate">
                 보고서 #{String(report.id).padStart(4, "0")}
                 {report.ncrNumber && (
@@ -646,16 +688,26 @@ export default function QcPage() {
               </p>
             </div>
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+          {canDelete && <button type="button" onClick={() => setDeleteOpen(true)} disabled={updateQc.isPending || deleteReport.isPending}
+            className="shrink-0 h-9 px-3 rounded-xl border border-red-200 text-red-600 text-[13px] font-semibold disabled:opacity-50">
+            보고서 삭제
+          </button>}
           <button
             type="submit"
             form="qc-form-main"
-            disabled={updateQc.isPending}
+            disabled={updateQc.isPending || deleteReport.isPending}
             className="shrink-0 h-9 px-4 bg-[#1A1A1A] text-white font-semibold text-[13px] rounded-xl flex items-center gap-1.5 disabled:opacity-50 transition-opacity"
           >
             {updateQc.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-            저장
+            수정 내용 저장
           </button>
+          </div>
         </div>
+        <p className="mb-4 text-[13px] text-[#4E5968]">
+          신규 등록 화면이 아닙니다. 기존 보고서의 등록 정보와 QC 분석 내용을 불러왔으며, 저장하면 해당 보고서에 반영됩니다.
+          {!canDelete && " 삭제는 QC 담당자·관리자가 검토 중이며 잠금·ERP 처리 이력이 없는 보고서에 한해 가능합니다."}
+        </p>
 
         {/* SLA 경고 배너: 발생일 기준 7일 이상 경과 */}
         {report.occurrenceDate && differenceInDays(new Date(), new Date(report.occurrenceDate)) >= 7 && (

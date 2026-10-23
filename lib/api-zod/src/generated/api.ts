@@ -692,7 +692,7 @@ export const UpdateReportResponse = zod.object({
 });
 
 /**
- * @summary Delete a non-conformity report
+ * @summary Delete an unlocked IN_REVIEW report (admin, reviewer, approver only; ERP status PENDING or REVIEW)
  */
 export const DeleteReportParams = zod.object({
   id: zod.coerce.number(),
