@@ -42,6 +42,7 @@ Secret은 채팅, 가이드, Git, 프런트엔드 환경변수에 넣지 않습�
 
 - 32바이트 난수 state, 5분 만료, 서버 DB에 해시로 저장, 콜백에서 원자적으로 1회 소비
 - 인증 코드 자동 재시도 없음
+- 코드 교환에는 `grant_type=authorization_code`와 인증 시작 때와 동일한 `redirect_uri`를 전송
 - Token 응답의 aud와 Client ID, Token/userinfo의 sub 일치 여부 확인
 - 새 로그인 시 별도 난수 세션 생성, 기존 SSO 세션 폐기
 - 중앙 Access Token은 서버 DB에 AES-256-GCM으로 암호화해 보관

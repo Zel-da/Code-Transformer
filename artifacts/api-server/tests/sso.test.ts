@@ -17,11 +17,12 @@ let userId: number;
 let returnedAudience = "fixture-client";
 let returnedSub = identity.sub;
 let providerStatus = 200;
-const fetchMock = vi.fn(async (url: string | URL | Request) => {
+let tokenStatus = 200;
+const fetchMock = vi.fn(async (url: string | URL | Request, _init?: RequestInit) => {
   const endpoint = String(url);
   if (endpoint.endsWith("/token")) {
     return new Response(JSON.stringify({ access_token: "fixture-token", token_type: "Bearer", expires_in: 3600,
-      user: { sub: returnedSub, aud: returnedAudience } }), { status: 200 });
+      user: { sub: returnedSub, aud: returnedAudience } }), { status: tokenStatus });
   }
   return new Response(JSON.stringify(identity), { status: providerStatus });
 });
@@ -64,9 +65,11 @@ beforeAll(async () => {
   userId = user.id;
 });
 beforeEach(async () => {
-  returnedAudience = "fixture-client"; returnedSub = identity.sub; providerStatus = 200;
+  returnedAudience = "fixture-client"; returnedSub = identity.sub; providerStatus = 200; tokenStatus = 200;
   identity.email = fixtureEmail; identity.is_active = true;
   fetchMock.mockClear();
+  await db.delete(ssoSessionsTable).where(eq(ssoSessionsTable.provider, provider));
+  await db.delete(ssoIdentitiesTable).where(eq(ssoIdentitiesTable.provider, provider));
   await db.update(usersTable).set({ isActive: true, role: "worker" }).where(eq(usersTable.id, userId));
 });
 afterAll(async () => {
@@ -101,6 +104,46 @@ describe("DX SSO security flow", () => {
     await db.update(ssoSessionsTable).set({ expiresAt: new Date(Date.now() - 1000) })
       .where(eq(ssoSessionsTable.idHash, digest(value)));
     expect((await callback(pending)).status).toBe(400);
+  });
+  it("invalidates the earlier start in the same browser without exchanging its code", async () => {
+    const earlier = await start();
+    const newer = await request(app).get("/api/auth/sso/login").set("Cookie", earlier.cookie).expect(302);
+    expect(new URL(newer.headers.location).searchParams.get("state")).not.toBe(earlier.state);
+    expect((await callback(earlier)).status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it("exchanges once with the same redirect URI and explicit authorization_code grant", async () => {
+    const pending = await start();
+    const res = await callback(pending);
+    expect(res.status).toBe(303);
+    const calls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/token"));
+    expect(calls).toHaveLength(1);
+    const init = calls[0][1]!;
+    expect(init.method).toBe("POST");
+    const body = JSON.parse(String(init.body));
+    expect(body.grant_type).toBe("authorization_code");
+    expect(body.redirect_uri).toBe(pending.url.searchParams.get("redirect_uri"));
+    expect(new URL(res.headers.location).searchParams.get("sso")).toBe("complete");
+    await request(app).get("/protected").set("Cookie", cookieHeader(res, SESSION_COOKIE)).expect(200);
+    expect((await callback(pending)).status).toBe(400);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/token"))).toHaveLength(1);
+  });
+  it("does not retry an expired or reused code rejected by the provider", async () => {
+    tokenStatus = 401;
+    const pending = await start();
+    const res = await callback(pending);
+    expect(res.status).toBe(401);
+    expect(String(res.headers["set-cookie"])).not.toContain(`${SESSION_COOKIE}=`);
+    expect((await callback(pending)).status).toBe(400);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+  it("rejects expired app sessions before contacting the provider", async () => {
+    const sessionCookie = await login();
+    await db.update(ssoSessionsTable).set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(ssoSessionsTable.idHash, digest(sessionCookie.split("=")[1])));
+    fetchMock.mockClear();
+    await request(app).get("/protected").set("Cookie", sessionCookie).expect(401);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
   it("rejects mismatched client audience", async () => {
     returnedAudience = "other-client";
@@ -153,5 +196,8 @@ describe("DX SSO security flow", () => {
     await request(app).post("/api/auth/sso/logout").set("Cookie", sessionCookie).set("Origin", "https://evil.invalid").expect(403);
     await request(app).post("/api/auth/sso/logout").set("Cookie", sessionCookie).set("Origin", origin).expect(200);
     await request(app).get("/protected").set("Cookie", sessionCookie).expect(401);
+    const newCookie = await login();
+    expect(newCookie).not.toBe(sessionCookie);
+    await request(app).get("/protected").set("Cookie", newCookie).expect(200);
   });
 });

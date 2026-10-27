@@ -105,7 +105,8 @@ export async function exchangeCode(code: string) {
   // Never retry: the provider may already have consumed this single-use code.
   const parsed = tokenSchema.safeParse(await providerJson("/api/sso/token", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code, client_id: config.clientId, client_secret: config.clientSecret, redirect_uri: config.callback }),
+    body: JSON.stringify({ grant_type: "authorization_code", code, client_id: config.clientId,
+      client_secret: config.clientSecret, redirect_uri: config.callback }),
   }));
   if (!parsed.success || parsed.data.user.aud !== config.clientId) throw new SsoError(401, "sso_invalid_audience");
   const token = parsed.data;

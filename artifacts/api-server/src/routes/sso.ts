@@ -79,8 +79,9 @@ router.get("/auth/sso/callback", async (req, res): Promise<void> => {
   } catch (err) {
     // Never log the exception, callback URL, code, cookie, token, or provider response.
     const code = err instanceof SsoError ? err.code : "sso_failed";
-    req.log.warn({ stage: code }, "SSO login rejected");
-    res.status(err instanceof SsoError ? err.status : 502).type("html").send(
+    const status = err instanceof SsoError ? err.status : 502;
+    req.log.warn({ stage: code, status }, "SSO login rejected");
+    res.status(status).type("html").send(
       `<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>SSO 로그인 안내</title><body><h1>SSO 로그인 실패</h1><p>${errors[code] ?? "중앙 인증을 완료할 수 없습니다. 잠시 후 다시 시도하세요."}</p><a href="/login">로그인 화면으로 돌아가기</a></body></html>`);
   }
 });
