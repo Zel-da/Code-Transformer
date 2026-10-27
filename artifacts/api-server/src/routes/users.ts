@@ -79,6 +79,18 @@ function toPublicUser(user: typeof usersTable.$inferSelect) {
   return { ...rest, hasTempPassword: !!user.tempPasswordHash };
 }
 
+// Collaboration/mentions need a directory, not account administration data.
+router.get("/users/directory", requireAuth, async (_req, res): Promise<void> => {
+  const users = await db.select({
+    id: usersTable.id,
+    username: usersTable.username,
+    displayName: usersTable.displayName,
+    role: usersTable.role,
+    isActive: usersTable.isActive,
+  }).from(usersTable).where(eq(usersTable.isActive, true)).orderBy(usersTable.displayName);
+  res.json(users);
+});
+
 router.get("/users", requireAdmin, async (_req, res): Promise<void> => {
   const users = await db.select().from(usersTable).orderBy(usersTable.createdAt);
   res.json(users.map(toPublicUser));

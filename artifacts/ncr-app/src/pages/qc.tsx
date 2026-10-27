@@ -19,7 +19,7 @@ import {
   useListPlants,
   useListProcesses,
   useListVendors,
-  useListUsers,
+  useListUserDirectory,
   useCreateReportComment,
   getListReportsQueryKey,
   getGetReportQueryKey,
@@ -33,6 +33,7 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from "@/component
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { differenceInDays, format } from "date-fns";
 import { AlertTriangle, ChevronLeft, ChevronRight, RefreshCw, Save, Search, Loader2, Users, X, ZoomIn, X as XIcon } from "lucide-react";
+import { canAccessQc } from "@/lib/qc-access";
 
 const ERP_API_BASE =
   ((import.meta.env.VITE_ERP_API_BASE as string | undefined) ?? "").replace(/\/+$/, "");
@@ -251,20 +252,20 @@ export default function QcPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [slaBlockedOpen, setSlaBlockedOpen] = useState(false);
+  const [accessDeniedOpen, setAccessDeniedOpen] = useState(false);
 
   const { data: report, isLoading } = useGetReport(id);
   const { data: flawTypes = [] } = useListFlawTypes();
   const { data: itemsData = [] } = useListItems({ limit: 100 });
   const { data: departments = [] } = useListDepartments();
   const { data: plants = [] } = useListPlants();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const updateQc = useUpdateReportQc();
   const deleteReport = useDeleteReport();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const updateStatus = useUpdateReportStatus();
   const createComment = useCreateReportComment();
-  const { data: allUsers = [] } = useListUsers();
+  const { data: allUsers = [] } = useListUserDirectory();
 
   // PENDING_COLLAB 협업 요청 모달
   const [collabModalOpen, setCollabModalOpen] = useState(false);
@@ -508,6 +509,10 @@ export default function QcPage() {
   };
 
   const onSubmit = async (values: FormValues) => {
+    if (!canAccessQc(user?.role)) {
+      setAccessDeniedOpen(true);
+      return;
+    }
     try {
       const selectedDept = departments.find((d) => d.deptCd === values.deptCd);
       await updateQc.mutateAsync({
@@ -564,11 +569,12 @@ export default function QcPage() {
       toast({ title: "QC 분석 저장 완료", description: "분석 결과가 저장되었습니다." });
       navigate("/ledger");
     } catch (err: unknown) {
-      // 403: SLA 7일 제한 → 팝업 모달
+      // QC API 403 is an authorization failure, not the general-edit SLA limit.
       const status = (err as { status?: number; response?: { status?: number } })?.status
         ?? (err as { status?: number; response?: { status?: number } })?.response?.status;
       if (status === 403) {
-        setSlaBlockedOpen(true);
+        setAccessDeniedOpen(true);
+        await refreshUser();
       } else {
         toast({ title: "오류", description: "저장에 실패했습니다.", variant: "destructive" });
       }
@@ -606,7 +612,7 @@ export default function QcPage() {
   const canGoBackQc = !!(prevQcStatus && availableTransitions.includes(prevQcStatus as QcStatus));
   const forwardQcTransitions = availableTransitions.filter((to) => to !== prevQcStatus);
 
-  const canDelete = !!report && ["admin", "reviewer", "approver"].includes(user?.role ?? "") &&
+  const canDelete = !!report && canAccessQc(user?.role) &&
     report.qcStatus === "IN_REVIEW" && !report.isLocked && !(report.syncAttemptCount > 0) &&
     ["PENDING", "REVIEW"].includes(report.syncStatus);
   const handleDelete = async () => {
@@ -646,21 +652,20 @@ export default function QcPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {/* SLA 7일 제한 팝업 모달 */}
-      <AlertDialog open={slaBlockedOpen} onOpenChange={setSlaBlockedOpen}>
+      <AlertDialog open={accessDeniedOpen} onOpenChange={setAccessDeniedOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="h-5 w-5" />
-              수정 제한 — SLA 7일 초과
+              QC 저장 권한이 없습니다
             </AlertDialogTitle>
             <AlertDialogDescription>
-              발생일 기준 7일이 경과하여 일반 사용자는 보고서를 수정할 수 없습니다.
-              수정이 필요한 경우 관리자에게 문의하세요.
+              QC 분석은 관리자·검토자·승인자만 저장할 수 있습니다.
+              계정 권한이 변경되었을 수 있습니다. 관리자에게 문의하세요.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setSlaBlockedOpen(false)}>
+            <AlertDialogAction onClick={() => setAccessDeniedOpen(false)}>
               확인
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -1,3 +1,4 @@
+import { canAccessQc } from "@/lib/qc-access";
 import { Layout } from "@/components/layout";
 import { CommentThread } from "@/components/comment-thread";
 import {
@@ -9,7 +10,7 @@ import {
   useTriggerRpa,
   getGetReportQueryKey,
   getGetReportStatsQueryKey,
-  useListUsers,
+  useListUserDirectory,
   useCreateReportComment,
   useGetReportSummary,
   getGetReportSummaryQueryKey,
@@ -117,7 +118,7 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
   const [collabModalOpen, setCollabModalOpen] = useState(false);
   const [selectedCollabIds, setSelectedCollabIds] = useState<number[]>([]);
   const [collabNote, setCollabNote] = useState("");
-  const { data: allUsers = [] } = useListUsers();
+  const { data: allUsers = [] } = useListUserDirectory();
   const collaborators = allUsers.filter((u) => u.isActive && u.id !== user?.id);
 
   const handleResetRetry = async () => {
@@ -395,7 +396,7 @@ function ReportDetail({ reportId, onClose }: { reportId: number; onClose: () => 
         </div>
       )}
 
-      {(user?.role === "admin" || user?.role === "reviewer" || user?.role === "approver") && (
+      {canAccessQc(user?.role) && (
         <div className="pt-4">
           <button
             onClick={() => { onClose(); navigate(`/qc/${report.id}`); }}

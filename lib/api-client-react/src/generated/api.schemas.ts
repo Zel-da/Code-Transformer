@@ -1175,6 +1175,25 @@ export type ListDepartmentsParams = {
   search?: string;
 };
 
+export type ListUserDirectory200ItemRole =
+  (typeof ListUserDirectory200ItemRole)[keyof typeof ListUserDirectory200ItemRole];
+
+export const ListUserDirectory200ItemRole = {
+  admin: "admin",
+  worker: "worker",
+  reviewer: "reviewer",
+  approver: "approver",
+  collaborator: "collaborator",
+} as const;
+
+export type ListUserDirectory200Item = {
+  id: number;
+  username: string;
+  displayName: string;
+  role: ListUserDirectory200ItemRole;
+  isActive: boolean;
+};
+
 export type ResetUserPasswordBody = {
   /** @minLength 4 */
   password: string;

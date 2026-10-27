@@ -572,7 +572,7 @@ router.patch("/reports/:id/sync-status", async (req, res): Promise<void> => {
   res.json(report);
 });
 
-// V2.0: QC 조치 결과 확정 (admin 전용)
+// QC analysis is restricted to the same three roles as the QC web routes.
 router.put("/reports/:id/qc", requireRole(["admin", "reviewer", "approver"]), async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = UpdateReportQcParams.safeParse({ id: raw });
@@ -847,7 +847,7 @@ const UpdateStatusBody = z.object({
   status: z.enum(["OPEN", "IN_REVIEW", "PENDING_COLLAB", "RESOLVED", "APPROVED", "ERP_SYNCED"]),
 });
 
-router.patch("/reports/:id/status", requireAuth, async (req, res): Promise<void> => {
+router.patch("/reports/:id/status", requireRole(["admin", "reviewer", "approver"]), async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "잘못된 ID" }); return; }
 

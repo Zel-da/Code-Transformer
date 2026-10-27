@@ -6,7 +6,7 @@ import {
   useCreateReportComment,
   useUpdateReportComment,
   useDeleteReportComment,
-  useListUsers,
+  useListUserDirectory,
   getListReportCommentsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -58,7 +58,7 @@ export function CommentThread({ reportId }: Props) {
   const { toast } = useToast();
 
   const { data: comments = [], isLoading } = useListReportComments(reportId);
-  const { data: allUsers = [] } = useListUsers();
+  const { data: allUsers = [] } = useListUserDirectory();
   const createComment = useCreateReportComment();
   const updateComment = useUpdateReportComment();
   const deleteComment = useDeleteReportComment();

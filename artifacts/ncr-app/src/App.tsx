@@ -16,6 +16,7 @@ import GuidePage from "@/pages/guide";
 import ReportPrintPage from "@/pages/report-print";
 import FeedbackPage from "@/pages/feedback";
 import { ReactNode } from "react";
+import { canAccessQc } from "@/lib/qc-access";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,15 @@ function RequireAdmin({ children }: { children: ReactNode }) {
   if (loading) return null;
   if (!user) return <Redirect to={`/login?redirect=${encodeURIComponent(location)}`} />;
   if (user.role !== "admin") return <Redirect to="/submit" />;
+  return <>{children}</>;
+}
+
+function RequireQc({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  const [location] = useLocation();
+  if (loading) return null;
+  if (!user) return <Redirect to={`/login?redirect=${encodeURIComponent(location)}`} />;
+  if (!canAccessQc(user.role)) return <Redirect to="/ledger" />;
   return <>{children}</>;
 }
 
@@ -61,10 +71,10 @@ function Router() {
         <RequireAdmin><ManagePage /></RequireAdmin>
       </Route>
       <Route path="/qc">
-        <RequireAuth><QcListPage /></RequireAuth>
+        <RequireQc><QcListPage /></RequireQc>
       </Route>
       <Route path="/qc/:reportId">
-        <RequireAuth><QcPage /></RequireAuth>
+        <RequireQc><QcPage /></RequireQc>
       </Route>
       <Route path="/guide">
         <RequireAuth><GuidePage /></RequireAuth>

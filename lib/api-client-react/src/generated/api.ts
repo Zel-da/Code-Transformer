@@ -37,6 +37,7 @@ import type {
   ListItemsParams,
   ListProcessesParams,
   ListReportsParams,
+  ListUserDirectory200Item,
   ListVendorsParams,
   LoginBody,
   LoginResponse,
@@ -1565,7 +1566,7 @@ export const useUpdateReportSyncStatus = <
 
 /**
  * QC 담당자가 현장 분석 후 조치 결과를 저장한다. isLocked 보고서도 저장 가능. 원본 보고서 일부 필드(itemCode, flawTypeCd, lostManHours)도 함께 수정 가능.
- * @summary QC 분석 결과 저장 (admin 전용)
+ * @summary QC 분석 결과 저장 (admin·reviewer·approver 전용)
  */
 export const getUpdateReportQcUrl = (id: number) => {
   return `/api/reports/${id}/qc`;
@@ -1629,7 +1630,7 @@ export type UpdateReportQcMutationBody = BodyType<QcAnalysisBody>;
 export type UpdateReportQcMutationError = ErrorType<ErrorEnvelope>;
 
 /**
- * @summary QC 분석 결과 저장 (admin 전용)
+ * @summary QC 분석 결과 저장 (admin·reviewer·approver 전용)
  */
 export const useUpdateReportQc = <
   TError = ErrorType<ErrorEnvelope>,
@@ -1652,10 +1653,14 @@ export const useUpdateReportQc = <
 };
 
 /**
- * 역할 기반 상태 전이 매트릭스를 적용한다.
-- reviewer: OPEN→IN_REVIEW, IN_REVIEW→PENDING_COLLAB, PENDING_COLLAB→RESOLVED
-- approver: RESOLVED→APPROVED
-- admin: 모든 전이 허용
+ * admin·reviewer·approver만 호출할 수 있으며 다음 전이표를 적용한다.
+- OPEN→IN_REVIEW: admin, reviewer, approver
+- IN_REVIEW→PENDING_COLLAB 또는 RESOLVED: admin, reviewer
+- IN_REVIEW→OPEN: admin
+- PENDING_COLLAB→RESOLVED 또는 IN_REVIEW: admin, reviewer
+- RESOLVED→IN_REVIEW: admin, reviewer
+- RESOLVED→APPROVED: approver만 허용 (admin 포함 다른 역할은 불가)
+- APPROVED 이후 수동 전이 불가. ERP_SYNCED는 RPA 성공 시에만 자동 전이.
 
  * @summary QC 워크플로우 상태 전이
  */
@@ -1832,7 +1837,7 @@ export const useCloseMonth = <
 
 /**
  * QC 담당자가 현장 확인 후 최종 조치 결과를 확정한다. 보고서가 isLocked인 경우에도 조치 가능.
- * @summary QC 조치 결과 확정 (admin 전용)
+ * @summary QC 조치 결과 확정 (admin·reviewer·approver 전용)
  */
 export const getSubmitQcActionUrl = (id: number) => {
   return `/api/reports/${id}/qc-action`;
@@ -1896,7 +1901,7 @@ export type SubmitQcActionMutationBody = BodyType<QcActionBody>;
 export type SubmitQcActionMutationError = ErrorType<ErrorEnvelope>;
 
 /**
- * @summary QC 조치 결과 확정 (admin 전용)
+ * @summary QC 조치 결과 확정 (admin·reviewer·approver 전용)
  */
 export const useSubmitQcAction = <
   TError = ErrorType<ErrorEnvelope>,
@@ -3124,6 +3129,82 @@ export const useUpdateDepartment = <
 > => {
   return useMutation(getUpdateDepartmentMutationOptions(options));
 };
+
+/**
+ * Authenticated users only. Minimal directory without account administration, email, or password metadata.
+ * @summary List active collaboration and mention targets
+ */
+export const getListUserDirectoryUrl = () => {
+  return `/api/users/directory`;
+};
+
+export const listUserDirectory = async (
+  options?: RequestInit,
+): Promise<ListUserDirectory200Item[]> => {
+  return customFetch<ListUserDirectory200Item[]>(getListUserDirectoryUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListUserDirectoryQueryKey = () => {
+  return [`/api/users/directory`] as const;
+};
+
+export const getListUserDirectoryQueryOptions = <
+  TData = Awaited<ReturnType<typeof listUserDirectory>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listUserDirectory>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListUserDirectoryQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listUserDirectory>>
+  > = ({ signal }) => listUserDirectory({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listUserDirectory>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListUserDirectoryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listUserDirectory>>
+>;
+export type ListUserDirectoryQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary List active collaboration and mention targets
+ */
+
+export function useListUserDirectory<
+  TData = Awaited<ReturnType<typeof listUserDirectory>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listUserDirectory>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListUserDirectoryQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * Returns all user accounts. Admin only.

@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { FileWarning, ClipboardList, Settings2, Download, Bell, X, LogOut, User, BookOpen, FlaskConical, HelpCircle, Play, MessageSquare } from "lucide-react";
 import { usePWAInstall, useNotifications } from "@/hooks/usePWA";
 import { useAuth } from "@/contexts/auth";
+import { canAccessQc } from "@/lib/qc-access";
 import { useTour } from "@/contexts/tour";
 import { TOUR_ALL, TOUR_SUBMIT_ONLY, TOUR_LEDGER_ONLY, TOUR_QC_ONLY } from "@/lib/tour-steps";
 
@@ -58,7 +59,7 @@ export function Layout({ children }: { children: ReactNode }) {
     : [
         { href: "/ledger", label: "관리대장" },
         { href: "/submit", label: "부적합 등록" },
-        ...(["reviewer", "approver"].includes(user?.role ?? "") ? [{ href: "/qc", label: "QC 분석 목록" }] : []),
+        ...(canAccessQc(user?.role) ? [{ href: "/qc", label: "QC 분석 목록" }] : []),
         { href: "/feedback", label: "피드백" },
         { href: "/guide", label: "도움말" },
       ];
@@ -75,7 +76,7 @@ export function Layout({ children }: { children: ReactNode }) {
     : [
         { href: "/ledger", label: "관리대장", Icon: BookOpen },
         { href: "/submit", label: "부적합 등록", Icon: FileWarning },
-        ...(["reviewer", "approver"].includes(user?.role ?? "") ? [{ href: "/qc", label: "QC 분석 목록", Icon: FlaskConical }] : []),
+        ...(canAccessQc(user?.role) ? [{ href: "/qc", label: "QC 분석 목록", Icon: FlaskConical }] : []),
         { href: "/feedback", label: "피드백", Icon: MessageSquare },
         { href: "/guide", label: "도움말", Icon: HelpCircle },
       ];
