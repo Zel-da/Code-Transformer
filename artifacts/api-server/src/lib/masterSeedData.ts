@@ -1041,6 +1041,7 @@ export const PROCESS_SEED: { plantCd: string; processCd: string; processNm: stri
   { plantCd: 'SH00', processCd: 'H06', processNm: 'BR열처리', laborCost: 1370 },
   { plantCd: 'SH00', processCd: 'H07', processNm: 'BR-M/B조립', laborCost: 1020 },
   { plantCd: 'SH00', processCd: 'H08', processNm: 'BR-BKT조립', laborCost: 1020 },
+  { plantCd: 'SH00', processCd: 'H09', processNm: '전기라인', laborCost: 860 },
 ];
 
 export const DISPOSITION_SEED: { dispositionCd: string; dispositionNm: string; inspClassCd: string; stockType: string }[] = [
