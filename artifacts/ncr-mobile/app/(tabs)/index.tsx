@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -38,6 +38,11 @@ interface FormState {
   itemCode: string;
   itemSearch: string;
   plantCd: string;
+  // 2026-11 화성 공정부적합 미팅 반영: 화성(SH00)은 품번 수기 입력 생략 가능.
+  // 대신 기종명·부품명 수기, 부품코드 선택. QC 가 품번 보완.
+  modelName: string;
+  partName: string;
+  partCode: string;
   processCd: string;
   processName: string;
   flawTypeCd: string;
@@ -53,6 +58,9 @@ const INITIAL_FORM: FormState = {
   itemCode: "",
   itemSearch: "",
   plantCd: "",
+  modelName: "",
+  partName: "",
+  partCode: "",
   processCd: "",
   processName: "",
   flawTypeCd: "",
@@ -74,6 +82,16 @@ export default function SubmitScreen() {
   const [uploading, setUploading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [itemSearchOpen, setItemSearchOpen] = useState(false);
+
+  // 로그인 사용자의 소속 공장(plantCd)을 자동 세팅.
+  // 화성 사용자는 즉시 화성 간소화 폼이 보이게 됨.
+  useEffect(() => {
+    const userPlant = (user as { plantCd?: string } | null)?.plantCd;
+    if (userPlant && !form.plantCd) {
+      setForm((f) => ({ ...f, plantCd: userPlant }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
   const scrollRef = useRef<ScrollView>(null);
 
   const { data: plants } = useListPlants();
@@ -137,9 +155,18 @@ export default function SubmitScreen() {
     }
   }, []);
 
+  const isHwaseong = form.plantCd === "SH00";
+
   const validate = () => {
-    if (!form.itemCode) return "품목 코드를 선택하세요.";
     if (!form.plantCd) return "공장을 선택하세요.";
+    if (isHwaseong) {
+      // 화성: 품번은 QC 가 보완. 기종명·부품명 수기 필수.
+      if (!form.modelName.trim()) return "기종명을 입력하세요.";
+      if (!form.partName.trim()) return "부품명을 입력하세요.";
+    } else {
+      // 아산 등: 제품 품번 필수 (ERP 조회)
+      if (!form.itemCode) return "품목 코드를 선택하세요.";
+    }
     if (!form.processCd) return "공정을 선택하세요.";
     if (!form.flawTypeCd) return "불량 유형을 선택하세요.";
     if (!form.actionDirection) return "조치 방향을 선택하세요.";
@@ -160,13 +187,24 @@ export default function SubmitScreen() {
         imageUrl = await uploadImage(form.imageUri);
       }
 
+      // 화성 폴백: itemCode 가 비면 modelName, 그것도 없으면 "미정" (QC 승인 시 가드가 차단).
+      // description 앞에 "[부품: X] " prepend 로 QC 목록에서 즉시 어느 부품인지 보이게.
+      const effectiveItemCode = form.itemCode.trim()
+        || (isHwaseong ? form.modelName.trim() : "")
+        || "미정";
+      const effectiveDescription = isHwaseong && form.partName.trim()
+        ? `[부품: ${form.partName.trim()}] ${form.description.trim()}`
+        : form.description.trim();
+
       await createReport.mutateAsync({
         data: {
           reportDate: new Date().toISOString(),
-          itemCode: form.itemCode,
+          itemCode: effectiveItemCode,
+          modelName: form.modelName.trim() || null,
+          partCode: form.partCode.trim() || null,
           processName: form.processName,
           defectType: form.defectType,
-          description: form.description.trim(),
+          description: effectiveDescription,
           imageUrl,
           plantCd: form.plantCd,
           processCd: form.processCd,
@@ -219,61 +257,100 @@ export default function SubmitScreen() {
         <Text style={s.pageSubtitle}>현장에서 발생한 불량을 즉시 등록하세요</Text>
       </View>
 
-      <View style={s.section}>
-        <Text style={s.sectionLabel}>품목 코드 *</Text>
-        <Pressable
-          style={s.selectBox}
-          onPress={() => setItemSearchOpen((v) => !v)}
-          testID="item-code-picker"
-        >
-          <Text
-            style={form.itemCode ? s.selectText : s.selectPlaceholder}
-          >
-            {form.itemCode || "품목 코드 검색"}
-          </Text>
-          <Ionicons
-            name={itemSearchOpen ? "chevron-up" : "chevron-down"}
-            size={18}
-            color={colors.mutedForeground}
-          />
-        </Pressable>
-        {itemSearchOpen && (
-          <View style={s.searchDropdown}>
+      {/* 품목 섹션 — 공장별 분기 (2026-11 화성 업무개선 미팅 반영) */}
+      {isHwaseong ? (
+        <>
+          <View style={s.section}>
+            <Text style={s.sectionLabel}>기종명 *</Text>
             <TextInput
-              style={s.searchInput}
-              value={form.itemSearch}
-              onChangeText={(v) => setForm((f) => ({ ...f, itemSearch: v }))}
-              placeholder="품목명 또는 코드 입력"
+              style={s.selectBox}
+              value={form.modelName}
+              onChangeText={(v) => setForm((f) => ({ ...f, modelName: v }))}
+              placeholder="예: SB-100, JD-1400E, 실린더바디"
               placeholderTextColor={colors.mutedForeground}
-              autoFocus
-              testID="item-search-input"
+              testID="hw-model-name"
             />
-            {items && items.length > 0 ? (
-              items.map((item) => (
-                <Pressable
-                  key={item.id}
-                  style={s.dropdownItem}
-                  onPress={() => {
-                    setForm((f) => ({
-                      ...f,
-                      itemCode: item.code,
-                      itemSearch: item.code,
-                    }));
-                    setItemSearchOpen(false);
-                  }}
-                >
-                  <Text style={s.dropdownItemCode}>{item.code}</Text>
-                  <Text style={s.dropdownItemName}>{item.name}</Text>
-                </Pressable>
-              ))
-            ) : form.itemSearch.length >= 2 ? (
-              <Text style={s.emptyDropdown}>검색 결과 없음</Text>
-            ) : (
-              <Text style={s.emptyDropdown}>2자 이상 입력하세요</Text>
-            )}
           </View>
-        )}
-      </View>
+          <View style={s.section}>
+            <Text style={s.sectionLabel}>부품명 *</Text>
+            <TextInput
+              style={s.selectBox}
+              value={form.partName}
+              onChangeText={(v) => setForm((f) => ({ ...f, partName: v }))}
+              placeholder="예: 로드핀, 실린더 커버, 플레이트"
+              placeholderTextColor={colors.mutedForeground}
+              testID="hw-part-name"
+            />
+          </View>
+          <View style={s.section}>
+            <Text style={s.sectionLabel}>부품코드 (선택)</Text>
+            <TextInput
+              style={s.selectBox}
+              value={form.partCode}
+              onChangeText={(v) => setForm((f) => ({ ...f, partCode: v }))}
+              placeholder="알면 입력, 모르면 비워두면 QC 가 보완"
+              placeholderTextColor={colors.mutedForeground}
+              testID="hw-part-code"
+            />
+          </View>
+        </>
+      ) : (
+        <View style={s.section}>
+          <Text style={s.sectionLabel}>품목 코드 *</Text>
+          <Pressable
+            style={s.selectBox}
+            onPress={() => setItemSearchOpen((v) => !v)}
+            testID="item-code-picker"
+          >
+            <Text
+              style={form.itemCode ? s.selectText : s.selectPlaceholder}
+            >
+              {form.itemCode || "품목 코드 검색"}
+            </Text>
+            <Ionicons
+              name={itemSearchOpen ? "chevron-up" : "chevron-down"}
+              size={18}
+              color={colors.mutedForeground}
+            />
+          </Pressable>
+          {itemSearchOpen && (
+            <View style={s.searchDropdown}>
+              <TextInput
+                style={s.searchInput}
+                value={form.itemSearch}
+                onChangeText={(v) => setForm((f) => ({ ...f, itemSearch: v }))}
+                placeholder="품목명 또는 코드 입력"
+                placeholderTextColor={colors.mutedForeground}
+                autoFocus
+                testID="item-search-input"
+              />
+              {items && items.length > 0 ? (
+                items.map((item) => (
+                  <Pressable
+                    key={item.id}
+                    style={s.dropdownItem}
+                    onPress={() => {
+                      setForm((f) => ({
+                        ...f,
+                        itemCode: item.code,
+                        itemSearch: item.code,
+                      }));
+                      setItemSearchOpen(false);
+                    }}
+                  >
+                    <Text style={s.dropdownItemCode}>{item.code}</Text>
+                    <Text style={s.dropdownItemName}>{item.name}</Text>
+                  </Pressable>
+                ))
+              ) : form.itemSearch.length >= 2 ? (
+                <Text style={s.emptyDropdown}>검색 결과 없음</Text>
+              ) : (
+                <Text style={s.emptyDropdown}>2자 이상 입력하세요</Text>
+              )}
+            </View>
+          )}
+        </View>
+      )}
 
       <View style={s.row}>
         <View style={[s.section, { flex: 1 }]}>
