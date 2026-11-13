@@ -3,3 +3,4 @@ export * from "./productionOrders";
 export * from "./shipments";
 export * from "./feedback";
 export * from "./sso";
+export * from "./erpDefectHistory";
