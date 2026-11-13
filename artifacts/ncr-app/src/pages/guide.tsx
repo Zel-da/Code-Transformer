@@ -240,12 +240,17 @@ export default function GuidePage() {
                   </p>
 
                   <div className="space-y-3">
-                    <Step number={1} title="공장 선택" description="아산공장 또는 화성공장을 선택합니다." highlight />
+                    <Step number={1} title="공장 선택" description="아산공장 또는 화성공장을 선택합니다. 사용자 소속 공장이 자동 지정됩니다." highlight />
                     <Step
                       number={2}
-                      title="품목 검색"
-                      description="ERP에서 품목코드 또는 품목명을 검색해 선택합니다."
-                      sub={["검색창에 품목명 일부를 입력하면 자동완성 목록이 표시됩니다.", "선택하면 품목코드·모델명이 자동으로 채워집니다."]}
+                      title="품목 정보 입력 (공장별 다름)"
+                      description="2026-11 업무개선 미팅 결과, 공장에 따라 입력 항목이 다릅니다."
+                      sub={[
+                        "아산: ERP에서 제품품번을 검색해 선택합니다. 선택 시 품목코드·제품명이 자동 채워집니다.",
+                        "화성: 기종명과 부품명을 수기로 입력합니다 (예: SB-100 / 로드핀).",
+                        "화성 · 부품코드는 선택 사항입니다. 알면 입력, 모르면 비워두면 품질 담당자가 보완합니다.",
+                        "화성 · '미정' 상태로 승인은 불가능합니다. 품질 담당자가 반드시 정확한 ERP 품번으로 보완해야 ERP에 전송됩니다.",
+                      ]}
                     />
                     <Step
                       number={3}
@@ -297,8 +302,16 @@ export default function GuidePage() {
                 <Accordion title="자주 묻는 질문 — 보고서 등록" defaultOpen>
                   <div className="space-y-3 text-[13px] text-[#4E5968]">
                     <div>
-                      <p className="font-semibold text-[#191F28]">Q. 품목 검색이 안 됩니다.</p>
+                      <p className="font-semibold text-[#191F28]">Q. 품목 검색이 안 됩니다. (아산)</p>
                       <p className="mt-0.5">ERP 연동 품목만 검색됩니다. 공장 선택을 먼저 하신 후 검색해 주세요. 그래도 안 되면 관리자에게 문의하세요.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#191F28]">Q. 화성인데 품목코드를 모릅니다.</p>
+                      <p className="mt-0.5">기종명·부품명만 수기로 입력해 등록 가능합니다. 부품코드란은 비워두면 품질 담당자가 보완합니다. 기종명은 조립 중이던 기종을 쓰고, 공용 부품이면 비고란에 그 사실을 적어주세요.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#191F28]">Q. 등록 후 ERP에 자동 전송되나요?</p>
+                      <p className="mt-0.5">아니요. 품질 담당자가 검토·보완 후 승인(APPROVED)해야 RPA 가 ERP에 자동 입력합니다. 품번이 비어있거나 ERP 마스터에 없는 값이면 승인 단계에서 차단됩니다.</p>
                     </div>
                     <div>
                       <p className="font-semibold text-[#191F28]">Q. 등록한 보고서를 수정하고 싶습니다.</p>
