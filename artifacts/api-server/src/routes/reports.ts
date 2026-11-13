@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
 import { eq, ne, sql, and, gte, lte, count, lt, or, ilike, desc } from "drizzle-orm";
 import * as XLSX from "xlsx";
-import { db, nonConformityReportsTable, auditLogsTable, usersTable, itemCodesTable } from "@workspace/db";
+import { db, nonConformityReportsTable, auditLogsTable, usersTable } from "@workspace/db";
+import { erpReadyItemCodeCondition, findApprovalItemCodeProblem } from "../lib/itemCodeGuard.js";
 import {
   ListReportsQueryParams,
   CreateReportBody,
@@ -314,10 +315,7 @@ router.get("/reports/pending", async (_req, res): Promise<void> => {
     .where(
       and(
         eq(nonConformityReportsTable.syncStatus, "PENDING"),
-        sql`${nonConformityReportsTable.itemCode} IS NOT NULL`,
-        sql`${nonConformityReportsTable.itemCode} <> ''`,
-        sql`${nonConformityReportsTable.itemCode} <> '미정'`,
-        sql`EXISTS (SELECT 1 FROM ${itemCodesTable} WHERE ${itemCodesTable.code} = ${nonConformityReportsTable.itemCode})`,
+        erpReadyItemCodeCondition(),
       ),
     )
     .orderBy(nonConformityReportsTable.createdAt);
@@ -899,24 +897,9 @@ router.patch("/reports/:id/status", requireRole(["admin", "reviewer", "approver"
       .select({ itemCode: nonConformityReportsTable.itemCode })
       .from(nonConformityReportsTable)
       .where(eq(nonConformityReportsTable.id, id));
-    const code = (fullReport?.itemCode ?? "").trim();
-    if (!code || code === "미정") {
-      res.status(400).json({
-        error: "품번이 비어있거나 '미정'입니다. 승인 전에 보고서 편집에서 정확한 ERP 품번으로 수정해주세요.",
-        code: "ITEM_CODE_REQUIRED",
-      });
-      return;
-    }
-    const [exists] = await db
-      .select({ code: itemCodesTable.code })
-      .from(itemCodesTable)
-      .where(eq(itemCodesTable.code, code))
-      .limit(1);
-    if (!exists) {
-      res.status(400).json({
-        error: `품번 "${code}" 가 ERP 마스터(item_codes)에 없습니다. 품번 조회에서 정확한 코드를 찾아 수정 후 다시 승인해주세요.`,
-        code: "ITEM_CODE_NOT_IN_MASTER",
-      });
+    const problem = await findApprovalItemCodeProblem(fullReport?.itemCode);
+    if (problem) {
+      res.status(400).json(problem);
       return;
     }
   }

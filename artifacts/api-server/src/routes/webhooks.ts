@@ -5,6 +5,7 @@ import { db, usersTable, nonConformityReportsTable } from "@workspace/db";
 import { logger as rootLogger } from "../lib/logger.js";
 import { notifyStatusTransition } from "../lib/notifications.js";
 import { writeAuditLog } from "../lib/audit.js";
+import { findApprovalItemCodeProblem } from "../lib/itemCodeGuard.js";
 
 const router = Router();
 
@@ -120,7 +121,16 @@ router.post("/webhooks/ncr-action", async (req, res): Promise<void> => {
         return;
       }
 
-      // 6. 상태 전이 실행
+      // 6. 승인 품번 가드 — 웹 승인과 같은 기준. 임시 품번('미정'·기종명)은 ERP로 넘기지 않음.
+      if (to === "APPROVED") {
+        const problem = await findApprovalItemCodeProblem(report.itemCode);
+        if (problem) {
+          log.warn({ reportId, itemCode: report.itemCode, code: problem.code, email }, "ncr-action: approval blocked by item code guard");
+          return;
+        }
+      }
+
+      // 7. 상태 전이 실행
       const updates: Record<string, unknown> = { qcStatus: to };
       if (to === "APPROVED" || to === "RESOLVED") {
         updates.qcSubmittedAt = new Date();
@@ -133,7 +143,7 @@ router.post("/webhooks/ncr-action", async (req, res): Promise<void> => {
         .where(eq(nonConformityReportsTable.id, reportId))
         .returning();
 
-      // 7. 감사 로그
+      // 8. 감사 로그
       await writeAuditLog({
         actorId: actor.id,
         actorName: name ?? actor.displayName ?? email,
@@ -147,7 +157,7 @@ router.post("/webhooks/ncr-action", async (req, res): Promise<void> => {
 
       log.info({ reportId, from, to, email }, "ncr-action: QC status transitioned via Sushantalk button");
 
-      // 8. 후속 알림 발송
+      // 9. 후속 알림 발송
       await notifyStatusTransition({ report: updated, from, to });
     } catch (err) {
       log.error({ err }, "ncr-action: unhandled error");

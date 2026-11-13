@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and, or, isNull, lte, gt, count } from "drizzle-orm";
 import { db, nonConformityReportsTable } from "@workspace/db";
 import { requireAuth, requireRole } from "../middleware/requireAuth";
+import { erpReadyItemCodeCondition } from "../lib/itemCodeGuard.js";
 import { notifyStatusTransition } from "../lib/notifications.js";
 
 const router: IRouter = Router();
@@ -27,7 +28,7 @@ router.post("/rpa/trigger", requireAuth, requireRole(["admin", "approver"]), asy
     );
   const skipped = Number(skippedResult?.count ?? 0);
 
-  // RPA 처리 대상: syncStatus=PENDING AND qcStatus=APPROVED
+  // RPA 처리 대상: syncStatus=PENDING AND qcStatus=APPROVED AND 품번이 ERP 마스터에 존재
   const pending = await db
     .select()
     .from(nonConformityReportsTable)
@@ -35,6 +36,7 @@ router.post("/rpa/trigger", requireAuth, requireRole(["admin", "approver"]), asy
       and(
         eq(nonConformityReportsTable.syncStatus, "PENDING"),
         eq(nonConformityReportsTable.qcStatus, "APPROVED"),
+        erpReadyItemCodeCondition(),
         or(
           isNull(nonConformityReportsTable.syncNextRetryAt),
           lte(nonConformityReportsTable.syncNextRetryAt, now),

@@ -1,3 +1,4 @@
 - [SSO 접근 정책](sso-access-policy.md) — 중앙 인증은 기존 NCR 활성 계정에만 연결하며, 중앙 역할로 NCR 권한을 승격하지 않음.
 - [ERP 미러 스키마 동기화](erp-mirror-schema-sync.md) — 운영에 직접 만든 ERP 테이블·뷰는 게시 전에 개발 DB에도 동일하게 생성해야 함.
+- [ERP 전송 품번 가드](erp-item-code-guard.md) — 임시 품번 차단은 웹 승인·수산톡 승인·RPA API·rpa-ncr DB 조회 모든 경로에 같이 걸어야 함.
 - [QC 검토 작업 원칙](qc-review-policy.md) — QC 담당자가 기존 보고서를 수정하는 흐름이며, 삭제는 검토 중에만 제한적으로 허용.

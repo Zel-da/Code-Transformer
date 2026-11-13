@@ -306,7 +306,7 @@ export default function QcPage() {
     try {
       await doTransition(to);
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "상태 변경에 실패했습니다.";
+      const msg = (e as { data?: { error?: string } | null })?.data?.error ?? "상태 변경에 실패했습니다.";
       toast({ title: "오류", description: msg, variant: "destructive" });
     }
   };
@@ -326,7 +326,7 @@ export default function QcPage() {
       await doTransition("PENDING_COLLAB");
       setCollabModalOpen(false);
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "처리에 실패했습니다.";
+      const msg = (e as { data?: { error?: string } | null })?.data?.error ?? "처리에 실패했습니다.";
       toast({ title: "오류", description: msg, variant: "destructive" });
     }
   };

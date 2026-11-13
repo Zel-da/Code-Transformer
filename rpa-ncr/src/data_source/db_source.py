@@ -76,6 +76,7 @@ _OPTIONAL_NON_CONFORMITY_COLS: tuple[tuple[str, str], ...] = (
 
 # RPA 입력 대상이 되기 위해 필요한 QC 상태 (artifacts/api-server/routes/rpa.ts 와 동일 기준)
 _RPA_ELIGIBLE_QC_STATUS = "APPROVED"
+_PLACEHOLDER_ITEM_CODE = "미정"
 
 # 재시도 최대 횟수 (artifacts/api-server/routes/rpa.ts 의 MAX_ATTEMPTS 와 일치)
 _MAX_ATTEMPTS = 5
@@ -287,6 +288,12 @@ class DbSource(DataSource):
                     where_parts.append(
                         "(r.sync_next_retry_at IS NULL OR r.sync_next_retry_at <= now())"
                     )
+
+                # 품번 가드: 화성 임시 품번('미정'·기종명)처럼 ERP 품목 마스터에 없는
+                # 품번은 UNIERP 로 보내지 않는다 (웹 승인 가드와 같은 기준).
+                # _FROM_BASE 가 item_codes 를 ic 로 LEFT JOIN 하므로 ic.code 로 존재 확인.
+                where_parts.append("r.item_code <> %s AND ic.code IS NOT NULL")
+                params.append(_PLACEHOLDER_ITEM_CODE)
 
                 # 담당 공장 필터 (plant_cd 기준). 리스트 비어있으면 전체.
                 if self._plant_filter:

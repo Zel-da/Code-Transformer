@@ -11,6 +11,7 @@ const fixture = vi.hoisted(() => ({
   role: "worker" as string,
   active: true,
   report: { id: 123, qcStatus: "IN_REVIEW", qualityOpinion: "original", description: "fixture" },
+  itemCodeProblem: null as null | { code: string; error: string },
 }));
 
 // Exercise real authentication/role middleware and route handlers without DB writes
@@ -62,6 +63,10 @@ vi.mock("../src/lib/audit", () => ({
   diffObjects: () => ({ before: {}, after: {} }),
 }));
 vi.mock("../src/lib/notifications", () => ({ notifyStatusTransition: vi.fn() }));
+vi.mock("../src/lib/itemCodeGuard", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/lib/itemCodeGuard")>()),
+  findApprovalItemCodeProblem: vi.fn(async () => fixture.itemCodeProblem),
+}));
 
 const app = express();
 app.use(express.json());
@@ -148,6 +153,19 @@ describe("QC API role boundary", () => {
     await request(app).patch("/api/reports/123/status").auth(token("approver"), { type: "bearer" })
       .send({ status: "APPROVED" }).expect(200);
     expect(fixture.report.qcStatus).toBe("APPROVED");
+  });
+  it("blocks final approval while the item code is temporary", async () => {
+    fixture.role = "approver";
+    fixture.report.qcStatus = "RESOLVED";
+    fixture.itemCodeProblem = { code: "ITEM_CODE_REQUIRED", error: "temporary item code" };
+    try {
+      const res = await request(app).patch("/api/reports/123/status").auth(token("approver"), { type: "bearer" })
+        .send({ status: "APPROVED" }).expect(400);
+      expect(res.body.code).toBe("ITEM_CODE_REQUIRED");
+      expect(fixture.report.qcStatus).toBe("RESOLVED");
+    } finally {
+      fixture.itemCodeProblem = null;
+    }
   });
 });
 
