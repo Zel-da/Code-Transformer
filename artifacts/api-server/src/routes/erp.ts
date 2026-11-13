@@ -6,6 +6,7 @@ import {
   productionOrdersTable,
   vendorsTable,
   shipmentsTable,
+  erpDefectHistoryTable,
 } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -479,6 +480,76 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
     candidates,
     matchedVendors: vendorMatches,
   });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 과거 ERP 부적합 이력 조회 — 현장(태블릿)에서 유사 사례·조치 즉시 확인
+// K-System Q_FLAW_CKO063 미러(erp_defect_history). item_codes 조인해 품목명 동반.
+// 공장 필터는 필수(안 주면 전체) — 프런트가 user.factory 로 자동 지정.
+// ─────────────────────────────────────────────────────────────────────────────
+router.get("/erp/defect-history", async (req, res): Promise<void> => {
+  const plantQ = (req.query.plant as string | undefined)?.trim();
+  const plantCds = plantQ
+    ? plantQ.split(",").map((p) => p.trim()).filter(Boolean)
+    : [];
+  const flawGbn = (req.query.gbn as string | undefined)?.trim() || null;        // QC/QO/AS/QI/QA
+  const processCd = (req.query.process as string | undefined)?.trim() || null;
+  const itemCode = (req.query.itemCode as string | undefined)?.trim() || null;
+  const q = (req.query.q as string | undefined)?.trim() || null;                // 품목/현상/조치 ILIKE
+  const limitRaw = req.query.limit as string | undefined;
+  const limitParsed = limitRaw ? Number.parseInt(limitRaw, 10) : NaN;
+  const LIMIT = Number.isFinite(limitParsed) ? Math.max(1, Math.min(200, limitParsed)) : 50;
+
+  const conds: SQL[] = [];
+  if (plantCds.length > 0) conds.push(inArray(erpDefectHistoryTable.plantCd, plantCds));
+  if (flawGbn) conds.push(eq(erpDefectHistoryTable.flawGbn, flawGbn));
+  if (processCd) conds.push(eq(erpDefectHistoryTable.processCd, processCd));
+  if (itemCode) conds.push(eq(erpDefectHistoryTable.itemCode, itemCode));
+  if (q) {
+    const like = `%${q}%`;
+    conds.push(
+      or(
+        ilike(erpDefectHistoryTable.itemCode, like),
+        ilike(erpDefectHistoryTable.itemGroupCd, like),
+        ilike(erpDefectHistoryTable.flawState, like),
+        ilike(erpDefectHistoryTable.actResult, like),
+        ilike(erpDefectHistoryTable.parItemCode, like),
+      )!,
+    );
+  }
+  const where = conds.length > 0 ? and(...conds) : undefined;
+
+  const rows = await db
+    .select({
+      id: erpDefectHistoryTable.id,
+      erpReportNo: erpDefectHistoryTable.erpReportNo,
+      plantCd: erpDefectHistoryTable.plantCd,
+      factory: sql<string | null>`CASE ${erpDefectHistoryTable.plantCd}
+        WHEN 'SA00' THEN '아산' WHEN 'SH00' THEN '화성' ELSE NULL END`.as("factory"),
+      flawGbn: erpDefectHistoryTable.flawGbn,
+      processCd: erpDefectHistoryTable.processCd,
+      itemCode: erpDefectHistoryTable.itemCode,
+      itemName: itemCodesTable.name,
+      itemGroupCd: erpDefectHistoryTable.itemGroupCd,
+      parItemCode: erpDefectHistoryTable.parItemCode,
+      outHogi: erpDefectHistoryTable.outHogi,
+      flawQty: erpDefectHistoryTable.flawQty,
+      typeCd: erpDefectHistoryTable.typeCd,
+      flawState: erpDefectHistoryTable.flawState,
+      actResult: erpDefectHistoryTable.actResult,
+      decideResult: erpDefectHistoryTable.decideResult,
+      capAction: erpDefectHistoryTable.capAction,
+      deptNm: erpDefectHistoryTable.deptNm,
+      insrtDate: erpDefectHistoryTable.insrtDate,
+      insrtUserId: erpDefectHistoryTable.insrtUserId,
+    })
+    .from(erpDefectHistoryTable)
+    .leftJoin(itemCodesTable, eq(itemCodesTable.code, erpDefectHistoryTable.itemCode))
+    .where(where)
+    .orderBy(desc(erpDefectHistoryTable.insrtDate))
+    .limit(LIMIT);
+
+  res.json({ count: rows.length, rows });
 });
 
 export default router;
