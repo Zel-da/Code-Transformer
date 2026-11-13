@@ -13,6 +13,7 @@ import LoginPage from "@/pages/login";
 import QcPage from "@/pages/qc";
 import QcListPage from "@/pages/qc-list";
 import GuidePage from "@/pages/guide";
+import HistoryPage from "@/pages/history";
 import ReportPrintPage from "@/pages/report-print";
 import FeedbackPage from "@/pages/feedback";
 import { ReactNode } from "react";
@@ -55,7 +56,7 @@ function Router() {
       <Route path="/login">
         {user ? <Redirect to={(() => {
           const next = new URLSearchParams(window.location.search).get("redirect");
-          return next && /^\/(?:ledger|submit|manage|guide|feedback|qc(?:\/\d+)?|report)$/.test(next) ? next : "/ledger";
+          return next && /^\/(?:ledger|submit|manage|guide|history|feedback|qc(?:\/\d+)?|report)$/.test(next) ? next : "/ledger";
         })()} /> : <LoginPage />}
       </Route>
       <Route path="/">
@@ -78,6 +79,9 @@ function Router() {
       </Route>
       <Route path="/guide">
         <RequireAuth><GuidePage /></RequireAuth>
+      </Route>
+      <Route path="/history">
+        <RequireAuth><HistoryPage /></RequireAuth>
       </Route>
       <Route path="/report">
         <RequireAuth><ReportPrintPage /></RequireAuth>

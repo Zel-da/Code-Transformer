@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { FileWarning, ClipboardList, Settings2, Download, Bell, X, LogOut, User, BookOpen, FlaskConical, HelpCircle, Play, MessageSquare } from "lucide-react";
+import { FileWarning, ClipboardList, Settings2, Download, Bell, X, LogOut, User, BookOpen, FlaskConical, HelpCircle, Play, MessageSquare, History } from "lucide-react";
 import { usePWAInstall, useNotifications } from "@/hooks/usePWA";
 import { useAuth } from "@/contexts/auth";
 import { canAccessQc } from "@/lib/qc-access";
@@ -51,6 +51,7 @@ export function Layout({ children }: { children: ReactNode }) {
     ? [
         { href: "/ledger", label: "관리대장" },
         { href: "/submit", label: "부적합 등록" },
+        { href: "/history", label: "과거 이력" },
         { href: "/qc", label: "QC 분석 목록" },
         { href: "/manage", label: "관리자 패널" },
         { href: "/feedback", label: "피드백" },
@@ -59,6 +60,7 @@ export function Layout({ children }: { children: ReactNode }) {
     : [
         { href: "/ledger", label: "관리대장" },
         { href: "/submit", label: "부적합 등록" },
+        { href: "/history", label: "과거 이력" },
         ...(canAccessQc(user?.role) ? [{ href: "/qc", label: "QC 분석 목록" }] : []),
         { href: "/feedback", label: "피드백" },
         { href: "/guide", label: "도움말" },
@@ -68,6 +70,7 @@ export function Layout({ children }: { children: ReactNode }) {
     ? [
         { href: "/ledger", label: "관리대장", Icon: BookOpen },
         { href: "/submit", label: "부적합 등록", Icon: FileWarning },
+        { href: "/history", label: "과거 이력", Icon: History },
         { href: "/qc", label: "QC 분석 목록", Icon: FlaskConical },
         { href: "/manage", label: "관리자", Icon: Settings2 },
         { href: "/feedback", label: "피드백", Icon: MessageSquare },
@@ -76,6 +79,7 @@ export function Layout({ children }: { children: ReactNode }) {
     : [
         { href: "/ledger", label: "관리대장", Icon: BookOpen },
         { href: "/submit", label: "부적합 등록", Icon: FileWarning },
+        { href: "/history", label: "과거 이력", Icon: History },
         ...(canAccessQc(user?.role) ? [{ href: "/qc", label: "QC 분석 목록", Icon: FlaskConical }] : []),
         { href: "/feedback", label: "피드백", Icon: MessageSquare },
         { href: "/guide", label: "도움말", Icon: HelpCircle },
