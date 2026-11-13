@@ -30,6 +30,9 @@ STEPS = [
                            "--cd-col", "BP_CD", "--nm-col", "BP_NM",
                            "--tax-col", "BP_RGST_NO", "--valid-col", "USAGE_FLAG"],      "vendors"),
     ("sync_shipments.py", [],                                                            "shipments"),
+    # 2026-11: 공정·출하·AS 부적합 과거 이력 매일 증분 (Q_FLAW_CKO063 → erp_defect_history).
+    # 기본 모드 = incremental (Neon MAX insrt_date 이후만), 매일 증분 수초 소요.
+    ("sync_defect_history.py", [],                                                       "defect_history"),
 ]
 
 
