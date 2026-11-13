@@ -80,13 +80,19 @@ const ACTION_DIRECTIONS = [
   "업체 반출 및 수정 입고",
 ] as const;
 
+// 2026-11-12 화성 업무개선 미팅 반영:
+//  - 화성(SH00)은 제품품번 대신 기종명·부품명 수기 입력(필수), 부품코드 선택.
+//    품질 담당자가 나중에 품목코드를 보완.
+//  - 아산(SA00)은 기존대로 제품품번(itemCode) 필수.
+// superRefine 으로 공장별 조건부 검증.
 const formSchema = z.object({
   productType: z.enum(["양산", "개발"]).default("양산"),
   registrantName: z.string().min(1, "등록자명을 입력해주세요"),
   factory: z.string().min(1, "공장을 선택해주세요"),
   processName: z.string().min(1, "공정을 선택해주세요"),
-  itemCode: z.string().min(1, "제품코드를 선택해주세요"),
-  modelName: z.string().optional(),
+  itemCode: z.string().optional(),            // 공장별 조건 — superRefine
+  modelName: z.string().optional(),           // 공장별 조건 (화성 필수)
+  partName: z.string().optional(),            // 화성 전용 수기 부품명 (필수)
   shipmentUnit: z.string().optional(),
   itemGroup: z.string().optional(),
   partCode: z.string().optional(),
@@ -96,6 +102,21 @@ const formSchema = z.object({
     z.number().int().min(0).optional(),
   ),
   description: z.string().min(1, "부적합 현상을 입력해주세요"),
+}).superRefine((v, ctx) => {
+  const isHwaseong = v.factory === "화성";
+  if (isHwaseong) {
+    if (!v.modelName?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["modelName"], message: "기종명을 입력해주세요" });
+    }
+    if (!v.partName?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["partName"], message: "부품명을 입력해주세요" });
+    }
+    // itemCode 는 선택. 비어있으면 submit 시 modelName 으로 자동 채움.
+  } else {
+    if (!v.itemCode?.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["itemCode"], message: "제품코드를 선택해주세요" });
+    }
+  }
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -169,6 +190,7 @@ export default function SubmitReport() {
     processName: user?.processName ?? "",
     itemCode: "",
     partCode: "",
+    partName: "",
     modelName: "",
     shipmentUnit: "",
     itemGroup: "",
@@ -323,6 +345,14 @@ export default function SubmitReport() {
 
   const onSubmit = async (values: FormValues) => {
     setIsUploading(true);
+    // 화성 공장: 부품명이 수기 입력된 경우 description 앞에 prepend 해서
+    // QC·분석에서도 어느 부품인지 즉시 보이게 (미팅 결론 반영).
+    const isHwaseong = values.factory === "화성";
+    const partName = (values.partName ?? "").trim();
+    const description = isHwaseong && partName
+      ? `[부품: ${partName}] ${values.description}`
+      : values.description;
+    const effectiveValues = { ...values, description };
     try {
       const uploadedPaths = await Promise.all(photos.map((p) => uploadPhoto(p)));
       const imageUrls = uploadedPaths.filter(Boolean).map((p) => `/api/storage${p}`);
@@ -331,11 +361,11 @@ export default function SubmitReport() {
 
       await createReport.mutateAsync({
         data: {
-          itemCode: values.itemCode,
           modelName: values.modelName || null,
           processName: values.processName,
           defectType: "",
-          description: values.description,
+          // 화성이면 부품명이 description 앞에 prepend 되어 QC·분석에서 바로 보임.
+          description,
           reportDate: new Date().toISOString(),
           imageUrl: imageUrls[0] ?? null,
           imageUrls: imageUrls.length > 0 ? imageUrls : null,
@@ -354,6 +384,9 @@ export default function SubmitReport() {
           deptCd: user?.deptCd ?? null,
           flawTypeCd: null,
           productType: values.productType,
+          // 화성(SH00) 생산은 품목코드를 보통 모르므로 기종명을 임시로 itemCode 자리에 넣고
+          // QC 가 추후 보완. 아산은 ERP 검색으로 이미 itemCode 가 채워진 상태.
+          itemCode: (values.itemCode?.trim() || values.modelName?.trim() || "미정"),
           itemGroup: values.itemGroup || null,
           partCode: values.partCode || null,
           shipmentDateFrom: null,
@@ -702,35 +735,85 @@ export default function SubmitReport() {
               )}
             </div>
 
-            {/* 제품코드 */}
-            <FormField
-              control={form.control}
-              name="itemCode"
-              render={({ field }) => (
-                <FieldRow label="제품품번" error={form.formState.errors.itemCode?.message}>
-                  <input
-                    type="text"
-                    placeholder="제품코드를 입력하세요"
-                    className="w-full text-[15px] text-[#191F28] placeholder-[#BEC5CC] outline-none bg-transparent font-medium"
-                    {...field}
-                  />
-                </FieldRow>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="modelName"
-              render={({ field }) => (
-                <FieldRow label="제품명" optional>
-                  <input
-                    placeholder="제품명을 입력하세요"
-                    className="w-full text-[15px] text-[#191F28] placeholder-[#BEC5CC] outline-none bg-transparent font-medium"
-                    {...field}
-                  />
-                </FieldRow>
-              )}
-            />
+            {/* 품목 필드 — 공장별 분기 (2026-11 화성 업무개선 미팅 반영) */}
+            {selectedFactory === "화성" ? (
+              <>
+                {/* 화성: 제품품번 숨김. 기종명 필수 + 부품명 필수 + 부품코드 선택. */}
+                <FormField
+                  control={form.control}
+                  name="modelName"
+                  render={({ field }) => (
+                    <FieldRow label="기종명" error={form.formState.errors.modelName?.message as string | undefined}>
+                      <input
+                        placeholder="예: SB-100, JD-1400E, 실린더바디"
+                        className="w-full text-[15px] text-[#191F28] placeholder-[#BEC5CC] outline-none bg-transparent font-medium"
+                        {...field}
+                      />
+                    </FieldRow>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="partName"
+                  render={({ field }) => (
+                    <FieldRow label="부품명" error={form.formState.errors.partName?.message as string | undefined}>
+                      <input
+                        placeholder="예: 로드핀, 실린더 커버, 플레이트"
+                        className="w-full text-[15px] text-[#191F28] placeholder-[#BEC5CC] outline-none bg-transparent font-medium"
+                        {...field}
+                      />
+                    </FieldRow>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="partCode"
+                  render={({ field }) => (
+                    <FieldRow label="부품코드" optional>
+                      <input
+                        placeholder="알면 입력 · 모르면 비워두면 QC 가 보완"
+                        className="w-full text-[15px] text-[#191F28] placeholder-[#BEC5CC] outline-none bg-transparent font-medium"
+                        {...field}
+                      />
+                    </FieldRow>
+                  )}
+                />
+                <div className="px-5 py-2.5 bg-amber-50 border-b border-amber-100 text-[11px] text-amber-800 leading-relaxed">
+                  ℹ 품목코드가 없으면 <strong>기종명</strong>이 임시로 등록되고, 품질에서 정확한 코드로 보완합니다.
+                </div>
+              </>
+            ) : (
+              <>
+                {/* 아산 등: 제품품번 필수 (ERP 조회 자동 or 수기), 제품명은 참고용 선택. */}
+                <FormField
+                  control={form.control}
+                  name="itemCode"
+                  render={({ field }) => (
+                    <FieldRow label="제품품번" error={form.formState.errors.itemCode?.message as string | undefined}>
+                      <input
+                        type="text"
+                        placeholder="제품코드를 입력하세요"
+                        className="w-full text-[15px] text-[#191F28] placeholder-[#BEC5CC] outline-none bg-transparent font-medium"
+                        {...field}
+                      />
+                    </FieldRow>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="modelName"
+                  render={({ field }) => (
+                    <FieldRow label="제품명" optional>
+                      <input
+                        placeholder="제품명을 입력하세요"
+                        className="w-full text-[15px] text-[#191F28] placeholder-[#BEC5CC] outline-none bg-transparent font-medium"
+                        {...field}
+                      />
+                    </FieldRow>
+                  )}
+                />
+              </>
+            )}
 
             <FormField
               control={form.control}
