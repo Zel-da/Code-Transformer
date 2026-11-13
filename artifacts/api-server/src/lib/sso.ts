@@ -9,7 +9,7 @@ export const STATE_COOKIE = "ncr_sso_state";
 export const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 export const randomId = () => randomBytes(32).toString("hex");
 export const safeNext = (value: unknown) =>
-  typeof value === "string" && /^\/(?:ledger|submit|manage|guide|feedback|qc(?:\/\d+)?|report)$/.test(value)
+  typeof value === "string" && /^\/(?:ledger|submit|manage|guide|history|feedback|qc(?:\/\d+)?|report)$/.test(value)
     ? value : "/ledger";
 
 export class SsoError extends Error {

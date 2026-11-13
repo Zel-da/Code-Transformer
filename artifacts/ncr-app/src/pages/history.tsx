@@ -7,6 +7,7 @@ const FACTORY_TO_PLANT: Record<string, string> = {
   아산: "SA00",
   화성: "SH00",
 };
+const API = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api`;
 
 type DefectRow = {
   id: number;
@@ -79,16 +80,22 @@ export default function HistoryPage() {
     if (gbnFilter) params.set("gbn", gbnFilter);
     if (debouncedQ) params.set("q", debouncedQ);
     params.set("limit", "80");
-    return `/api/erp/defect-history?${params.toString()}`;
+    return `${API}/erp/defect-history?${params.toString()}`;
   }, [plantFilter, gbnFilter, debouncedQ]);
 
   useEffect(() => {
     let cancel = false;
     setLoading(true);
     setError(null);
-    fetch(fetchUrl, { credentials: "include" })
+    const token = localStorage.getItem("ncr_auth_token");
+    fetch(fetchUrl, {
+      credentials: "include",
+      cache: "no-store",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then(async (r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        if (r.status === 401) throw new Error("로그인이 만료되었습니다. 다시 로그인해주세요.");
+        if (!r.ok) throw new Error("과거 이력을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
         return r.json() as Promise<{ count: number; rows: DefectRow[] }>;
       })
       .then((data) => {
@@ -97,7 +104,7 @@ export default function HistoryPage() {
       })
       .catch((e) => {
         if (cancel) return;
-        setError(String(e));
+        setError(e instanceof Error ? e.message : "과거 이력을 불러오지 못했습니다.");
         setRows([]);
       })
       .finally(() => {

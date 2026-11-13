@@ -114,7 +114,7 @@ const formSchema = z.object({
     // itemCode 는 선택. 비어있으면 submit 시 modelName 으로 자동 채움.
   } else {
     if (!v.itemCode?.trim()) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["itemCode"], message: "제품코드를 선택해주세요" });
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["itemCode"], message: "제품품번을 입력해주세요" });
     }
   }
 });
@@ -792,7 +792,7 @@ export default function SubmitReport() {
                     <FieldRow label="제품품번" error={form.formState.errors.itemCode?.message as string | undefined}>
                       <input
                         type="text"
-                        placeholder="제품코드를 입력하세요"
+                        placeholder="제품품번을 입력하세요"
                         className="w-full text-[15px] text-[#191F28] placeholder-[#BEC5CC] outline-none bg-transparent font-medium"
                         {...field}
                       />

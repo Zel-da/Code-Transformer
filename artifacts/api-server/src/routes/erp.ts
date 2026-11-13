@@ -8,6 +8,7 @@ import {
   shipmentsTable,
   erpDefectHistoryTable,
 } from "@workspace/db";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 const router: IRouter = Router();
 
@@ -487,7 +488,7 @@ router.get("/erp/input-data", async (req, res): Promise<void> => {
 // K-System Q_FLAW_CKO063 미러(erp_defect_history). item_codes 조인해 품목명 동반.
 // 공장 필터는 필수(안 주면 전체) — 프런트가 user.factory 로 자동 지정.
 // ─────────────────────────────────────────────────────────────────────────────
-router.get("/erp/defect-history", async (req, res): Promise<void> => {
+router.get("/erp/defect-history", requireAuth, async (req, res): Promise<void> => {
   const plantQ = (req.query.plant as string | undefined)?.trim();
   const plantCds = plantQ
     ? plantQ.split(",").map((p) => p.trim()).filter(Boolean)
