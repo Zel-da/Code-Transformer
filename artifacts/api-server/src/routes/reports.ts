@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, ne, sql, and, gte, lte, count, lt, or, ilike, desc } from "drizzle-orm";
 import * as XLSX from "xlsx";
-import { db, nonConformityReportsTable, auditLogsTable, usersTable } from "@workspace/db";
+import { db, nonConformityReportsTable, auditLogsTable, usersTable, itemCodesTable } from "@workspace/db";
 import {
   ListReportsQueryParams,
   CreateReportBody,
@@ -304,11 +304,22 @@ router.get("/reports/pending", async (_req, res): Promise<void> => {
     );
   }
 
-  // 2) PENDING 목록 반환 (방금 복원한 것도 포함)
+  // 2) PENDING 목록 반환 (방금 복원한 것도 포함).
+  //    품번 안전망: itemCode 가 item_codes 마스터에 없거나 '미정' 이면 제외
+  //    (PATCH /status APPROVED 가드가 1차지만, 과거 승인분·수동 전이에 대비한 2차 방어).
+  //    제외된 보고는 RPA 로 넘어가지 않고, QC 가 품번 보완 후 다시 조회되어야 함.
   const reports = await db
     .select()
     .from(nonConformityReportsTable)
-    .where(eq(nonConformityReportsTable.syncStatus, "PENDING"))
+    .where(
+      and(
+        eq(nonConformityReportsTable.syncStatus, "PENDING"),
+        sql`${nonConformityReportsTable.itemCode} IS NOT NULL`,
+        sql`${nonConformityReportsTable.itemCode} <> ''`,
+        sql`${nonConformityReportsTable.itemCode} <> '미정'`,
+        sql`EXISTS (SELECT 1 FROM ${itemCodesTable} WHERE ${itemCodesTable.code} = ${nonConformityReportsTable.itemCode})`,
+      ),
+    )
     .orderBy(nonConformityReportsTable.createdAt);
 
   res.json(reports);
@@ -875,6 +886,39 @@ router.patch("/reports/:id/status", requireRole(["admin", "reviewer", "approver"
   if (!allowed.includes(role)) {
     res.status(403).json({ error: `이 전이(${from} → ${to})를 수행할 권한이 없습니다` });
     return;
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // 2026-11 가드: APPROVED 로 승격할 때 품번이 실제 ERP 마스터에 등록되었는지 검증.
+  // 화성 공장은 폼에서 품번을 비워 등록할 수 있으므로 저장 시 '미정' 이나 기종명이
+  // itemCode 자리에 들어감. QC 가 보완 안 하고 승인하면 잘못된 값이 ERP 로 넘어감.
+  // → 승인 단계에서 반드시 item_codes 마스터 존재 확인 (RPA 로 넘어가기 전 차단).
+  // ───────────────────────────────────────────────────────────────────────────
+  if (to === "APPROVED") {
+    const [fullReport] = await db
+      .select({ itemCode: nonConformityReportsTable.itemCode })
+      .from(nonConformityReportsTable)
+      .where(eq(nonConformityReportsTable.id, id));
+    const code = (fullReport?.itemCode ?? "").trim();
+    if (!code || code === "미정") {
+      res.status(400).json({
+        error: "품번이 비어있거나 '미정'입니다. 승인 전에 보고서 편집에서 정확한 ERP 품번으로 수정해주세요.",
+        code: "ITEM_CODE_REQUIRED",
+      });
+      return;
+    }
+    const [exists] = await db
+      .select({ code: itemCodesTable.code })
+      .from(itemCodesTable)
+      .where(eq(itemCodesTable.code, code))
+      .limit(1);
+    if (!exists) {
+      res.status(400).json({
+        error: `품번 "${code}" 가 ERP 마스터(item_codes)에 없습니다. 품번 조회에서 정확한 코드를 찾아 수정 후 다시 승인해주세요.`,
+        code: "ITEM_CODE_NOT_IN_MASTER",
+      });
+      return;
+    }
   }
 
   const updates: Record<string, unknown> = { qcStatus: to };
